@@ -23,6 +23,7 @@ import { useDocuments, useDocumentStatus } from '@/hooks/use-documents'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
 import { useAiGeneration } from '@/hooks/use-ai-generation'
 import { ProtectedRoute } from '@/components/auth/protected-route'
+import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -221,9 +222,11 @@ export default function SessionWorkspace() {
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-        </div>
+        <AppLayout>
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+          </div>
+        </AppLayout>
       </ProtectedRoute>
     )
   }
@@ -233,14 +236,15 @@ export default function SessionWorkspace() {
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen flex-col bg-gray-50">
-        {/* Header */}
-        <header className="border-b bg-white px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/sessions')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
+      <AppLayout>
+        <div className="flex h-full flex-col">
+          {/* Header */}
+          <header className="border-b bg-white px-6 py-3">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => router.push('/sessions')}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
               <h1 className="text-lg font-bold text-gray-900">{session?.name}</h1>
               {session?.description && <p className="text-sm text-gray-500">{session.description}</p>}
             </div>
@@ -517,6 +521,7 @@ export default function SessionWorkspace() {
           )}
         </div>
       </div>
+      </AppLayout>
     </ProtectedRoute>
   )
 }
