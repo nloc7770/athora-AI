@@ -353,7 +353,7 @@ export class ChatService {
     const { data: doc } = await this.supabaseService
       .getAdminClient()
       .from('documents')
-      .select('ragflow_dataset_id')
+      .select('ragflow_dataset_id, ragflow_document_id')
       .eq('id', session.documentId)
       .single();
 
@@ -365,11 +365,26 @@ export class ChatService {
     }
 
     try {
-      return await this.ragflowService.retrieveChunks(
+      // Try retrieval first (semantic search)
+      let chunks = await this.ragflowService.retrieveChunks(
         doc.ragflow_dataset_id,
         query,
         5,
       );
+
+      // Fallback: get all chunks directly if retrieval returns nothing
+      if (chunks.length === 0) {
+        this.logger.warn(
+          'Semantic retrieval returned 0 chunks, falling back to direct chunk listing',
+          { documentId: session.documentId, datasetId: doc.ragflow_dataset_id },
+        );
+        chunks = await this.ragflowService.getDocumentChunks(
+          doc.ragflow_dataset_id,
+          doc.ragflow_document_id ?? undefined,
+        );
+      }
+
+      return chunks;
     } catch (error) {
       this.logger.error('Failed to retrieve chunks from RAGFlow', {
         error,

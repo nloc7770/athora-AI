@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { ToastContainer } from "@/components/ui/toast-container";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -25,6 +26,7 @@ export default function RootLayout({
         <TooltipProvider>
           <AuthProvider>
             {children}
+            <ToastContainer />
           </AuthProvider>
         </TooltipProvider>
       </body>

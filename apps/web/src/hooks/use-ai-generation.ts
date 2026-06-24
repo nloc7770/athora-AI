@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiClient } from '@/lib/api'
 
 type GenerationType = 'summary' | 'flashcards' | 'exam' | 'mindmap'
@@ -23,10 +23,25 @@ interface UseAiGenerationReturn {
   refresh: () => Promise<void>
 }
 
+const POLL_INTERVAL_MS = 5000
+const ACTIVE_STATUSES = ['pending', 'processing']
+
+function hasActiveGenerations(generations: AiGeneration[]): boolean {
+  return generations.some((g) => ACTIVE_STATUSES.includes(g.status))
+}
+
 export function useAiGeneration(documentId: string | null): UseAiGenerationReturn {
   const [generations, setGenerations] = useState<AiGeneration[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [])
 
   const fetchGenerations = useCallback(async () => {
     if (!documentId) {
@@ -51,9 +66,42 @@ export function useAiGeneration(documentId: string | null): UseAiGenerationRetur
     }
   }, [documentId])
 
+  // Poll silently without resetting isLoading
+  const pollGenerations = useCallback(async () => {
+    if (!documentId) return
+
+    try {
+      const data = await apiClient.get<AiGeneration[]>(
+        `/ai-generation/document/${documentId}`
+      )
+      setGenerations(data)
+    } catch {
+      // Silently ignore poll errors to avoid disrupting UI
+    }
+  }, [documentId])
+
+  // Start or stop polling based on generation statuses
+  useEffect(() => {
+    if (hasActiveGenerations(generations)) {
+      if (!intervalRef.current) {
+        intervalRef.current = setInterval(pollGenerations, POLL_INTERVAL_MS)
+      }
+    } else {
+      clearPolling()
+    }
+  }, [generations, pollGenerations, clearPolling])
+
+  // Initial fetch
   useEffect(() => {
     fetchGenerations()
   }, [fetchGenerations])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearPolling()
+    }
+  }, [clearPolling])
 
   const generate = useCallback(async (type: GenerationType): Promise<AiGeneration> => {
     if (!documentId) {

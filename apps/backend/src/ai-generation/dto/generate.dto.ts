@@ -2,7 +2,7 @@ import { IsEnum, IsString, IsUUID } from 'class-validator';
 
 export enum GenerationType {
   SUMMARY = 'summary',
-  FLASHCARD = 'flashcard',
+  FLASHCARD = 'flashcards',
   EXAM = 'exam',
   MINDMAP = 'mindmap',
 }

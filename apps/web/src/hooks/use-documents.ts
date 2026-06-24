@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiClient } from '@/lib/api'
+import { useToastStore } from '@/stores/toast-store'
 
 interface Document {
   id: string
@@ -72,9 +73,15 @@ export function useDocuments(filters?: UseDocumentsFilters) {
     if (options?.courseId) formData.append('courseId', options.courseId)
     if (options?.sessionId) formData.append('sessionId', options.sessionId)
 
-    const uploaded = await apiClient.upload<Document>('/documents/upload', formData)
-    setDocuments((prev) => [uploaded, ...prev])
-    return uploaded
+    try {
+      const uploaded = await apiClient.upload<Document>('/documents/upload', formData)
+      setDocuments((prev) => [uploaded, ...prev])
+      return uploaded
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to upload document'
+      useToastStore.getState().addToast(message, 'error')
+      throw err
+    }
   }, [])
 
   const deleteDocument = useCallback(async (id: string): Promise<void> => {

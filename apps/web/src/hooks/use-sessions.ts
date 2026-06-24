@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
+import { useToastStore } from '@/stores/toast-store'
 
 interface StudySession {
   id: string
@@ -49,9 +50,15 @@ export function useSessions() {
   }, [fetchSessions])
 
   const createSession = async (name: string, description?: string) => {
-    const data = await apiClient.post<StudySession>('/sessions', { name, description })
-    setSessions((prev) => [{ ...data, document_count: 0 }, ...prev])
-    return data
+    try {
+      const data = await apiClient.post<StudySession>('/sessions', { name, description })
+      setSessions((prev) => [{ ...data, document_count: 0 }, ...prev])
+      return data
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create session'
+      useToastStore.getState().addToast(message, 'error')
+      throw err
+    }
   }
 
   const deleteSession = async (id: string) => {
