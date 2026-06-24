@@ -7,7 +7,7 @@ import { UpdateDocumentDto } from './dto/update-document.dto';
 export class DocumentsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll(userId: string, filters?: { courseId?: string; type?: string }) {
+  async findAll(userId: string, filters?: { courseId?: string; type?: string; sessionId?: string }) {
     let query = this.supabaseService
       .getAdminClient()
       .from('documents')
@@ -21,6 +21,10 @@ export class DocumentsService {
 
     if (filters?.type) {
       query = query.eq('type', filters.type);
+    }
+
+    if (filters?.sessionId) {
+      query = query.eq('session_id', filters.sessionId);
     }
 
     const { data, error } = await query;

@@ -234,7 +234,7 @@ export default function LibraryPage() {
     error: docsError,
     uploadDocument,
     deleteDocument,
-  } = useDocuments(courseIdParam, typeParam)
+  } = useDocuments({ courseId: courseIdParam, type: typeParam })
 
   const { courses, isLoading: coursesLoading } = useCourses()
 
@@ -263,8 +263,7 @@ export default function LibraryPage() {
       setUploadError(null)
 
       try {
-        const uploaded = await uploadDocument({
-          file,
+        const uploaded = await uploadDocument(file, {
           courseId: courseIdParam,
         })
         setUploadingDocId(uploaded.id)

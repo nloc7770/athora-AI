@@ -144,13 +144,30 @@ export class DocumentProcessorService {
     const { data } = await this.supabaseService
       .getAdminClient()
       .from('documents')
-      .select('course_id')
+      .select('course_id, session_id')
       .eq('id', documentId)
       .eq('user_id', userId)
       .single();
 
+    const sessionId = data?.session_id;
     const courseId = data?.course_id;
 
+    // Priority 1: Use session's dataset (all docs in session share one dataset)
+    if (sessionId) {
+      const { data: session } = await this.supabaseService
+        .getAdminClient()
+        .from('study_sessions')
+        .select('ragflow_dataset_id')
+        .eq('id', sessionId)
+        .eq('user_id', userId)
+        .single();
+
+      if (session?.ragflow_dataset_id) {
+        return session.ragflow_dataset_id;
+      }
+    }
+
+    // Priority 2: Reuse course dataset if exists
     if (courseId) {
       const { data: existingDoc } = await this.supabaseService
         .getAdminClient()
@@ -167,9 +184,12 @@ export class DocumentProcessorService {
       }
     }
 
-    const datasetName = courseId
-      ? `user_${userId}_course_${courseId}`
-      : `user_${userId}_doc_${documentId}`;
+    // Priority 3: Create new dataset
+    const datasetName = sessionId
+      ? `session_${sessionId}`
+      : courseId
+        ? `user_${userId}_course_${courseId}`
+        : `user_${userId}_doc_${documentId}`;
 
     const { id } = await this.ragflowService.createDataset(datasetName, userId);
     return id;

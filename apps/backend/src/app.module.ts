@@ -11,6 +11,7 @@ import { AiModule } from './ai/ai.module';
 import { RagflowModule } from './ragflow/ragflow.module';
 import { ChatModule } from './chat/chat.module';
 import { AiGenerationModule } from './ai-generation/ai-generation.module';
+import { SessionsModule } from './sessions/sessions.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AiGenerationModule } from './ai-generation/ai-generation.module';
     ExamsModule,
     ChatModule,
     AiGenerationModule,
+    SessionsModule,
   ],
 })
 export class AppModule {}

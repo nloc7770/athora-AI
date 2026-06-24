@@ -15,6 +15,10 @@ export class CreateDocumentDto {
 
   @IsString()
   @IsOptional()
+  session_id?: string;
+
+  @IsString()
+  @IsOptional()
   file_url?: string;
 
   @IsInt()

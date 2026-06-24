@@ -38,8 +38,9 @@ export class DocumentsController {
     @CurrentUser('id') userId: string,
     @Query('courseId') courseId?: string,
     @Query('type') type?: string,
+    @Query('sessionId') sessionId?: string,
   ) {
-    return this.documentsService.findAll(userId, { courseId, type });
+    return this.documentsService.findAll(userId, { courseId, type, sessionId });
   }
 
   @Get(':id')
@@ -72,6 +73,7 @@ export class DocumentsController {
     file: Express.Multer.File,
     @Body('name') name?: string,
     @Body('courseId') courseId?: string,
+    @Body('sessionId') sessionId?: string,
   ) {
     const documentName = name || file.originalname.replace(/\.pdf$/i, '');
 
@@ -79,6 +81,7 @@ export class DocumentsController {
       name: documentName,
       type: 'pdf',
       course_id: courseId,
+      session_id: sessionId,
       file_size: file.size,
     });
 

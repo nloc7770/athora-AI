@@ -264,7 +264,7 @@ export default function DashboardPage() {
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) return
-      await uploadDocument({ file })
+      await uploadDocument(file)
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
       }

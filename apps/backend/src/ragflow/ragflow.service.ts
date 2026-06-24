@@ -207,4 +207,10 @@ export class RagflowService {
 
     return answer;
   }
+
+  async deleteDataset(datasetId: string): Promise<void> {
+    await this.client.delete('/api/v1/datasets', {
+      data: { ids: [datasetId] },
+    });
+  }
 }

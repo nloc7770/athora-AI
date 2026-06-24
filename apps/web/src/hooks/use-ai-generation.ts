@@ -10,7 +10,7 @@ interface AiGeneration {
   documentId: string
   type: GenerationType
   status: string
-  result?: unknown
+  result?: Record<string, any>
   createdAt: string
   updatedAt: string
 }

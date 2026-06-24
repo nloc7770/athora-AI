@@ -8,7 +8,9 @@ interface Document {
   name: string
   type: string
   courseId?: string
+  session_id?: string
   status: string
+  file_size?: number
   pageCount?: number
   createdAt: string
   updatedAt: string
@@ -20,28 +22,19 @@ interface DocumentStatus {
   isReady: boolean
 }
 
-interface UploadDocumentInput {
-  file: File
+interface UploadOptions {
   name?: string
   courseId?: string
+  sessionId?: string
 }
 
-interface UseDocumentsReturn {
-  documents: Document[]
-  isLoading: boolean
-  error: string | null
-  refresh: () => Promise<void>
-  uploadDocument: (input: UploadDocumentInput) => Promise<Document>
-  deleteDocument: (id: string) => Promise<void>
+interface UseDocumentsFilters {
+  courseId?: string
+  type?: string
+  sessionId?: string
 }
 
-interface UseDocumentStatusReturn {
-  status: string | null
-  progress: number
-  isReady: boolean
-}
-
-export function useDocuments(courseId?: string, type?: string): UseDocumentsReturn {
+export function useDocuments(filters?: UseDocumentsFilters) {
   const [documents, setDocuments] = useState<Document[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,8 +45,9 @@ export function useDocuments(courseId?: string, type?: string): UseDocumentsRetu
 
     try {
       const params = new URLSearchParams()
-      if (courseId) params.set('courseId', courseId)
-      if (type) params.set('type', type)
+      if (filters?.courseId) params.set('courseId', filters.courseId)
+      if (filters?.type) params.set('type', filters.type)
+      if (filters?.sessionId) params.set('sessionId', filters.sessionId)
 
       const query = params.toString()
       const path = query ? `/documents?${query}` : '/documents'
@@ -65,20 +59,21 @@ export function useDocuments(courseId?: string, type?: string): UseDocumentsRetu
     } finally {
       setIsLoading(false)
     }
-  }, [courseId, type])
+  }, [filters?.courseId, filters?.type, filters?.sessionId])
 
   useEffect(() => {
     fetchDocuments()
   }, [fetchDocuments])
 
-  const uploadDocument = useCallback(async (input: UploadDocumentInput): Promise<Document> => {
+  const uploadDocument = useCallback(async (file: File, options?: UploadOptions): Promise<Document> => {
     const formData = new FormData()
-    formData.append('file', input.file)
-    if (input.name) formData.append('name', input.name)
-    if (input.courseId) formData.append('courseId', input.courseId)
+    formData.append('file', file)
+    if (options?.name) formData.append('name', options.name)
+    if (options?.courseId) formData.append('courseId', options.courseId)
+    if (options?.sessionId) formData.append('sessionId', options.sessionId)
 
     const uploaded = await apiClient.upload<Document>('/documents/upload', formData)
-    setDocuments((prev) => [...prev, uploaded])
+    setDocuments((prev) => [uploaded, ...prev])
     return uploaded
   }, [])
 
@@ -103,7 +98,7 @@ export function useDocuments(courseId?: string, type?: string): UseDocumentsRetu
   }
 }
 
-export function useDocumentStatus(documentId: string | null): UseDocumentStatusReturn {
+export function useDocumentStatus(documentId: string | null) {
   const [status, setStatus] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [isReady, setIsReady] = useState(false)
@@ -119,14 +114,15 @@ export function useDocumentStatus(documentId: string | null): UseDocumentStatusR
 
     const poll = async () => {
       try {
-        const data = await apiClient.get<DocumentStatus>(
+        const data = await apiClient.get<{ status: string; progress: number }>(
           `/documents/${documentId}/status`
         )
         setStatus(data.status)
         setProgress(data.progress)
-        setIsReady(data.isReady)
+        const ready = data.status === 'ready'
+        setIsReady(ready)
 
-        if (data.isReady && intervalRef.current) {
+        if ((ready || data.status === 'failed') && intervalRef.current) {
           clearInterval(intervalRef.current)
           intervalRef.current = null
         }
@@ -136,7 +132,7 @@ export function useDocumentStatus(documentId: string | null): UseDocumentStatusR
     }
 
     poll()
-    intervalRef.current = setInterval(poll, 2000)
+    intervalRef.current = setInterval(poll, 3000)
 
     return () => {
       if (intervalRef.current) {
