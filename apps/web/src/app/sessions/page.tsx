@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Search, FileText, Clock, Trash2, X } from 'lucide-react'
+import { Plus, Search, FileText, Clock, Trash2, X, Upload, Loader2 } from 'lucide-react'
 import { useSessions } from '@/hooks/use-sessions'
+import { useDocuments } from '@/hooks/use-documents'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
@@ -27,28 +28,58 @@ function formatDate(dateStr: string) {
 export default function SessionsPage() {
   const router = useRouter()
   const { sessions, isLoading, createSession, deleteSession } = useSessions()
+  const { uploadDocument } = useDocuments()
   const [showModal, setShowModal] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [creating, setCreating] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
   const [search, setSearch] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filteredSessions = sessions.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
   )
 
   const handleCreate = async () => {
-    if (!newName.trim()) return
+    if (!newName.trim() || selectedFiles.length === 0) return
     setCreating(true)
     try {
+      setUploadProgress('Creating session...')
       const session = await createSession(newName.trim(), newDesc.trim() || undefined)
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        setUploadProgress(`Uploading file ${i + 1}/${selectedFiles.length}...`)
+        await uploadDocument(selectedFiles[i], { sessionId: session.id })
+      }
+
       setShowModal(false)
       setNewName('')
       setNewDesc('')
+      setSelectedFiles([])
+      setUploadProgress('')
       router.push(`/sessions/${session.id}`)
     } finally {
       setCreating(false)
+      setUploadProgress('')
     }
+  }
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf')
+    setSelectedFiles((prev) => [...prev, ...files])
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    setSelectedFiles((prev) => [...prev, ...files])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   return (
@@ -173,18 +204,18 @@ export default function SessionsPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-            onClick={() => setShowModal(false)}
+            onClick={() => !creating && setShowModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+              className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Create new session</h2>
-                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => !creating && setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -195,9 +226,9 @@ export default function SessionsPage() {
                     placeholder="e.g. Machine Learning Midterm"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                     className="mt-1"
                     autoFocus
+                    disabled={creating}
                   />
                 </div>
                 <div>
@@ -207,13 +238,71 @@ export default function SessionsPage() {
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
                     className="mt-1"
+                    disabled={creating}
                   />
                 </div>
+
+                {/* File Upload Zone */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Upload files *</label>
+                  <div
+                    onDrop={handleFileDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => !creating && fileInputRef.current?.click()}
+                    className="mt-1 cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
+                  >
+                    <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
+                    <p className="text-sm font-medium text-gray-600">Drag & drop files or Browse</p>
+                    <p className="mt-1 text-xs text-gray-400">Supported: PDF (max 50MB)</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileSelect}
+                      disabled={creating}
+                    />
+                  </div>
+                </div>
+
+                {/* Selected Files */}
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2 max-h-32 overflow-auto">
+                    {selectedFiles.map((file, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-red-500" />
+                          <span className="text-sm text-gray-700 truncate max-w-xs">{file.name}</span>
+                          <span className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
+                        </div>
+                        {!creating && (
+                          <button onClick={() => removeFile(i)} className="text-gray-400 hover:text-red-500">
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Progress */}
+                {uploadProgress && (
+                  <div className="flex items-center gap-2 text-sm text-indigo-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {uploadProgress}
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-2">
-                  <Button onClick={handleCreate} disabled={creating || !newName.trim()} className="flex-1">
-                    {creating ? 'Creating...' : 'Create & Open'}
+                  <Button
+                    onClick={handleCreate}
+                    disabled={creating || !newName.trim() || selectedFiles.length === 0}
+                    className="flex-1"
+                  >
+                    {creating ? 'Processing...' : `Create & Upload (${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''})`}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowModal(false)}>
+                  <Button variant="outline" onClick={() => setShowModal(false)} disabled={creating}>
                     Cancel
                   </Button>
                 </div>
