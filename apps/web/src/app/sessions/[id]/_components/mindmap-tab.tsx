@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import {
   Network,
   Loader2,
@@ -175,10 +175,24 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 }
 
 export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }: MindMapTabProps) {
-  const [zoom, setZoom] = useState(2.0)
+  const [zoom, setZoom] = useState(3.0)
   const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [dragging, setDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const dragRef = useRef({ dragging: false, startX: 0, startY: 0, panX: 0, panY: 0 })
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
+  }, [pan])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragRef.current.dragging) return
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    setPan({ x: dragRef.current.panX + dx, y: dragRef.current.panY + dy })
+  }, [])
+
+  const handleMouseUp = useCallback(() => {
+    dragRef.current.dragging = false
+  }, [])
   const filtered = generations.filter((g) => g.type === 'mindmap')
   const latest = filtered.find((g) => g.status === 'completed')
   const pending = filtered.find((g) => g.status === 'pending' || g.status === 'processing')
@@ -259,20 +273,6 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
   const vbX = minX + (width - vbW) / 2 - pan.x / zoom
   const vbY = minY + (height - vbH) / 2 - pan.y / zoom
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setDragging(true)
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragging) return
-    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
-  }
-
-  const handleMouseUp = () => {
-    setDragging(false)
-  }
-
   return (
     <div className="mx-auto max-w-full space-y-4">
       {/* Controls */}
@@ -297,10 +297,10 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
       {/* SVG Mind Map */}
       <div
         className="rounded-xl border bg-gradient-to-br from-gray-50 to-white overflow-hidden select-none"
-        style={{ height: '600px', cursor: dragging ? 'grabbing' : 'grab' }}
+        style={{ height: '600px', cursor: dragRef.current.dragging ? 'grabbing' : 'grab' }}
         onWheel={(e) => {
           e.preventDefault()
-          setZoom(z => Math.max(0.3, Math.min(5, z + (e.deltaY > 0 ? -0.1 : 0.1))))
+          setZoom(z => Math.max(0.3, Math.min(5, z + (e.deltaY > 0 ? -0.15 : 0.15))))
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
