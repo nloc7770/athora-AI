@@ -55,13 +55,14 @@ export class AuthService {
   async getProfile(userId: string) {
     const { data, error } = await this.supabaseService
       .getClient()
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
-    if (error) {
-      throw new UnauthorizedException(error.message);
+    if (error || !data) {
+      // Profile may not exist yet, return basic info from auth
+      return { id: userId };
     }
 
     return data;
