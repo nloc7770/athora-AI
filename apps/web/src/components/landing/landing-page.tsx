@@ -358,8 +358,8 @@ export default function LandingPage() {
 
           <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-12 md:auto-rows-[minmax(220px,auto)]">
             {/* Large card — Chat (spans 7 cols, 2 rows) */}
-            <FadeUp delay={0.05}>
-              <Card className="md:col-span-7 md:row-span-2 border-stone-700/50 bg-stone-800 p-0 overflow-hidden group h-full">
+            <FadeUp delay={0.05} className="md:col-span-7 md:row-span-2">
+              <Card className="border-stone-700/50 bg-stone-800 p-0 overflow-hidden group h-full">
                 <div className="p-7 pb-0">
                   <span className="inline-block rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 mb-4">
                     Core
@@ -377,9 +377,9 @@ export default function LandingPage() {
               </Card>
             </FadeUp>
 
-            {/* Flashcards card (spans 5 cols, offset up) */}
-            <FadeUp delay={0.1}>
-              <Card className="md:col-span-5 border-stone-700/50 bg-stone-800 p-6 flex flex-col justify-between md:-translate-y-2 h-full">
+            {/* Flashcards card (spans 5 cols) */}
+            <FadeUp delay={0.1} className="md:col-span-5">
+              <Card className="border-stone-700/50 bg-stone-800 p-6 flex flex-col justify-between h-full">
                 <div>
                   <span className="inline-block rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300 mb-4">
                     Popular
@@ -395,9 +395,9 @@ export default function LandingPage() {
               </Card>
             </FadeUp>
 
-            {/* Exam card (spans 5 cols, offset down) */}
-            <FadeUp delay={0.15}>
-              <Card className="md:col-span-5 border-stone-700/50 bg-stone-800 p-6 flex flex-col justify-between md:translate-y-2 h-full">
+            {/* Exam card (spans 5 cols) */}
+            <FadeUp delay={0.15} className="md:col-span-5">
+              <Card className="border-stone-700/50 bg-stone-800 p-6 flex flex-col justify-between h-full">
                 <div>
                   <span className="inline-block rounded-full bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-400 mb-4">
                     New
