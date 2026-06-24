@@ -5,6 +5,7 @@ import {
   Param,
   Body,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
@@ -23,7 +24,10 @@ export class ExamsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.examsService.findOne(userId, id);
   }
 
@@ -34,7 +38,7 @@ export class ExamsController {
 
   @Post(':id/submit')
   submitAttempt(
-    @Param('id') examId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: SubmitExamDto,
   ) {
@@ -42,7 +46,10 @@ export class ExamsController {
   }
 
   @Get(':id/attempts')
-  getAttempts(@Param('id') examId: string, @CurrentUser('id') userId: string) {
+  getAttempts(
+    @Param('id', ParseUUIDPipe) examId: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.examsService.getAttempts(userId, examId);
   }
 }

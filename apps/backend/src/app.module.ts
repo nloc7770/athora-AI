@@ -13,6 +13,7 @@ import { RagflowModule } from './ragflow/ragflow.module';
 import { ChatModule } from './chat/chat.module';
 import { AiGenerationModule } from './ai-generation/ai-generation.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SessionsModule } from './sessions/sessions.module';
     ChatModule,
     AiGenerationModule,
     SessionsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

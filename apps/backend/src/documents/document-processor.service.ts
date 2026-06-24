@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RagflowService } from '../ragflow/ragflow.service';
@@ -17,6 +17,8 @@ export class DocumentProcessorService {
   private readonly storageBucket: string;
   private readonly pollingIntervalMs: number;
   private readonly pollingMaxAttempts: number;
+  private readonly maxConcurrent = 5;
+  private activeProcessing = 0;
 
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -43,6 +45,14 @@ export class DocumentProcessorService {
     documentId: string,
     file: Express.Multer.File,
   ): Promise<void> {
+    if (this.activeProcessing >= this.maxConcurrent) {
+      throw new HttpException(
+        'Too many documents being processed. Please try again later.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    this.activeProcessing++;
     try {
       await this.updateDocumentStatus(userId, documentId, 'uploading', 0);
 
@@ -91,6 +101,8 @@ export class DocumentProcessorService {
       );
       await this.updateDocumentStatus(userId, documentId, 'failed', 0);
       throw error;
+    } finally {
+      this.activeProcessing--;
     }
   }
 

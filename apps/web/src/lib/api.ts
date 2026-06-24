@@ -4,11 +4,15 @@ const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 const TOKEN_KEY = 'athora-token'
+const REFRESH_TOKEN_KEY = 'athora-refresh-token'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const UPLOAD_TIMEOUT_MS = 120_000
 const RETRY_DELAY_MS = 1_000
 const MAX_RETRIES = 1
+
+let isRefreshing = false
+let refreshPromise: Promise<boolean> | null = null
 
 class ApiRequestError extends Error {
   readonly statusCode: number
@@ -46,8 +50,63 @@ function clearAuthAndRedirect(): void {
   if (typeof window === 'undefined') return
 
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
   document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
   window.location.href = '/login'
+}
+
+async function attemptTokenRefresh(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+
+  if (!refreshToken) {
+    return false
+  }
+
+  // Deduplicate concurrent refresh attempts
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise
+  }
+
+  isRefreshing = true
+  refreshPromise = doRefresh(refreshToken)
+
+  try {
+    return await refreshPromise
+  } finally {
+    isRefreshing = false
+    refreshPromise = null
+  }
+}
+
+async function doRefresh(refreshToken: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+
+    if (!response.ok) {
+      return false
+    }
+
+    const data = await response.json()
+    const newToken = data.session?.access_token
+    const newRefreshToken = data.session?.refresh_token
+
+    if (!newToken || !newRefreshToken) {
+      return false
+    }
+
+    localStorage.setItem(TOKEN_KEY, newToken)
+    localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken)
+
+    return true
+  } catch {
+    return false
+  }
 }
 
 function isNetworkError(error: unknown): boolean {
@@ -65,6 +124,7 @@ interface RequestOptions {
   headers?: Record<string, string>
   signal?: AbortSignal
   timeoutMs?: number
+  _skipRefresh?: boolean
 }
 
 async function request<T>(
@@ -113,6 +173,22 @@ async function request<T>(
       })
 
       clearTimeout(timeoutId)
+
+      if (response.status === 401 && !options?._skipRefresh) {
+        // Attempt token refresh before giving up
+        const refreshed = await attemptTokenRefresh()
+
+        if (refreshed) {
+          // Retry the original request with the new token
+          return request<T>(method, path, body, {
+            ...options,
+            _skipRefresh: true,
+          })
+        }
+
+        clearAuthAndRedirect()
+        throw new ApiRequestError('Unauthorized', 401)
+      }
 
       if (response.status === 401) {
         clearAuthAndRedirect()

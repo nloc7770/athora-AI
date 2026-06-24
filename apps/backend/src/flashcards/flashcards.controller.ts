@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FlashcardsService } from './flashcards.service';
 import { CreateFlashcardSetDto } from './dto/create-flashcard-set.dto';
@@ -30,7 +31,10 @@ export class FlashcardsController {
   }
 
   @Get('sets/:id')
-  findSet(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  findSet(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.flashcardsService.findSet(userId, id);
   }
 
@@ -43,17 +47,26 @@ export class FlashcardsController {
   }
 
   @Post('sets/:id/cards')
-  createCard(@Param('id') setId: string, @Body() dto: CreateFlashcardDto) {
+  createCard(
+    @Param('id', ParseUUIDPipe) setId: string,
+    @Body() dto: CreateFlashcardDto,
+  ) {
     return this.flashcardsService.createCard(setId, dto);
   }
 
   @Patch('cards/:id')
-  updateCard(@Param('id') cardId: string, @Body() dto: UpdateFlashcardDto) {
+  updateCard(
+    @Param('id', ParseUUIDPipe) cardId: string,
+    @Body() dto: UpdateFlashcardDto,
+  ) {
     return this.flashcardsService.updateCard(cardId, dto);
   }
 
   @Delete('sets/:id')
-  deleteSet(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  deleteSet(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.flashcardsService.deleteSet(userId, id);
   }
 

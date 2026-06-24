@@ -52,6 +52,18 @@ export class AuthService {
     return { message: 'Successfully logged out' };
   }
 
+  async refreshSession(refreshToken: string) {
+    const { data, error } = await this.supabaseService
+      .getAuthClient()
+      .auth.refreshSession({ refresh_token: refreshToken });
+
+    if (error || !data.session) {
+      throw new UnauthorizedException(error?.message ?? 'Failed to refresh session');
+    }
+
+    return { user: data.user, session: data.session };
+  }
+
   async getProfile(userId: string) {
     const { data, error } = await this.supabaseService
       .getClient()

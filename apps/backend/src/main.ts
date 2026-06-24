@@ -36,7 +36,12 @@ async function bootstrap() {
   app.useBodyParser('urlencoded', { limit: '10mb', extended: true });
 
   const port = configService.get<number>('PORT', 3001);
-  await app.listen(port);
+  const server = await app.listen(port);
+
+  // Timeouts for load balancer compatibility (ALB default is 60s)
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
+
   logger.log(`Application running on port ${port}`);
 }
 

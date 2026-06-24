@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { AiGenerationService } from './ai-generation.service';
 import { GenerateDto, GenerateSessionDto } from './dto/generate.dto';
@@ -35,7 +36,7 @@ export class AiGenerationController {
   @Get('document/:documentId')
   getGenerationsByDocument(
     @CurrentUser('id') userId: string,
-    @Param('documentId') documentId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
   ) {
     return this.aiGenerationService.getGenerationsByDocument(userId, documentId);
   }
@@ -43,7 +44,7 @@ export class AiGenerationController {
   @Get('session/:sessionId')
   getGenerationsBySession(
     @CurrentUser('id') userId: string,
-    @Param('sessionId') sessionId: string,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
   ) {
     return this.aiGenerationService.getGenerationsBySession(userId, sessionId);
   }
@@ -51,7 +52,7 @@ export class AiGenerationController {
   @Get(':id')
   getGeneration(
     @CurrentUser('id') userId: string,
-    @Param('id') generationId: string,
+    @Param('id', ParseUUIDPipe) generationId: string,
   ) {
     return this.aiGenerationService.getGeneration(userId, generationId);
   }

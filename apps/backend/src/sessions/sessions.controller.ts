@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
@@ -25,7 +26,10 @@ export class SessionsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.sessionsService.findOne(userId, id);
   }
 
@@ -36,7 +40,7 @@ export class SessionsController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
     @Body() dto: UpdateSessionDto,
   ) {
@@ -44,12 +48,18 @@ export class SessionsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.sessionsService.delete(userId, id);
   }
 
   @Get(':id/documents')
-  getDocuments(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  getDocuments(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.sessionsService.findOne(userId, id).then((s) => s.documents);
   }
 }

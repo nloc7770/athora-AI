@@ -14,6 +14,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
@@ -44,12 +45,18 @@ export class DocumentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.documentsService.findOne(userId, id);
   }
 
   @Get(':id/status')
-  getStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  getStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.documentProcessorService.getProcessingStatus(userId, id);
   }
 
@@ -100,7 +107,7 @@ export class DocumentsController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
     @Body() dto: UpdateDocumentDto,
   ) {
@@ -108,7 +115,10 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.documentsService.delete(userId, id);
   }
 }
