@@ -33,7 +33,7 @@ export class SummaryGenerator {
     private readonly ragflowService: RagflowService,
   ) {}
 
-  async generate(datasetId: string, documentId: string): Promise<SummaryOutput> {
+  async generate(datasetId: string, documentId: string | null): Promise<SummaryOutput> {
     // Use direct chunk access for generation (retrieval is for Q&A)
     const chunks = await this.ragflowService.getDocumentChunks(datasetId);
 

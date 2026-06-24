@@ -35,7 +35,7 @@ export class FlashcardGenerator {
 
   async generate(
     datasetId: string,
-    documentId: string,
+    documentId: string | null,
     userId: string,
   ): Promise<FlashcardOutput> {
     const chunks = await this.ragflowService.getDocumentChunks(
@@ -71,7 +71,7 @@ export class FlashcardGenerator {
 
   private async persistFlashcards(
     userId: string,
-    documentId: string,
+    documentId: string | null,
     output: FlashcardOutput,
   ): Promise<void> {
     const { data: set, error: setError } = await this.supabaseService

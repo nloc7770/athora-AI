@@ -1,4 +1,4 @@
-import { IsEnum, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsUUID } from 'class-validator';
 
 export enum GenerationType {
   SUMMARY = 'summary',
@@ -10,6 +10,14 @@ export enum GenerationType {
 export class GenerateDto {
   @IsUUID()
   documentId: string;
+
+  @IsEnum(GenerationType)
+  type: GenerationType;
+}
+
+export class GenerateSessionDto {
+  @IsUUID()
+  sessionId: string;
 
   @IsEnum(GenerationType)
   type: GenerationType;
@@ -45,7 +53,8 @@ export interface MindmapOutput {
 export interface AiGeneration {
   id: string;
   user_id: string;
-  document_id: string;
+  document_id: string | null;
+  session_id: string | null;
   type: GenerationType;
   status: 'pending' | 'completed' | 'failed';
   output: SummaryOutput | FlashcardOutput | ExamOutput | MindmapOutput | null;

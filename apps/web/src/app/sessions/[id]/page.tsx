@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload,
   FileText,
@@ -11,26 +10,24 @@ import {
   ClipboardList,
   BookOpen,
   Loader2,
-  CheckCircle2,
-  XCircle,
   ArrowLeft,
   Send,
   Sparkles,
   Headphones,
+  Network,
 } from 'lucide-react'
 import { useSession } from '@/hooks/use-sessions'
 import { useDocuments, useDocumentStatus } from '@/hooks/use-documents'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
-import { useAiGeneration } from '@/hooks/use-ai-generation'
+import { useAiGeneration, useSessionGeneration } from '@/hooks/use-ai-generation'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Tabs } from '@/components/ui/tabs'
 
-type TabValue = 'documents' | 'chat' | 'flashcards' | 'exam' | 'summary'
+type TabValue = 'documents' | 'chat' | 'flashcards' | 'exam' | 'summary' | 'mindmap'
 
 function DocumentStatusBadge({ docId }: { docId: string }) {
   const { status, progress } = useDocumentStatus(docId)
@@ -126,7 +123,7 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
               <ClipboardList className="h-3 w-3" /> Exam
             </Button>
             <Button size="sm" variant="outline" onClick={() => generate('mindmap')} disabled={genLoading} className="gap-1">
-              <Sparkles className="h-3 w-3" /> Mind Map
+              <Network className="h-3 w-3" /> Mind Map
             </Button>
           </div>
         </div>
@@ -150,6 +147,9 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
             )}
             {gen.type === 'exam' && gen.result?.questions && (
               <p className="text-xs text-gray-500">{gen.result.questions.length} questions generated</p>
+            )}
+            {gen.type === 'mindmap' && gen.result?.nodes && (
+              <p className="text-xs text-gray-500">{gen.result.nodes.length} nodes generated</p>
             )}
           </div>
         ))}
@@ -176,8 +176,12 @@ export default function SessionWorkspace() {
   const [chatInput, setChatInput] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // AI generation
-  const { generations, generate, isLoading: genLoading } = useAiGeneration(sessionId)
+  // Session-level AI generation
+  const {
+    generations: sessionGenerations,
+    generate: generateSession,
+    isLoading: sessionGenLoading,
+  } = useSessionGeneration(sessionId)
 
   useEffect(() => {
     if (chatSessions.length > 0 && !chatSessionId) {
@@ -215,8 +219,8 @@ export default function SessionWorkspace() {
     await sendMessage(msg)
   }
 
-  const handleGenerate = async (type: 'summary' | 'flashcards' | 'exam' | 'mindmap') => {
-    await generate(type)
+  const handleSessionGenerate = async (type: 'summary' | 'flashcards' | 'exam' | 'mindmap') => {
+    await generateSession(type)
   }
 
   if (isLoading) {
@@ -234,6 +238,15 @@ export default function SessionWorkspace() {
   const readyDocs = documents.filter((d) => d.status === 'ready')
   const hasReadyDocs = readyDocs.length > 0
 
+  const tabs = [
+    { key: 'documents' as const, icon: FileText, label: 'Documents' },
+    { key: 'chat' as const, icon: MessageSquare, label: 'Chat' },
+    { key: 'flashcards' as const, icon: Brain, label: 'Flashcards' },
+    { key: 'exam' as const, icon: ClipboardList, label: 'Exam' },
+    { key: 'summary' as const, icon: BookOpen, label: 'Summary' },
+    { key: 'mindmap' as const, icon: Network, label: 'Mind Map' },
+  ]
+
   return (
     <ProtectedRoute>
       <AppLayout>
@@ -245,283 +258,426 @@ export default function SessionWorkspace() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-              <h1 className="text-lg font-bold text-gray-900">{session?.name}</h1>
-              {session?.description && <p className="text-sm text-gray-500">{session.description}</p>}
+                <h1 className="text-lg font-bold text-gray-900">{session?.name}</h1>
+                {session?.description && <p className="text-sm text-gray-500">{session.description}</p>}
+              </div>
+              <Badge variant="secondary" className="ml-auto">{documents.length} documents</Badge>
             </div>
-            <Badge variant="secondary" className="ml-auto">{documents.length} documents</Badge>
-          </div>
-        </header>
+          </header>
 
-        {/* Tabs */}
-        <div className="border-b bg-white px-6">
-          <div className="flex gap-1">
-            {([
-              { key: 'documents', icon: FileText, label: 'Documents' },
-              { key: 'chat', icon: MessageSquare, label: 'Chat' },
-              { key: 'flashcards', icon: Brain, label: 'Flashcards' },
-              { key: 'exam', icon: ClipboardList, label: 'Exam' },
-              { key: 'summary', icon: BookOpen, label: 'Summary' },
-            ] as const).map(({ key, icon: Icon, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
-                  activeTab === key
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
+          {/* Tabs */}
+          <div className="border-b bg-white px-6 overflow-x-auto">
+            <div className="flex gap-1">
+              {tabs.map(({ key, icon: Icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition ${
+                    activeTab === key
+                      ? 'border-indigo-600 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-6">
+            {activeTab === 'documents' && (
+              <DocumentsTab
+                documents={documents}
+                selectedDocId={selectedDocId}
+                setSelectedDocId={setSelectedDocId}
+                uploading={uploading}
+                fileInputRef={fileInputRef}
+                handleDrop={handleDrop}
+                handleUpload={handleUpload}
+              />
+            )}
+
+            {activeTab === 'chat' && (
+              <ChatTab
+                hasReadyDocs={hasReadyDocs}
+                messages={messages}
+                chatLoading={chatLoading}
+                chatInput={chatInput}
+                setChatInput={setChatInput}
+                handleSendMessage={handleSendMessage}
+                chatEndRef={chatEndRef}
+              />
+            )}
+
+            {activeTab === 'flashcards' && (
+              <SessionGenerationTab
+                type="flashcards"
+                icon={Brain}
+                label="Flashcards"
+                hasReadyDocs={hasReadyDocs}
+                generations={sessionGenerations}
+                isLoading={sessionGenLoading}
+                onGenerate={handleSessionGenerate}
+                emptyMessage="Upload documents first to generate flashcards"
+              />
+            )}
+
+            {activeTab === 'exam' && (
+              <SessionGenerationTab
+                type="exam"
+                icon={ClipboardList}
+                label="Exam"
+                hasReadyDocs={hasReadyDocs}
+                generations={sessionGenerations}
+                isLoading={sessionGenLoading}
+                onGenerate={handleSessionGenerate}
+                emptyMessage="Upload documents first to generate exams"
+              />
+            )}
+
+            {activeTab === 'summary' && (
+              <SessionGenerationTab
+                type="summary"
+                icon={BookOpen}
+                label="Summary"
+                hasReadyDocs={hasReadyDocs}
+                generations={sessionGenerations}
+                isLoading={sessionGenLoading}
+                onGenerate={handleSessionGenerate}
+                emptyMessage="Upload documents first to generate summary"
+              />
+            )}
+
+            {activeTab === 'mindmap' && (
+              <SessionGenerationTab
+                type="mindmap"
+                icon={Network}
+                label="Mind Map"
+                hasReadyDocs={hasReadyDocs}
+                generations={sessionGenerations}
+                isLoading={sessionGenLoading}
+                onGenerate={handleSessionGenerate}
+                emptyMessage="Upload documents first to generate mind map"
+              />
+            )}
           </div>
         </div>
+      </AppLayout>
+    </ProtectedRoute>
+  )
+}
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
-          {activeTab === 'documents' && (
-            <div className="flex h-full gap-4">
-              {/* Left: Upload + File List */}
-              <div className={`space-y-4 overflow-auto ${selectedDocId ? 'w-80 shrink-0' : 'mx-auto max-w-3xl w-full'}`}>
-                {/* Upload zone */}
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
-                >
-                  <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
-                  <p className="text-sm font-medium text-gray-700">
-                    {uploading ? 'Uploading...' : 'Drop files or click to upload'}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-400">PDF up to 50MB</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleUpload(e.target.files)}
-                  />
-                </div>
+/* ─── Documents Tab ─── */
 
-                {/* Document list */}
-                {documents.length === 0 ? (
-                  <p className="text-center text-sm text-gray-400 pt-4">No documents yet.</p>
+interface DocumentsTabProps {
+  documents: any[]
+  selectedDocId: string | null
+  setSelectedDocId: (id: string | null) => void
+  uploading: boolean
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  handleDrop: (e: React.DragEvent) => void
+  handleUpload: (files: FileList | null) => void
+}
+
+function DocumentsTab({
+  documents,
+  selectedDocId,
+  setSelectedDocId,
+  uploading,
+  fileInputRef,
+  handleDrop,
+  handleUpload,
+}: DocumentsTabProps) {
+  return (
+    <div className="flex h-full gap-4">
+      {/* Left: Upload + File List */}
+      <div className={`space-y-4 overflow-auto ${selectedDocId ? 'w-80 shrink-0' : 'mx-auto max-w-3xl w-full'}`}>
+        {/* Upload zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onClick={() => fileInputRef.current?.click()}
+          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
+        >
+          <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
+          <p className="text-sm font-medium text-gray-700">
+            {uploading ? 'Uploading...' : 'Drop files or click to upload'}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">PDF up to 50MB</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            multiple
+            className="hidden"
+            onChange={(e) => handleUpload(e.target.files)}
+          />
+        </div>
+
+        {/* Document list */}
+        {documents.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 pt-4">No documents yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {documents.map((doc) => (
+              <div
+                key={doc.id}
+                onClick={() => setSelectedDocId(doc.id === selectedDocId ? null : doc.id)}
+                className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${
+                  selectedDocId === doc.id
+                    ? 'bg-indigo-50 border border-indigo-200'
+                    : 'hover:bg-gray-50 border border-transparent'
+                }`}
+              >
+                {doc.type === 'audio' ? (
+                  <Headphones className="h-4 w-4 text-orange-500 shrink-0" />
                 ) : (
+                  <FileText className="h-4 w-4 text-indigo-500 shrink-0" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
+                  </p>
+                </div>
+                <DocumentStatusBadge docId={doc.id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Right: Document Insight */}
+      {selectedDocId && (
+        <div className="flex-1 overflow-auto rounded-lg border bg-white">
+          <DocumentInsight
+            documentId={selectedDocId}
+            document={documents.find((d) => d.id === selectedDocId) ?? null}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Chat Tab ─── */
+
+interface ChatTabProps {
+  hasReadyDocs: boolean
+  messages: any[]
+  chatLoading: boolean
+  chatInput: string
+  setChatInput: (v: string) => void
+  handleSendMessage: () => void
+  chatEndRef: React.RefObject<HTMLDivElement | null>
+}
+
+function ChatTab({
+  hasReadyDocs,
+  messages,
+  chatLoading,
+  chatInput,
+  setChatInput,
+  handleSendMessage,
+  chatEndRef,
+}: ChatTabProps) {
+  if (!hasReadyDocs) {
+    return (
+      <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center">
+        <MessageSquare className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+        <p className="text-gray-500">Upload and process documents first to start chatting</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto flex h-full max-w-3xl flex-col">
+      <div className="flex-1 space-y-4 overflow-auto pb-4">
+        {messages.length === 0 && (
+          <div className="text-center pt-12">
+            <Sparkles className="mx-auto mb-3 h-8 w-8 text-indigo-400" />
+            <p className="text-sm text-gray-500">Ask anything about your documents</p>
+          </div>
+        )}
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+              msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-800'
+            }`}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        {chatLoading && (
+          <div className="flex justify-start">
+            <div className="rounded-xl bg-white border px-4 py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+      <div className="flex gap-2 pt-2 border-t">
+        <Input
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+          placeholder="Ask about your documents..."
+          disabled={chatLoading}
+        />
+        <Button onClick={handleSendMessage} disabled={chatLoading || !chatInput.trim()}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Session Generation Tab (Flashcards / Exam / Summary / Mind Map) ─── */
+
+interface SessionGenerationTabProps {
+  type: 'flashcards' | 'exam' | 'summary' | 'mindmap'
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  hasReadyDocs: boolean
+  generations: any[]
+  isLoading: boolean
+  onGenerate: (type: 'flashcards' | 'exam' | 'summary' | 'mindmap') => void
+  emptyMessage: string
+}
+
+function SessionGenerationTab({
+  type,
+  icon: Icon,
+  label,
+  hasReadyDocs,
+  generations,
+  isLoading,
+  onGenerate,
+  emptyMessage,
+}: SessionGenerationTabProps) {
+  const filtered = generations.filter((g) => g.type === type)
+
+  if (!hasReadyDocs) {
+    return (
+      <div className="mx-auto max-w-3xl text-center pt-16">
+        <Icon className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+        <p className="text-gray-500">{emptyMessage}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      <div className="text-center">
+        <Button onClick={() => onGenerate(type)} disabled={isLoading} className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          {isLoading ? 'Generating...' : `Generate ${label}`}
+        </Button>
+      </div>
+
+      {filtered.map((gen) => (
+        <Card key={gen.id}>
+          <CardContent className="p-4 text-left">
+            <Badge className="mb-2 capitalize">{gen.status}</Badge>
+
+            {gen.status === 'pending' || gen.status === 'processing' ? (
+              <div className="flex items-center gap-2 mt-2">
+                <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                <span className="text-sm text-gray-500">Processing...</span>
+              </div>
+            ) : null}
+
+            {gen.status === 'completed' && type === 'flashcards' && gen.result?.cards && (
+              <div className="space-y-2 mt-2">
+                {gen.result.cards.slice(0, 5).map((card: any, i: number) => (
+                  <div key={i} className="rounded-lg border p-3">
+                    <p className="text-sm font-medium">{card.front}</p>
+                    <p className="mt-1 text-sm text-gray-500">{card.back}</p>
+                  </div>
+                ))}
+                {gen.result.cards.length > 5 && (
+                  <p className="text-xs text-gray-400">+{gen.result.cards.length - 5} more cards</p>
+                )}
+              </div>
+            )}
+
+            {gen.status === 'completed' && type === 'exam' && gen.result?.questions && (
+              <div className="space-y-3 mt-2">
+                {gen.result.questions.map((q: any, i: number) => (
+                  <div key={i} className="rounded-lg border p-3">
+                    <p className="text-sm font-medium">{i + 1}. {q.question}</p>
+                    {q.options && (
+                      <ul className="mt-1 space-y-1 pl-4">
+                        {q.options.map((opt: string, j: number) => (
+                          <li key={j} className="text-sm text-gray-600">{opt}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {gen.status === 'completed' && type === 'summary' && gen.result && (
+              <div className="mt-2 space-y-2">
+                {gen.result.overview && <p className="text-sm text-gray-700">{gen.result.overview}</p>}
+                {gen.result.chapters?.map((ch: any, i: number) => (
+                  <div key={i}>
+                    <p className="text-sm font-medium">{ch.title}</p>
+                    <ul className="pl-4">
+                      {ch.keyPoints?.map((kp: string, j: number) => (
+                        <li key={j} className="text-sm text-gray-600">• {kp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                {gen.result.takeaways && (
+                  <div className="rounded-lg bg-indigo-50 p-3 mt-2">
+                    <p className="text-xs font-semibold text-indigo-700 mb-1">Key Takeaways</p>
+                    <ul className="space-y-1">
+                      {gen.result.takeaways.map((t: string, i: number) => (
+                        <li key={i} className="text-sm text-indigo-800">• {t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {gen.status === 'completed' && type === 'mindmap' && gen.result && (
+              <div className="mt-2 space-y-2">
+                {gen.result.nodes && (
                   <div className="space-y-1">
-                    {documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        onClick={() => setSelectedDocId(doc.id === selectedDocId ? null : doc.id)}
-                        className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${
-                          selectedDocId === doc.id
-                            ? 'bg-indigo-50 border border-indigo-200'
-                            : 'hover:bg-gray-50 border border-transparent'
-                        }`}
-                      >
-                        {doc.type === 'audio' ? (
-                          <Headphones className="h-4 w-4 text-orange-500 shrink-0" />
-                        ) : (
-                          <FileText className="h-4 w-4 text-indigo-500 shrink-0" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                          <p className="text-xs text-gray-400">
-                            {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
-                          </p>
-                        </div>
-                        <DocumentStatusBadge docId={doc.id} />
+                    {gen.result.nodes.map((node: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 rounded border p-2">
+                        <Network className="h-3 w-3 text-indigo-400 shrink-0" />
+                        <span className="text-sm text-gray-700">{node.label ?? node.title ?? node.id}</span>
                       </div>
                     ))}
                   </div>
                 )}
+                {gen.result.edges && (
+                  <p className="text-xs text-gray-400">{gen.result.edges.length} connections</p>
+                )}
               </div>
+            )}
 
-              {/* Right: Document Insight */}
-              {selectedDocId && (
-                <div className="flex-1 overflow-auto rounded-lg border bg-white">
-                  <DocumentInsight
-                    documentId={selectedDocId}
-                    document={documents.find((d) => d.id === selectedDocId) ?? null}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+            {gen.status === 'failed' && (
+              <p className="text-sm text-red-500 mt-2">Generation failed. Please try again.</p>
+            )}
+          </CardContent>
+        </Card>
+      ))}
 
-          {activeTab === 'chat' && (
-            <div className="mx-auto flex h-full max-w-3xl flex-col">
-              {!hasReadyDocs ? (
-                <div className="flex flex-1 items-center justify-center">
-                  <div className="text-center">
-                    <MessageSquare className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                    <p className="text-gray-500">Upload and process documents first to start chatting</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 space-y-4 overflow-auto pb-4">
-                    {messages.length === 0 && (
-                      <div className="text-center pt-12">
-                        <Sparkles className="mx-auto mb-3 h-8 w-8 text-indigo-400" />
-                        <p className="text-sm text-gray-500">Ask anything about your documents</p>
-                      </div>
-                    )}
-                    {messages.map((msg) => (
-                      <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-                          msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-800'
-                        }`}>
-                          {msg.content}
-                        </div>
-                      </div>
-                    ))}
-                    {chatLoading && (
-                      <div className="flex justify-start">
-                        <div className="rounded-xl bg-white border px-4 py-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                        </div>
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-                  <div className="flex gap-2 pt-2 border-t">
-                    <Input
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                      placeholder="Ask about your documents..."
-                      disabled={chatLoading}
-                    />
-                    <Button onClick={handleSendMessage} disabled={chatLoading || !chatInput.trim()}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'flashcards' && (
-            <div className="mx-auto max-w-3xl text-center">
-              {!hasReadyDocs ? (
-                <div className="pt-16">
-                  <Brain className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                  <p className="text-gray-500">Upload documents first to generate flashcards</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Button onClick={() => handleGenerate('flashcards')} disabled={genLoading} className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    {genLoading ? 'Generating...' : 'Generate Flashcards'}
-                  </Button>
-                  {generations.filter((g) => g.type === 'flashcards').map((gen) => (
-                    <Card key={gen.id}>
-                      <CardContent className="p-4 text-left">
-                        <Badge className="mb-2">{gen.status}</Badge>
-                        {gen.status === 'completed' && gen.result?.cards && (
-                          <div className="space-y-2 mt-2">
-                            {gen.result.cards.slice(0, 5).map((card: any, i: number) => (
-                              <div key={i} className="rounded-lg border p-3">
-                                <p className="text-sm font-medium">{card.front}</p>
-                                <p className="mt-1 text-sm text-gray-500">{card.back}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'exam' && (
-            <div className="mx-auto max-w-3xl text-center">
-              {!hasReadyDocs ? (
-                <div className="pt-16">
-                  <ClipboardList className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                  <p className="text-gray-500">Upload documents first to generate exams</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Button onClick={() => handleGenerate('exam')} disabled={genLoading} className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    {genLoading ? 'Generating...' : 'Generate Exam'}
-                  </Button>
-                  {generations.filter((g) => g.type === 'exam').map((gen) => (
-                    <Card key={gen.id}>
-                      <CardContent className="p-4 text-left">
-                        <Badge className="mb-2">{gen.status}</Badge>
-                        {gen.status === 'completed' && gen.result?.questions && (
-                          <div className="space-y-3 mt-2">
-                            {gen.result.questions.map((q: any, i: number) => (
-                              <div key={i} className="rounded-lg border p-3">
-                                <p className="text-sm font-medium">{i + 1}. {q.question}</p>
-                                {q.options && (
-                                  <ul className="mt-1 space-y-1 pl-4">
-                                    {q.options.map((opt: string, j: number) => (
-                                      <li key={j} className="text-sm text-gray-600">{opt}</li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'summary' && (
-            <div className="mx-auto max-w-3xl text-center">
-              {!hasReadyDocs ? (
-                <div className="pt-16">
-                  <BookOpen className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                  <p className="text-gray-500">Upload documents first to generate summary</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Button onClick={() => handleGenerate('summary')} disabled={genLoading} className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    {genLoading ? 'Generating...' : 'Generate Summary'}
-                  </Button>
-                  {generations.filter((g) => g.type === 'summary').map((gen) => (
-                    <Card key={gen.id}>
-                      <CardContent className="p-4 text-left">
-                        <Badge className="mb-2">{gen.status}</Badge>
-                        {gen.status === 'completed' && gen.result && (
-                          <div className="mt-2 space-y-2">
-                            {gen.result.overview && <p className="text-sm text-gray-700">{gen.result.overview}</p>}
-                            {gen.result.chapters?.map((ch: any, i: number) => (
-                              <div key={i}>
-                                <p className="text-sm font-medium">{ch.title}</p>
-                                <ul className="pl-4">
-                                  {ch.keyPoints?.map((kp: string, j: number) => (
-                                    <li key={j} className="text-sm text-gray-600">• {kp}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+      {filtered.length === 0 && (
+        <div className="text-center pt-8">
+          <Icon className="mx-auto mb-3 h-10 w-10 text-gray-200" />
+          <p className="text-sm text-gray-400">No {label.toLowerCase()} generated yet</p>
         </div>
-      </div>
-      </AppLayout>
-    </ProtectedRoute>
+      )}
+    </div>
   )
 }

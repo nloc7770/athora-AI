@@ -41,14 +41,46 @@ export class AiGenerationService {
 
     const generation = await this.createGenerationRecord(
       userId,
-      documentId,
       type,
+      { documentId },
     );
 
     this.executeGeneration(userId, generation.id, datasetId, documentId, type)
       .catch((error) => {
         this.logger.error(`Generation failed: ${error.message}`, {
           generationId: generation.id,
+          type,
+        });
+      });
+
+    return generation;
+  }
+
+  async generateForSession(
+    userId: string,
+    sessionId: string,
+    type: GenerationType,
+  ): Promise<AiGeneration> {
+    const session = await this.getSession(userId, sessionId);
+    const datasetId = session.ragflow_dataset_id;
+
+    if (!datasetId) {
+      throw new NotFoundException(
+        'Session has no associated dataset. Ensure at least one document is processed.',
+      );
+    }
+
+    const generation = await this.createGenerationRecord(
+      userId,
+      type,
+      { sessionId },
+    );
+
+    this.executeGeneration(userId, generation.id, datasetId, null, type)
+      .catch((error) => {
+        this.logger.error(`Session generation failed: ${error.message}`, {
+          generationId: generation.id,
+          sessionId,
           type,
         });
       });
@@ -91,6 +123,25 @@ export class AiGenerationService {
     return (data ?? []) as AiGeneration[];
   }
 
+  async getGenerationsBySession(
+    userId: string,
+    sessionId: string,
+  ): Promise<AiGeneration[]> {
+    const { data, error } = await this.supabaseService
+      .getAdminClient()
+      .from('ai_generations')
+      .select('*')
+      .eq('session_id', sessionId)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new NotFoundException('Could not fetch session generations');
+    }
+
+    return (data ?? []) as AiGeneration[];
+  }
+
   private async getDocument(userId: string, documentId: string) {
     const { data, error } = await this.supabaseService
       .getAdminClient()
@@ -107,17 +158,34 @@ export class AiGenerationService {
     return data;
   }
 
+  private async getSession(userId: string, sessionId: string) {
+    const { data, error } = await this.supabaseService
+      .getAdminClient()
+      .from('study_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException('Session not found');
+    }
+
+    return data;
+  }
+
   private async createGenerationRecord(
     userId: string,
-    documentId: string,
     type: GenerationType,
+    ref: { documentId?: string; sessionId?: string },
   ): Promise<AiGeneration> {
     const { data, error } = await this.supabaseService
       .getAdminClient()
       .from('ai_generations')
       .insert({
         user_id: userId,
-        document_id: documentId,
+        document_id: ref.documentId ?? null,
+        session_id: ref.sessionId ?? null,
         type,
         status: 'pending',
       })
@@ -135,7 +203,7 @@ export class AiGenerationService {
     userId: string,
     generationId: string,
     datasetId: string,
-    documentId: string,
+    documentId: string | null,
     type: GenerationType,
   ): Promise<void> {
     try {
@@ -181,7 +249,7 @@ export class AiGenerationService {
   private async runGenerator(
     userId: string,
     datasetId: string,
-    documentId: string,
+    documentId: string | null,
     type: GenerationType,
   ): Promise<SummaryOutput | FlashcardOutput | ExamOutput | MindmapOutput> {
     switch (type) {

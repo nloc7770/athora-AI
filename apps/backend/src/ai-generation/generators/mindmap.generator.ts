@@ -42,7 +42,7 @@ export class MindmapGenerator {
     private readonly ragflowService: RagflowService,
   ) {}
 
-  async generate(datasetId: string, documentId: string): Promise<MindmapOutput> {
+  async generate(datasetId: string, documentId: string | null): Promise<MindmapOutput> {
     const chunks = await this.ragflowService.getDocumentChunks(
       datasetId,
     );

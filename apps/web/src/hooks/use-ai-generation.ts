@@ -30,6 +30,116 @@ function hasActiveGenerations(generations: AiGeneration[]): boolean {
   return generations.some((g) => ACTIVE_STATUSES.includes(g.status))
 }
 
+interface SessionGeneration {
+  id: string
+  sessionId: string
+  type: GenerationType
+  status: string
+  result?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+}
+
+interface UseSessionGenerationReturn {
+  generations: SessionGeneration[]
+  isLoading: boolean
+  error: string | null
+  generate: (type: GenerationType) => Promise<SessionGeneration>
+  refresh: () => Promise<void>
+}
+
+export function useSessionGeneration(sessionId: string | null): UseSessionGenerationReturn {
+  const [generations, setGenerations] = useState<SessionGeneration[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [])
+
+  const fetchGenerations = useCallback(async () => {
+    if (!sessionId) {
+      setGenerations([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const data = await apiClient.get<SessionGeneration[]>(
+        `/ai-generation/session/${sessionId}`
+      )
+      setGenerations(data)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch generations'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [sessionId])
+
+  const pollGenerations = useCallback(async () => {
+    if (!sessionId) return
+
+    try {
+      const data = await apiClient.get<SessionGeneration[]>(
+        `/ai-generation/session/${sessionId}`
+      )
+      setGenerations(data)
+    } catch {
+      // Silently ignore poll errors
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    if (generations.some((g) => ACTIVE_STATUSES.includes(g.status))) {
+      if (!intervalRef.current) {
+        intervalRef.current = setInterval(pollGenerations, POLL_INTERVAL_MS)
+      }
+    } else {
+      clearPolling()
+    }
+  }, [generations, pollGenerations, clearPolling])
+
+  useEffect(() => {
+    fetchGenerations()
+  }, [fetchGenerations])
+
+  useEffect(() => {
+    return () => {
+      clearPolling()
+    }
+  }, [clearPolling])
+
+  const generate = useCallback(async (type: GenerationType): Promise<SessionGeneration> => {
+    if (!sessionId) {
+      throw new Error('No session selected')
+    }
+
+    const generation = await apiClient.post<SessionGeneration>('/ai-generation/generate-session', {
+      sessionId,
+      type,
+    })
+
+    setGenerations((prev) => [generation, ...prev])
+    return generation
+  }, [sessionId])
+
+  return {
+    generations,
+    isLoading,
+    error,
+    generate,
+    refresh: fetchGenerations,
+  }
+}
+
 export function useAiGeneration(documentId: string | null): UseAiGenerationReturn {
   const [generations, setGenerations] = useState<AiGeneration[]>([])
   const [isLoading, setIsLoading] = useState(true)

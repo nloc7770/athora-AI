@@ -50,7 +50,7 @@ export class ExamGenerator {
 
   async generate(
     datasetId: string,
-    documentId: string,
+    documentId: string | null,
     userId: string,
   ): Promise<ExamOutput> {
     const chunks = await this.ragflowService.getDocumentChunks(
@@ -87,7 +87,7 @@ export class ExamGenerator {
 
   private async persistExam(
     userId: string,
-    documentId: string,
+    documentId: string | null,
     output: ExamOutput,
   ): Promise<void> {
     const { data: exam, error: examError } = await this.supabaseService

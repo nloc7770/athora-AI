@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AiGenerationService } from './ai-generation.service';
-import { GenerateDto } from './dto/generate.dto';
+import { GenerateDto, GenerateSessionDto } from './dto/generate.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -24,12 +24,12 @@ export class AiGenerationController {
     return this.aiGenerationService.generate(userId, dto.documentId, dto.type);
   }
 
-  @Get(':id')
-  getGeneration(
+  @Post('generate-session')
+  generateSession(
     @CurrentUser('id') userId: string,
-    @Param('id') generationId: string,
+    @Body() dto: GenerateSessionDto,
   ) {
-    return this.aiGenerationService.getGeneration(userId, generationId);
+    return this.aiGenerationService.generateForSession(userId, dto.sessionId, dto.type);
   }
 
   @Get('document/:documentId')
@@ -38,5 +38,21 @@ export class AiGenerationController {
     @Param('documentId') documentId: string,
   ) {
     return this.aiGenerationService.getGenerationsByDocument(userId, documentId);
+  }
+
+  @Get('session/:sessionId')
+  getGenerationsBySession(
+    @CurrentUser('id') userId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.aiGenerationService.getGenerationsBySession(userId, sessionId);
+  }
+
+  @Get(':id')
+  getGeneration(
+    @CurrentUser('id') userId: string,
+    @Param('id') generationId: string,
+  ) {
+    return this.aiGenerationService.getGeneration(userId, generationId);
   }
 }
