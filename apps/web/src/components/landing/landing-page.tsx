@@ -14,6 +14,8 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  MessageSquareText,
+  ClipboardCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -356,62 +358,28 @@ export default function LandingPage() {
             </p>
           </FadeUp>
 
-          <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-12 md:auto-rows-[minmax(220px,auto)]">
-            {/* Large card — Chat (spans 7 cols, 2 rows) */}
-            <FadeUp delay={0.05} className="md:col-span-7 md:row-span-2">
-              <Card className="border-stone-700/50 bg-stone-800 p-0 overflow-hidden group h-full">
-                <div className="p-7 pb-0">
-                  <span className="inline-block rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 mb-4">
-                    Core
+          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { icon: MessageSquareText, badge: 'Core', badgeColor: 'bg-amber-500/10 text-amber-400', title: 'Document Chat', desc: 'Ask questions about your PDFs, get cited answers grounded in your materials. No hallucinations.' },
+              { icon: Sparkles, badge: 'Popular', badgeColor: 'bg-amber-500/10 text-amber-300', title: 'AI Flashcards', desc: 'Auto-generate spaced-repetition flashcards from any document. Study at the optimal time.' },
+              { icon: ClipboardCheck, badge: 'New', badgeColor: 'bg-orange-500/10 text-orange-400', title: 'Exam Generator', desc: 'Practice tests that mirror your exam format. Multiple choice, true/false, short answer.' },
+              { icon: BookOpen, badge: 'Auto', badgeColor: 'bg-green-500/10 text-green-400', title: 'Smart Summary', desc: 'Chapter-by-chapter breakdown with key takeaways. Understand 50 pages in 2 minutes.' },
+              { icon: Sparkles, badge: 'Visual', badgeColor: 'bg-purple-500/10 text-purple-400', title: 'Mind Map', desc: 'Visual concept maps auto-generated from your content. See how topics connect.' },
+              { icon: Headphones, badge: 'AI', badgeColor: 'bg-blue-500/10 text-blue-400', title: 'AI Tutor', desc: 'Chat with an AI tutor that knows your materials. Get explanations, not just answers.' },
+            ].map((feature, i) => (
+              <FadeUp key={i} delay={i * 0.05}>
+                <Card className="border-stone-700/50 bg-stone-800 p-6 h-full hover:bg-stone-750 transition group">
+                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium mb-4 ${feature.badgeColor}`}>
+                    {feature.badge}
                   </span>
-                  <h3 className="text-xl font-bold text-white mb-2">Chat with your documents</h3>
-                  <p className="text-sm text-stone-400 leading-relaxed max-w-sm">
-                    Upload any lecture, textbook, or notes. Ask questions and get cited answers from <span className="text-stone-200 font-medium">your</span> materials — never hallucinated.
-                  </p>
-                </div>
-                <div className="mt-6 px-4">
-                  <div className="overflow-hidden rounded-t-xl border border-b-0 border-stone-700/50">
-                    <img src="/images/feature-chat.png" alt="Chat with documents" className="w-full" />
+                  <div className="flex items-start gap-3 mb-3">
+                    <feature.icon className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                    <h3 className="text-lg font-bold text-white">{feature.title}</h3>
                   </div>
-                </div>
-              </Card>
-            </FadeUp>
-
-            {/* Flashcards card (spans 5 cols) */}
-            <FadeUp delay={0.1} className="md:col-span-5">
-              <Card className="border-stone-700/50 bg-stone-800 p-6 flex flex-col justify-between h-full">
-                <div>
-                  <span className="inline-block rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300 mb-4">
-                    Popular
-                  </span>
-                  <h3 className="text-lg font-bold text-white mb-2">AI flashcards</h3>
-                  <p className="text-sm text-stone-400 leading-relaxed">
-                    One click turns any page into spaced-repetition flashcards. Review at the optimal time.
-                  </p>
-                </div>
-                <div className="mt-5 rounded-lg border border-stone-700/50 overflow-hidden">
-                  <img src="/images/feature-flashcards.png" alt="AI flashcards" className="w-full" />
-                </div>
-              </Card>
-            </FadeUp>
-
-            {/* Exam card (spans 5 cols) */}
-            <FadeUp delay={0.15} className="md:col-span-5">
-              <Card className="border-stone-700/50 bg-stone-800 p-6 flex flex-col justify-between h-full">
-                <div>
-                  <span className="inline-block rounded-full bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-400 mb-4">
-                    New
-                  </span>
-                  <h3 className="text-lg font-bold text-white mb-2">Exam generator</h3>
-                  <p className="text-sm text-stone-400 leading-relaxed">
-                    Practice tests that mirror your exam format. AI zeroes in on your weak spots.
-                  </p>
-                </div>
-                <div className="mt-5 rounded-lg border border-stone-700/50 overflow-hidden">
-                  <img src="/images/feature-exam.png" alt="Exam generator" className="w-full" />
-                </div>
-              </Card>
-            </FadeUp>
+                  <p className="text-sm text-stone-400 leading-relaxed">{feature.desc}</p>
+                </Card>
+              </FadeUp>
+            ))}
           </div>
         </div>
       </section>
