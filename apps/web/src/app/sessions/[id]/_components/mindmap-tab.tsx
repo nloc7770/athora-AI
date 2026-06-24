@@ -97,20 +97,21 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
   const cy = 400
 
   // Root
+  const rootLabel = (rootNode.label ?? rootNode.title ?? rootNode.id).slice(0, 40)
   layoutNodes.push({
     id: rootNode.id,
-    label: rootNode.label ?? rootNode.title ?? rootNode.id,
+    label: rootLabel,
     x: cx,
     y: cy,
     color: { bg: '#ffffff', border: '#374151', text: '#111827' },
     level: 0,
-    fontSize: 18,
+    fontSize: 16,
   })
 
   // Level 1
   const level1 = childrenMap.get(rootNode.id) || []
   const angleStep1 = (2 * Math.PI) / Math.max(level1.length, 1)
-  const radius1 = 200
+  const radius1 = 300
 
   level1.forEach((child, i) => {
     const angle = angleStep1 * i - Math.PI / 2
@@ -120,8 +121,8 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 
     layoutNodes.push({
       id: child.id,
-      label: child.label ?? child.title ?? child.id,
-      x, y, color, level: 1, fontSize: 14,
+      label: (child.label ?? child.title ?? child.id).slice(0, 30),
+      x, y, color, level: 1, fontSize: 13,
     })
     layoutEdges.push({ x1: cx, y1: cy, x2: x, y2: y, color: color.border })
 
@@ -130,7 +131,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
     const spread2 = Math.min(Math.PI * 0.6, angleStep1 * 0.8)
     const startAngle2 = angle - spread2 / 2
     const step2 = level2.length > 1 ? spread2 / (level2.length - 1) : 0
-    const radius2 = 140
+    const radius2 = 200
 
     level2.forEach((grandchild, j) => {
       const a2 = level2.length === 1 ? angle : startAngle2 + step2 * j
@@ -139,8 +140,8 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 
       layoutNodes.push({
         id: grandchild.id,
-        label: grandchild.label ?? grandchild.title ?? grandchild.id,
-        x: gx, y: gy, color, level: 2, fontSize: 12,
+        label: (grandchild.label ?? grandchild.title ?? grandchild.id).slice(0, 25),
+        x: gx, y: gy, color, level: 2, fontSize: 11,
       })
       layoutEdges.push({ x1: x, y1: y, x2: gx, y2: gy, color: color.border })
 
@@ -149,7 +150,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
       const spread3 = Math.min(Math.PI * 0.4, spread2 * 0.6)
       const startAngle3 = a2 - spread3 / 2
       const step3 = level3.length > 1 ? spread3 / (level3.length - 1) : 0
-      const radius3 = 100
+      const radius3 = 140
 
       level3.forEach((leaf, k) => {
         const a3 = level3.length === 1 ? a2 : startAngle3 + step3 * k
@@ -158,8 +159,8 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 
         layoutNodes.push({
           id: leaf.id,
-          label: leaf.label ?? leaf.title ?? leaf.id,
-          x: lx, y: ly, color, level: 3, fontSize: 11,
+          label: (leaf.label ?? leaf.title ?? leaf.id).slice(0, 20),
+          x: lx, y: ly, color, level: 3, fontSize: 10,
         })
         layoutEdges.push({ x1: gx, y1: gy, x2: lx, y2: ly, color: color.border })
       })
@@ -170,7 +171,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 }
 
 export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }: MindMapTabProps) {
-  const [zoom, setZoom] = useState(0.9)
+  const [zoom, setZoom] = useState(1.2)
   const filtered = generations.filter((g) => g.type === 'mindmap')
   const latest = filtered.find((g) => g.status === 'completed')
   const pending = filtered.find((g) => g.status === 'pending' || g.status === 'processing')
