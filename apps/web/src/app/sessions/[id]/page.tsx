@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Send,
   Sparkles,
+  Headphones,
 } from 'lucide-react'
 import { useSession } from '@/hooks/use-sessions'
 import { useDocuments, useDocumentStatus } from '@/hooks/use-documents'
@@ -42,6 +43,120 @@ function DocumentStatusBadge({ docId }: { docId: string }) {
   )
 }
 
+function DocumentInsight({ documentId, document }: { documentId: string; document: any }) {
+  const { generations, generate, isLoading: genLoading } = useAiGeneration(documentId)
+  const summary = generations.find((g) => g.type === 'summary' && g.status === 'completed')
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b px-4 py-3">
+        <FileText className="h-5 w-5 text-indigo-500" />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold truncate">{document?.name ?? 'Document'}</h3>
+          <p className="text-xs text-gray-400">
+            {document?.file_size ? `${(document.file_size / 1024 / 1024).toFixed(1)} MB` : ''} • {document?.type ?? 'pdf'}
+          </p>
+        </div>
+        {!summary && (
+          <Button size="sm" onClick={() => generate('summary')} disabled={genLoading} className="gap-1">
+            <Sparkles className="h-3 w-3" />
+            {genLoading ? 'Generating...' : 'Summarize'}
+          </Button>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-4 space-y-4">
+        {/* Summary */}
+        {summary?.result ? (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-indigo-500" />
+              Summarization
+            </h4>
+            {summary.result.overview && (
+              <p className="text-sm text-gray-700 leading-relaxed">{summary.result.overview}</p>
+            )}
+            {summary.result.chapters?.map((ch: any, i: number) => (
+              <div key={i} className="rounded-lg bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-800">{ch.title}</p>
+                <ul className="mt-1 space-y-1">
+                  {ch.keyPoints?.map((kp: string, j: number) => (
+                    <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
+                      <span className="text-indigo-400 mt-1">•</span>
+                      {kp}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            {summary.result.takeaways && (
+              <div className="rounded-lg bg-indigo-50 p-3">
+                <p className="text-xs font-semibold text-indigo-700 mb-1">Key Takeaways</p>
+                <ul className="space-y-1">
+                  {summary.result.takeaways.map((t: string, i: number) => (
+                    <li key={i} className="text-sm text-indigo-800">• {t}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : genLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+            <span className="ml-2 text-sm text-gray-500">Generating insights...</span>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <BookOpen className="mx-auto mb-3 h-10 w-10 text-gray-200" />
+            <p className="text-sm text-gray-400">Click Summarize to generate document insights</p>
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <div className="border-t pt-4">
+          <p className="text-xs font-medium text-gray-500 mb-2">Generate from this document</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => generate('flashcards')} disabled={genLoading} className="gap-1">
+              <Brain className="h-3 w-3" /> Flashcards
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => generate('exam')} disabled={genLoading} className="gap-1">
+              <ClipboardList className="h-3 w-3" /> Exam
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => generate('mindmap')} disabled={genLoading} className="gap-1">
+              <Sparkles className="h-3 w-3" /> Mind Map
+            </Button>
+          </div>
+        </div>
+
+        {/* Show other generations */}
+        {generations.filter((g) => g.type !== 'summary' && g.status === 'completed').map((gen) => (
+          <div key={gen.id} className="border-t pt-3">
+            <Badge className="mb-2 capitalize">{gen.type}</Badge>
+            {gen.type === 'flashcards' && gen.result?.cards && (
+              <div className="space-y-2">
+                {gen.result.cards.slice(0, 3).map((card: any, i: number) => (
+                  <div key={i} className="rounded-md border p-2">
+                    <p className="text-xs font-medium">{card.front}</p>
+                    <p className="text-xs text-gray-500 mt-1">{card.back}</p>
+                  </div>
+                ))}
+                {gen.result.cards.length > 3 && (
+                  <p className="text-xs text-gray-400">+{gen.result.cards.length - 3} more cards</p>
+                )}
+              </div>
+            )}
+            {gen.type === 'exam' && gen.result?.questions && (
+              <p className="text-xs text-gray-500">{gen.result.questions.length} questions generated</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SessionWorkspace() {
   const params = useParams()
   const router = useRouter()
@@ -50,6 +165,7 @@ export default function SessionWorkspace() {
   const { uploadDocument } = useDocuments({ sessionId })
   const [activeTab, setActiveTab] = useState<TabValue>('documents')
   const [uploading, setUploading] = useState(false)
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Chat state
@@ -161,50 +277,71 @@ export default function SessionWorkspace() {
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
           {activeTab === 'documents' && (
-            <div className="mx-auto max-w-3xl space-y-4">
-              {/* Upload zone */}
-              <div
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onClick={() => fileInputRef.current?.click()}
-                className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
-              >
-                <Upload className="mx-auto mb-3 h-8 w-8 text-gray-400" />
-                <p className="text-sm font-medium text-gray-700">
-                  {uploading ? 'Uploading...' : 'Drop PDF files here or click to upload'}
-                </p>
-                <p className="mt-1 text-xs text-gray-400">PDF files up to 50MB</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleUpload(e.target.files)}
-                />
-              </div>
+            <div className="flex h-full gap-4">
+              {/* Left: Upload + File List */}
+              <div className={`space-y-4 overflow-auto ${selectedDocId ? 'w-80 shrink-0' : 'mx-auto max-w-3xl w-full'}`}>
+                {/* Upload zone */}
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
+                >
+                  <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
+                  <p className="text-sm font-medium text-gray-700">
+                    {uploading ? 'Uploading...' : 'Drop files or click to upload'}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">PDF up to 50MB</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleUpload(e.target.files)}
+                  />
+                </div>
 
-              {/* Document list */}
-              {documents.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 pt-4">No documents yet. Upload PDFs to get started.</p>
-              ) : (
-                <div className="space-y-2">
-                  {documents.map((doc) => (
-                    <Card key={doc.id}>
-                      <CardContent className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-indigo-500" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                            <p className="text-xs text-gray-400">
-                              {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
-                            </p>
-                          </div>
+                {/* Document list */}
+                {documents.length === 0 ? (
+                  <p className="text-center text-sm text-gray-400 pt-4">No documents yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        onClick={() => setSelectedDocId(doc.id === selectedDocId ? null : doc.id)}
+                        className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${
+                          selectedDocId === doc.id
+                            ? 'bg-indigo-50 border border-indigo-200'
+                            : 'hover:bg-gray-50 border border-transparent'
+                        }`}
+                      >
+                        {doc.type === 'audio' ? (
+                          <Headphones className="h-4 w-4 text-orange-500 shrink-0" />
+                        ) : (
+                          <FileText className="h-4 w-4 text-indigo-500 shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
+                          </p>
                         </div>
                         <DocumentStatusBadge docId={doc.id} />
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Document Insight */}
+              {selectedDocId && (
+                <div className="flex-1 overflow-auto rounded-lg border bg-white">
+                  <DocumentInsight
+                    documentId={selectedDocId}
+                    document={documents.find((d) => d.id === selectedDocId) ?? null}
+                  />
                 </div>
               )}
             </div>
