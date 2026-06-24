@@ -96,6 +96,10 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
   const cx = 500
   const cy = 400
 
+  // Dynamic radii based on node count for less overlap
+  const totalNodes = rawNodes.length
+  const scaleFactor = Math.max(1, totalNodes / 15)
+
   // Root
   const rootLabel = (rootNode.label ?? rootNode.title ?? rootNode.id).slice(0, 40)
   layoutNodes.push({
@@ -111,7 +115,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
   // Level 1
   const level1 = childrenMap.get(rootNode.id) || []
   const angleStep1 = (2 * Math.PI) / Math.max(level1.length, 1)
-  const radius1 = 300
+  const radius1 = 300 * scaleFactor
 
   level1.forEach((child, i) => {
     const angle = angleStep1 * i - Math.PI / 2
@@ -131,7 +135,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
     const spread2 = Math.min(Math.PI * 0.6, angleStep1 * 0.8)
     const startAngle2 = angle - spread2 / 2
     const step2 = level2.length > 1 ? spread2 / (level2.length - 1) : 0
-    const radius2 = 200
+    const radius2 = 200 * scaleFactor
 
     level2.forEach((grandchild, j) => {
       const a2 = level2.length === 1 ? angle : startAngle2 + step2 * j
@@ -150,7 +154,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
       const spread3 = Math.min(Math.PI * 0.4, spread2 * 0.6)
       const startAngle3 = a2 - spread3 / 2
       const step3 = level3.length > 1 ? spread3 / (level3.length - 1) : 0
-      const radius3 = 140
+      const radius3 = 140 * scaleFactor
 
       level3.forEach((leaf, k) => {
         const a3 = level3.length === 1 ? a2 : startAngle3 + step3 * k
@@ -236,7 +240,7 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
   }
 
   // Compute viewBox
-  const padding = 80
+  const padding = 150
   const allX = layoutNodes.map(n => n.x)
   const allY = layoutNodes.map(n => n.y)
   const minX = Math.min(...allX) - padding
@@ -246,6 +250,12 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
   const width = maxX - minX
   const height = maxY - minY
 
+  // Zoom works by scaling the viewBox inversely
+  const vbW = width / zoom
+  const vbH = height / zoom
+  const vbX = minX + (width - vbW) / 2
+  const vbY = minY + (height - vbH) / 2
+
   return (
     <div className="mx-auto max-w-full space-y-4">
       {/* Controls */}
@@ -254,26 +264,33 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
           <RotateCcw className="h-3 w-3" /> Regenerate
         </Button>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.max(0.4, z - 0.15))}>
+          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.max(0.3, z - 0.15))}>
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
-          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.min(2, z + 0.15))}>
+          <span className="text-xs text-gray-500 w-12 text-center">{Math.round(zoom * 100)}%</span>
+          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.min(3, z + 0.15))}>
             <ZoomIn className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setZoom(0.9)}>
+          <Button variant="ghost" size="sm" onClick={() => setZoom(1)}>
             <Maximize2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* SVG Mind Map */}
-      <div className="rounded-xl border bg-gradient-to-br from-gray-50 to-white overflow-auto" style={{ height: '550px' }}>
+      <div
+        className="rounded-xl border bg-gradient-to-br from-gray-50 to-white overflow-hidden cursor-grab active:cursor-grabbing"
+        style={{ height: '600px' }}
+        onWheel={(e) => {
+          e.preventDefault()
+          setZoom(z => Math.max(0.3, Math.min(3, z + (e.deltaY > 0 ? -0.1 : 0.1))))
+        }}
+      >
         <svg
-          width={width * zoom}
-          height={height * zoom}
-          viewBox={`${minX} ${minY} ${width} ${height}`}
-          className="mx-auto"
+          width="100%"
+          height="100%"
+          viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
+          preserveAspectRatio="xMidYMid meet"
         >
           {/* Edges - dotted curved lines */}
           {layoutEdges.map((edge, i) => {
