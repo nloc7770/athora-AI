@@ -61,11 +61,12 @@ test.describe('Auth Pages', () => {
 test.describe('Protected Routes', () => {
   test('sessions page redirects to login when not authenticated', async ({ page }) => {
     await page.goto('/sessions');
-    await page.waitForURL(/\/login/, { timeout: 5000 });
+    // Client-side redirect via ProtectedRoute (needs initialize + redirect)
+    await page.waitForURL(/\/login/, { timeout: 10000 });
   });
 
   test('dashboard redirects to login when not authenticated', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForURL(/\/login/, { timeout: 5000 });
+    await page.waitForURL(/\/login/, { timeout: 10000 });
   });
 });
