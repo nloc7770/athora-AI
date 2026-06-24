@@ -52,17 +52,17 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 lg:relative lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-stone-200 bg-white transition-transform duration-200 lg:relative lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-zinc-100 px-6">
+        <div className="flex h-16 items-center justify-between border-b border-stone-100 px-6">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-950">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
               <BookOpen className="h-4 w-4 text-white" />
             </div>
-            <span className="text-[15px] font-semibold tracking-tight text-zinc-900">
+            <span className="text-[15px] font-semibold tracking-tight text-stone-900">
               Athora
             </span>
           </Link>
@@ -87,8 +87,8 @@ export function Sidebar() {
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                   isActive
-                    ? 'bg-gradient-to-r from-zinc-100 to-zinc-50 text-zinc-900 shadow-sm'
-                    : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700'
+                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-900 shadow-sm'
+                    : 'text-stone-500 hover:bg-stone-50 hover:text-stone-700'
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -99,17 +99,17 @@ export function Sidebar() {
         </nav>
 
         {/* User info & Logout */}
-        <div className="border-t border-zinc-100 p-4">
+        <div className="border-t border-stone-100 p-4">
           {user && (
             <div className="mb-3 flex items-center gap-3 rounded-lg px-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-medium text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-xs font-medium text-white">
                 {user.email?.charAt(0).toUpperCase() ?? 'U'}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-900">
+                <p className="truncate text-sm font-medium text-stone-900">
                   {user.name ?? 'Student'}
                 </p>
-                <p className="truncate text-xs text-zinc-500">
+                <p className="truncate text-xs text-stone-500">
                   {user.email}
                 </p>
               </div>
@@ -118,7 +118,7 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 text-zinc-500 hover:text-zinc-700"
+            className="w-full justify-start gap-2 text-stone-500 hover:text-stone-700"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
@@ -127,8 +127,8 @@ export function Sidebar() {
         </div>
 
         {/* Plan info */}
-        <div className="border-t border-zinc-100 px-4 py-3">
-          <p className="text-xs font-medium text-zinc-400">Free plan</p>
+        <div className="border-t border-stone-100 px-4 py-3">
+          <p className="text-xs font-medium text-stone-400">Free plan</p>
         </div>
       </aside>
     </>
@@ -139,7 +139,7 @@ export function MobileHeader() {
   const { setSidebarOpen } = useAppStore()
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-zinc-200 bg-white px-4 lg:hidden">
+    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-stone-200 bg-white px-4 lg:hidden">
       <Button
         variant="ghost"
         size="icon"
@@ -151,10 +151,10 @@ export function MobileHeader() {
         <Menu className="h-5 w-5" />
       </Button>
       <div className="ml-3 flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-600">
           <BookOpen className="h-3.5 w-3.5 text-white" />
         </div>
-        <span className="text-sm font-semibold text-zinc-900">Athora</span>
+        <span className="text-sm font-semibold text-stone-900">Athora</span>
       </div>
     </header>
   )

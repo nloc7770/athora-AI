@@ -155,7 +155,7 @@ export default function SessionsPage() {
                   filteredSessions.map((session) => (
                     <tr
                       key={session.id}
-                      className="border-b cursor-pointer transition hover:bg-indigo-50/50"
+                      className="border-b cursor-pointer transition hover:bg-amber-50/50"
                       onClick={() => router.push(`/sessions/${session.id}`)}
                     >
                       <td className="px-4 py-3">
@@ -258,7 +258,7 @@ export default function SessionsPage() {
                     onDrop={handleFileDrop}
                     onDragOver={(e) => e.preventDefault()}
                     onClick={() => !creating && fileInputRef.current?.click()}
-                    className="mt-1 cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
+                    className="mt-1 cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-amber-400 hover:bg-amber-50/50"
                   >
                     <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
                     <p className="text-sm font-medium text-gray-600">Drag & drop files or Browse</p>
@@ -297,7 +297,7 @@ export default function SessionsPage() {
 
                 {/* Progress */}
                 {uploadProgress && (
-                  <div className="flex items-center gap-2 text-sm text-indigo-600">
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {uploadProgress}
                   </div>

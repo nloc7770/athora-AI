@@ -50,7 +50,7 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
-        <FileText className="h-5 w-5 text-indigo-500" />
+        <FileText className="h-5 w-5 text-amber-500" />
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold truncate">{document?.name ?? 'Document'}</h3>
           <p className="text-xs text-gray-400">
@@ -71,7 +71,7 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
         {summary?.result ? (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-indigo-500" />
+              <BookOpen className="h-4 w-4 text-amber-500" />
               Summarization
             </h4>
             {summary.result.overview && (
@@ -83,7 +83,7 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
                 <ul className="mt-1 space-y-1">
                   {ch.keyPoints?.map((kp: string, j: number) => (
                     <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
-                      <span className="text-indigo-400 mt-1">•</span>
+                      <span className="text-amber-400 mt-1">•</span>
                       {kp}
                     </li>
                   ))}
@@ -91,11 +91,11 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
               </div>
             ))}
             {summary.result.takeaways && (
-              <div className="rounded-lg bg-indigo-50 p-3">
-                <p className="text-xs font-semibold text-indigo-700 mb-1">Key Takeaways</p>
+              <div className="rounded-lg bg-amber-50 p-3">
+                <p className="text-xs font-semibold text-amber-700 mb-1">Key Takeaways</p>
                 <ul className="space-y-1">
                   {summary.result.takeaways.map((t: string, i: number) => (
-                    <li key={i} className="text-sm text-indigo-800">• {t}</li>
+                    <li key={i} className="text-sm text-amber-800">• {t}</li>
                   ))}
                 </ul>
               </div>
@@ -103,7 +103,7 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
           </div>
         ) : genLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
             <span className="ml-2 text-sm text-gray-500">Generating insights...</span>
           </div>
         ) : (
@@ -232,7 +232,7 @@ export default function SessionWorkspace() {
       <ProtectedRoute>
         <AppLayout>
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
           </div>
         </AppLayout>
       </ProtectedRoute>
@@ -278,7 +278,7 @@ export default function SessionWorkspace() {
                   onClick={() => setActiveTab(key)}
                   className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition ${
                     activeTab === key
-                      ? 'border-indigo-600 text-indigo-600'
+                      ? 'border-amber-500 text-amber-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -387,7 +387,7 @@ function DocumentsTab({
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
-          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50"
+          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-amber-400 hover:bg-amber-50/50"
         >
           <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
           <p className="text-sm font-medium text-gray-700">
@@ -415,14 +415,14 @@ function DocumentsTab({
                 onClick={() => setSelectedDocId(doc.id === selectedDocId ? null : doc.id)}
                 className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${
                   selectedDocId === doc.id
-                    ? 'bg-indigo-50 border border-indigo-200'
+                    ? 'bg-amber-50 border border-amber-200'
                     : 'hover:bg-gray-50 border border-transparent'
                 }`}
               >
                 {doc.type === 'audio' ? (
                   <Headphones className="h-4 w-4 text-orange-500 shrink-0" />
                 ) : (
-                  <FileText className="h-4 w-4 text-indigo-500 shrink-0" />
+                  <FileText className="h-4 w-4 text-amber-500 shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
@@ -485,14 +485,14 @@ function ChatTab({
       <div className="flex-1 space-y-4 overflow-auto pb-4">
         {messages.length === 0 && (
           <div className="text-center pt-12">
-            <Sparkles className="mx-auto mb-3 h-8 w-8 text-indigo-400" />
+            <Sparkles className="mx-auto mb-3 h-8 w-8 text-amber-400" />
             <p className="text-sm text-gray-500">Ask anything about your documents</p>
           </div>
         )}
         {messages.map((msg, idx) => (
           <div key={msg.id || `msg-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-              msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-800'
+              msg.role === 'user' ? 'bg-amber-600 text-white' : 'bg-white border text-gray-800'
             }`}>
               {msg.content}
             </div>
