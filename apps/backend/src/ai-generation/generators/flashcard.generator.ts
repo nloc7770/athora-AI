@@ -38,10 +38,8 @@ export class FlashcardGenerator {
     documentId: string,
     userId: string,
   ): Promise<FlashcardOutput> {
-    const chunks = await this.ragflowService.retrieveChunks(
+    const chunks = await this.ragflowService.getDocumentChunks(
       datasetId,
-      'Generate flashcards covering all key concepts',
-      50,
     );
 
     const content = this.buildContentFromChunks(chunks);

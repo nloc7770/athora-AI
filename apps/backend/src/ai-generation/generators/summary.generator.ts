@@ -34,15 +34,20 @@ export class SummaryGenerator {
   ) {}
 
   async generate(datasetId: string, documentId: string): Promise<SummaryOutput> {
-    const chunks = await this.ragflowService.retrieveChunks(
-      datasetId,
-      'Summarize the entire document content',
-      50,
-    );
+    // Use direct chunk access for generation (retrieval is for Q&A)
+    const chunks = await this.ragflowService.getDocumentChunks(datasetId);
 
+    if (chunks.length === 0) {
+      throw new Error('No content available for summarization. Document may not be fully processed.');
+    }
+
+    return this.generateFromChunks(chunks);
+  }
+
+  private async generateFromChunks(chunks: Chunk[]): Promise<SummaryOutput> {
     const content = this.buildContentFromChunks(chunks);
 
-    this.logger.log(`Generating summary from ${chunks.length} chunks`);
+    this.logger.log(`Generating summary from ${chunks.length} chunks (${content.length} chars)`);
 
     return this.llmService.generateJson<SummaryOutput>(
       [

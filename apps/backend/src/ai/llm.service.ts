@@ -68,24 +68,42 @@ export class LlmService {
 
     const allMessages: ChatMessage[] = [systemMessage, ...messages];
 
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
-      temperature: 0,
-      response_format: { type: 'json_object' },
-      stream: false,
-    });
+    let content: string | null = null;
 
-    const content = response.choices[0]?.message?.content;
+    try {
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        stream: false,
+      });
+
+      content = response.choices?.[0]?.message?.content ?? null;
+    } catch {
+      // Fallback: some models don't support response_format
+      this.logger.warn('response_format not supported, retrying without it');
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
+        temperature: 0,
+        stream: false,
+      });
+
+      content = response.choices?.[0]?.message?.content ?? null;
+    }
 
     if (!content) {
       throw new Error('LLM returned empty response for JSON generation');
     }
 
+    // Strip markdown code fences if present
+    const cleaned = content.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+
     try {
-      return JSON.parse(content) as T;
+      return JSON.parse(cleaned) as T;
     } catch (error) {
-      this.logger.error('Failed to parse LLM JSON response', { content });
+      this.logger.error('Failed to parse LLM JSON response', { content: cleaned.slice(0, 500) });
       throw new Error('LLM returned invalid JSON');
     }
   }

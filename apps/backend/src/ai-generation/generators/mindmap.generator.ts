@@ -43,10 +43,8 @@ export class MindmapGenerator {
   ) {}
 
   async generate(datasetId: string, documentId: string): Promise<MindmapOutput> {
-    const chunks = await this.ragflowService.retrieveChunks(
+    const chunks = await this.ragflowService.getDocumentChunks(
       datasetId,
-      'Create a mind map of the document structure and key concepts',
-      50,
     );
 
     const content = this.buildContentFromChunks(chunks);

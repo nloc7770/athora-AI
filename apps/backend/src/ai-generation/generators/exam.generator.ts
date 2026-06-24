@@ -53,10 +53,8 @@ export class ExamGenerator {
     documentId: string,
     userId: string,
   ): Promise<ExamOutput> {
-    const chunks = await this.ragflowService.retrieveChunks(
+    const chunks = await this.ragflowService.getDocumentChunks(
       datasetId,
-      'Generate exam questions covering all important topics',
-      50,
     );
 
     const content = this.buildContentFromChunks(chunks);

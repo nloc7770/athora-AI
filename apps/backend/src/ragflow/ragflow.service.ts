@@ -144,6 +144,50 @@ export class RagflowService {
     }));
   }
 
+  async getDocumentChunks(datasetId: string, documentId?: string): Promise<Chunk[]> {
+    // Get all documents in dataset
+    const docsResponse = await this.client.get(
+      `/api/v1/datasets/${datasetId}/documents`,
+    );
+
+    const rawData = docsResponse.data?.data;
+    const docs = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.docs)
+        ? rawData.docs
+        : [];
+
+    const targetDocs = documentId
+      ? docs.filter((d: any) => d.id === documentId)
+      : docs;
+
+    const allChunks: Chunk[] = [];
+
+    for (const doc of targetDocs) {
+      try {
+        const chunksResponse = await this.client.get(
+          `/api/v1/datasets/${datasetId}/documents/${doc.id}/chunks`,
+        );
+
+        const rawChunks = chunksResponse.data?.data?.chunks ?? [];
+
+        for (const raw of rawChunks) {
+          allChunks.push({
+            id: raw.id ?? '',
+            content: raw.content ?? '',
+            documentId: doc.id,
+            score: 1,
+            metadata: raw.metadata,
+          });
+        }
+      } catch {
+        this.logger.warn(`Failed to get chunks for document ${doc.id}`);
+      }
+    }
+
+    return allChunks;
+  }
+
   async createChatAssistant(
     name: string,
     datasetIds: string[],
