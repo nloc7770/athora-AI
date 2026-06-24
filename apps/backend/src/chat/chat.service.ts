@@ -73,9 +73,9 @@ export class ChatService {
     userId: string,
     dto: CreateSessionDto,
   ): Promise<ChatSession> {
-    if (dto.type === 'document_chat' && !dto.documentId) {
+    if (dto.type === 'document_chat' && !dto.documentId && !dto.sessionId) {
       throw new BadRequestException(
-        'documentId is required for document_chat sessions',
+        'documentId or sessionId is required for document_chat sessions',
       );
     }
 
@@ -102,6 +102,7 @@ export class ChatService {
       .insert({
         user_id: userId,
         document_id: dto.documentId ?? null,
+        study_session_id: dto.sessionId ?? null,
         type: dto.type,
         title,
       })
@@ -346,50 +347,57 @@ export class ChatService {
     session: ChatSession,
     query: string,
   ): Promise<Chunk[]> {
-    if (!session.documentId) {
-      return [];
+    let datasetId: string | null = null;
+
+    // Try document-level first
+    if (session.documentId) {
+      const { data: doc } = await this.supabaseService
+        .getAdminClient()
+        .from('documents')
+        .select('ragflow_dataset_id, ragflow_document_id')
+        .eq('id', session.documentId)
+        .single();
+
+      datasetId = doc?.ragflow_dataset_id ?? null;
     }
 
-    const { data: doc } = await this.supabaseService
-      .getAdminClient()
-      .from('documents')
-      .select('ragflow_dataset_id, ragflow_document_id')
-      .eq('id', session.documentId)
-      .single();
+    // Fallback: try study session level
+    if (!datasetId) {
+      const { data: chatSession } = await this.supabaseService
+        .getAdminClient()
+        .from('chat_sessions')
+        .select('study_session_id')
+        .eq('id', session.id)
+        .single();
 
-    if (!doc?.ragflow_dataset_id) {
-      this.logger.warn('Document has no ragflow dataset', {
-        documentId: session.documentId,
-      });
+      if (chatSession?.study_session_id) {
+        const { data: studySession } = await this.supabaseService
+          .getAdminClient()
+          .from('study_sessions')
+          .select('ragflow_dataset_id')
+          .eq('id', chatSession.study_session_id)
+          .single();
+
+        datasetId = studySession?.ragflow_dataset_id ?? null;
+      }
+    }
+
+    if (!datasetId) {
+      this.logger.warn('No dataset found for chat session', { sessionId: session.id });
       return [];
     }
 
     try {
-      // Try retrieval first (semantic search)
-      let chunks = await this.ragflowService.retrieveChunks(
-        doc.ragflow_dataset_id,
-        query,
-        5,
-      );
+      let chunks = await this.ragflowService.retrieveChunks(datasetId, query, 5);
 
-      // Fallback: get all chunks directly if retrieval returns nothing
       if (chunks.length === 0) {
-        this.logger.warn(
-          'Semantic retrieval returned 0 chunks, falling back to direct chunk listing',
-          { documentId: session.documentId, datasetId: doc.ragflow_dataset_id },
-        );
-        chunks = await this.ragflowService.getDocumentChunks(
-          doc.ragflow_dataset_id,
-          doc.ragflow_document_id ?? undefined,
-        );
+        this.logger.warn('Semantic retrieval returned 0 chunks, falling back to direct chunk listing');
+        chunks = await this.ragflowService.getDocumentChunks(datasetId);
       }
 
       return chunks;
     } catch (error) {
-      this.logger.error('Failed to retrieve chunks from RAGFlow', {
-        error,
-        documentId: session.documentId,
-      });
+      this.logger.error('Failed to retrieve chunks from RAGFlow', { error });
       return [];
     }
   }

@@ -7,6 +7,10 @@ export class CreateSessionDto {
   @IsString()
   readonly documentId?: string;
 
+  @IsOptional()
+  @IsString()
+  readonly sessionId?: string;
+
   @IsEnum(['document_chat', 'tutor'])
   readonly type: ChatSessionType;
 }
