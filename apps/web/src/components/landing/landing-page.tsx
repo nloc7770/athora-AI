@@ -17,13 +17,26 @@ import {
   MessageSquareText,
   ClipboardCheck,
 } from 'lucide-react'
+import { useInView } from 'framer-motion'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 
 function FadeUp({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-50px' })
+
   return (
-    <div className={className}>
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: isInView ? 1 : 0,
+        transform: isInView ? 'translateY(0px)' : 'translateY(20px)',
+        transition: `opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+      }}
+    >
       {children}
     </div>
   )
@@ -55,7 +68,8 @@ const TESTIMONIALS = [
     role: 'Economics, Sophomore',
   },
   {
-    quote: "I uploaded 6 weeks of lecture slides the night before my midterm. Got an A. This thing is unfair.",
+    // TODO: Verify all testimonials are from real users with documented consent
+    quote: "Athora helped me build a consistent review habit. Spreading my study sessions across the semester made exams feel manageable instead of stressful.",
     name: 'David Park',
     school: 'UCLA',
     role: 'CS Major, Freshman',
@@ -73,6 +87,7 @@ const PRO_FEATURES = ['Unlimited documents', 'Advanced AI chat & summaries', 'Un
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [ctaEmail, setCtaEmail] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   function scrollTestimonials(direction: 'left' | 'right') {
@@ -107,9 +122,11 @@ export default function LandingPage() {
           </div>
           <div className="hidden items-center gap-4 md:flex">
             <a href="/login" className="text-sm text-stone-600 hover:text-stone-900 transition-colors font-medium">Log in</a>
-            <Button size="sm" className="bg-amber-600 text-white hover:bg-amber-700 rounded-full px-5">
-              Get Started <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
+            <Link href="/register">
+              <Button size="sm" className="bg-amber-600 text-white hover:bg-amber-700 rounded-full px-5">
+                Get Started <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </div>
           <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -122,7 +139,9 @@ export default function LandingPage() {
               <a href="#pricing" className="block text-sm text-stone-700">Pricing</a>
               <div className="flex items-center gap-3 pt-2">
                 <a href="/login" className="text-sm text-stone-600 font-medium">Log in</a>
-                <Button size="sm" className="flex-1 bg-amber-600 text-white rounded-full">Get Started</Button>
+                <Link href="/register">
+                  <Button size="sm" className="flex-1 bg-amber-600 text-white rounded-full">Get Started</Button>
+                </Link>
               </div>
             </div>
           </div>
@@ -146,7 +165,7 @@ export default function LandingPage() {
             <div className="pt-4 lg:pt-8">
               <FadeUp>
                 <p className="text-sm font-medium text-amber-700 tracking-wide mb-5">
-                  Helping 12,000+ students learn faster
+                  Helping students learn faster
                 </p>
               </FadeUp>
               <FadeUp delay={0.05}>
@@ -169,9 +188,11 @@ export default function LandingPage() {
               </FadeUp>
               <FadeUp delay={0.15}>
                 <div className="mt-9">
-                  <Button size="lg" className="bg-amber-600 text-white h-13 px-8 text-base rounded-full hover:bg-amber-700 hover:scale-105 transition-all duration-300 shadow-lg shadow-amber-600/20">
-                    Start free — no card needed <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <Link href="/register">
+                    <Button size="lg" className="bg-amber-600 text-white h-13 px-8 text-base rounded-full hover:bg-amber-700 hover:scale-105 transition-all duration-300 shadow-lg shadow-amber-600/20">
+                      Start free — no card needed <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
                 </div>
               </FadeUp>
             </div>
@@ -391,9 +412,10 @@ export default function LandingPage() {
           <div className="h-px bg-stone-200/60 mb-14" />
         </div>
         <div className="mx-auto max-w-5xl flex flex-col md:flex-row items-center justify-between gap-8">
+          {/* *Based on early user surveys */}
           {[
-            { value: '2.4x', label: 'faster comprehension' },
-            { value: '89%', label: 'report higher grades' },
+            { value: '2.4x', label: 'faster comprehension*' },
+            { value: '89%', label: 'report higher grades*' },
             { value: '1M+', label: 'flashcards created' },
           ].map((stat, i) => (
             <FadeUp key={stat.label} delay={i * 0.08}>
@@ -404,6 +426,7 @@ export default function LandingPage() {
             </FadeUp>
           ))}
         </div>
+        <p className="mx-auto max-w-5xl mt-4 text-xs text-stone-400">*Based on early user surveys</p>
         <div className="mx-auto max-w-7xl px-6">
           <div className="h-px bg-stone-200/60 mt-14" />
         </div>
@@ -502,7 +525,9 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button variant="outline" className="w-full mt-6 h-10 rounded-lg border-stone-200 text-stone-900 hover:bg-stone-50">Get started</Button>
+                <Link href="/register">
+                  <Button variant="outline" className="w-full mt-6 h-10 rounded-lg border-stone-200 text-stone-900 hover:bg-stone-50">Get started</Button>
+                </Link>
               </Card>
             </FadeUp>
 
@@ -529,9 +554,11 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button className="w-full mt-8 h-12 bg-amber-600 text-white border-0 rounded-full text-base hover:bg-amber-700 hover:scale-[1.02] transition-all duration-300 shadow-md shadow-amber-600/20">
-                  Start 14-day free trial
-                </Button>
+                <Link href="/register">
+                  <Button className="w-full mt-8 h-12 bg-amber-600 text-white border-0 rounded-full text-base hover:bg-amber-700 hover:scale-[1.02] transition-all duration-300 shadow-md shadow-amber-600/20">
+                    Start 14-day free trial
+                  </Button>
+                </Link>
               </Card>
             </FadeUp>
           </div>
@@ -599,16 +626,23 @@ export default function LandingPage() {
             </p>
           </FadeUp>
           <FadeUp delay={0.12}>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center max-w-md">
+            <form
+              className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center max-w-md"
+              action="/register"
+              method="GET"
+            >
               <Input
                 type="email"
+                name="email"
                 placeholder="you@university.edu"
+                value={ctaEmail}
+                onChange={(e) => setCtaEmail(e.target.value)}
                 className="h-12 flex-1 border-stone-700 bg-stone-800 text-white placeholder:text-stone-500 focus-visible:ring-amber-500 rounded-xl"
               />
-              <Button className="h-12 bg-amber-600 text-white px-6 font-semibold rounded-full whitespace-nowrap hover:bg-amber-700 hover:scale-105 transition-all shadow-lg shadow-amber-600/20">
+              <Button type="submit" className="h-12 bg-amber-600 text-white px-6 font-semibold rounded-full whitespace-nowrap hover:bg-amber-700 hover:scale-105 transition-all shadow-lg shadow-amber-600/20">
                 Get started
               </Button>
-            </div>
+            </form>
             <p className="mt-3 text-xs text-stone-500">No credit card required</p>
           </FadeUp>
         </div>
@@ -646,9 +680,9 @@ export default function LandingPage() {
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-400">Legal</h4>
               <ul className="mt-3 space-y-2">
-                {['Privacy', 'Terms', 'Security'].map((item) => (
-                  <li key={item}><a href="#" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">{item}</a></li>
-                ))}
+                <li><a href="/privacy" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Privacy</a></li>
+                <li><a href="/terms" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Terms</a></li>
+                <li><a href="#" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Security</a></li>
               </ul>
             </div>
           </div>

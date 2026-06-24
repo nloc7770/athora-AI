@@ -52,7 +52,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-stone-200 bg-white transition-transform duration-200 lg:relative lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-stone-200 bg-background transition-transform duration-200 lg:relative lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -139,7 +139,7 @@ export function MobileHeader() {
   const { setSidebarOpen } = useAppStore()
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-stone-200 bg-white px-4 lg:hidden">
+    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-stone-200 bg-background px-4 lg:hidden">
       <Button
         variant="ghost"
         size="icon"

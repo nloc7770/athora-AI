@@ -25,6 +25,7 @@ interface AuthFormProps {
 export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const isLogin = mode === 'login'
 
@@ -94,13 +95,50 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 disabled={isLoading}
               />
+              {!isLogin && (
+                <p className="text-xs text-muted-foreground">
+                  Minimum 8 characters
+                </p>
+              )}
+              {isLogin && (
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-primary hover:underline self-end"
+                >
+                  Forgot password?
+                </Link>
+              )}
             </div>
+
+            {!isLogin && (
+              <div className="flex items-start gap-2">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-stone-300 text-primary focus:ring-primary"
+                  required
+                  disabled={isLoading}
+                />
+                <label htmlFor="terms" className="text-sm text-muted-foreground leading-snug">
+                  I agree to the{' '}
+                  <Link href="/terms" className="text-primary underline hover:no-underline">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" className="text-primary underline hover:no-underline">
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
+            )}
 
             <Button
               type="submit"
               size="lg"
               className="mt-2 w-full"
-              disabled={isLoading}
+              disabled={isLoading || (!isLogin && !termsAccepted)}
             >
               {isLoading && <Loader2 className="animate-spin" />}
               {submitLabel}

@@ -26,7 +26,7 @@ test.describe('Auth Pages', () => {
     await page.goto('/register');
     await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('input[type="password"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeEnabled();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
   test('login with valid credentials redirects', async ({ page }) => {

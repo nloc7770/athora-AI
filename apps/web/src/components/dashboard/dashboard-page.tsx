@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Notebook,
   Plus,
-  PlayCircle,
   Sparkles,
   Upload,
   Video,
@@ -22,6 +21,7 @@ import {
 
 import { useCourses } from "@/hooks/use-courses"
 import { useDocuments } from "@/hooks/use-documents"
+import { useSessions } from "@/hooks/use-sessions"
 import { useAuthStore } from "@/stores/auth-store"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,7 +42,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -70,7 +69,7 @@ function getDocumentIcon(type: string) {
     case "note":
       return <Notebook className="size-4 text-emerald-500" />
     default:
-      return <FileText className="size-4 text-zinc-400" />
+      return <FileText className="size-4 text-muted-foreground" />
   }
 }
 
@@ -132,6 +131,118 @@ function DocumentSkeleton() {
       </div>
       <Skeleton className="h-5 w-16 rounded-full" />
     </div>
+  )
+}
+
+function OnboardingHero({
+  onUpload,
+}: {
+  onUpload: (file: File) => Promise<void>
+}) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragging(false)
+      const file = e.dataTransfer.files[0]
+      if (!file) return
+      setIsUploading(true)
+      try {
+        await onUpload(file)
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    [onUpload]
+  )
+
+  const handleClick = useCallback(() => {
+    inputRef.current?.click()
+  }, [])
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      setIsUploading(true)
+      try {
+        await onUpload(file)
+      } finally {
+        setIsUploading(false)
+        if (inputRef.current) inputRef.current.value = ""
+      }
+    },
+    [onUpload]
+  )
+
+  return (
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center px-6 py-20"
+    >
+      <motion.div variants={item} className="w-full">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Upload your first document"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={handleClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleClick()
+          }}
+          className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-16 text-center transition-all duration-200 ${
+            isDragging
+              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+              : "border-zinc-200 bg-zinc-50/50 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20"
+          }`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.doc,.docx,.txt,.mp3,.mp4,.wav"
+            onChange={handleFileChange}
+          />
+          {isUploading ? (
+            <Loader2 className="size-12 animate-spin text-indigo-500" />
+          ) : (
+            <Upload className="size-12 text-indigo-500" />
+          )}
+          <h1 className="mt-6 text-2xl font-bold text-foreground">
+            Drop your first PDF here to get started
+          </h1>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            We'll auto-generate flashcards, quizzes, and study materials from
+            your document so you can start learning immediately.
+          </p>
+          <Button className="mt-6" size="lg" disabled={isUploading}>
+            {isUploading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Upload className="size-4" data-icon="inline-start" />
+            )}
+            {isUploading ? "Uploading..." : "Choose a file"}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -225,19 +336,37 @@ export default function DashboardPage() {
   const { user } = useAuthStore()
   const { courses, isLoading: coursesLoading, createCourse } = useCourses()
   const { documents, isLoading: documentsLoading, uploadDocument } = useDocuments()
+  const { createSession } = useSessions()
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const isFirstTimeUser =
+    documents.length === 0 &&
+    courses.length === 0 &&
+    !documentsLoading &&
+    !coursesLoading
+
+  const handleOnboardingUpload = useCallback(
+    async (file: File) => {
+      const fileName = file.name.replace(/\.[^/.]+$/, "")
+      const session = await createSession(fileName)
+      await uploadDocument(file, { sessionId: session.id })
+      router.push(`/sessions/${session.id}`)
+    },
+    [createSession, uploadDocument, router]
+  )
+
+  if (isFirstTimeUser) {
+    return <OnboardingHero onUpload={handleOnboardingUpload} />
+  }
 
   const recentDocuments = [...documents]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 4)
 
   const mostRecentDoc = recentDocuments[0] ?? null
-  const mostRecentCourse = mostRecentDoc
-    ? courses.find((c) => c.id === mostRecentDoc.courseId)
-    : null
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -286,7 +415,7 @@ export default function DashboardPage() {
     >
       {/* Welcome Banner */}
       <motion.div variants={item}>
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/90 to-violet-500/80 p-8 mb-8 shadow-inner shadow-white/10">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/90 to-orange-500/80 p-8 mb-8 shadow-inner shadow-white/10">
           <img
             src="/images/dashboard-banner.png"
             alt=""
@@ -296,13 +425,13 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-white">
               Welcome back, {user?.name ?? user?.email ?? "Student"}
             </h2>
-            <p className="mt-1 text-indigo-100">
+            <p className="mt-1 text-amber-100">
               {coursesCount > 0
                 ? `You have ${coursesCount} course${coursesCount > 1 ? "s" : ""} and ${documentsCount} document${documentsCount !== 1 ? "s" : ""}.`
                 : "Get started by creating your first course."}
             </p>
             <Button
-              className="mt-4 bg-white text-indigo-600 hover:bg-indigo-50"
+              className="mt-4 bg-white text-amber-700 hover:bg-amber-50"
               onClick={() => router.push(mostRecentDoc ? `/sessions/${mostRecentDoc.id}` : "/sessions")}
             >
               Continue learning
@@ -331,32 +460,39 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Continue Learning */}
-      {mostRecentDoc && (
+      {/* Recent Activity */}
+      {recentDocuments.length > 0 && (
         <motion.div variants={item}>
           <Card className="border-l-4 border-l-indigo-500 bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/20">
             <CardHeader>
-              <CardDescription>Continue Learning</CardDescription>
-              <CardTitle className="text-lg">{mostRecentDoc.name}</CardTitle>
+              <CardDescription>Recent Activity</CardDescription>
+              <CardTitle className="text-lg">
+                {documentsCount} document{documentsCount !== 1 ? "s" : ""} uploaded
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <BookOpen className="size-3.5" />
-                <span>{mostRecentCourse?.name ?? "No course"}</span>
-                <span className="text-zinc-300 dark:text-zinc-600">·</span>
-                <Clock className="size-3.5" />
-                <span>{formatRelativeDate(mostRecentDoc.updatedAt)}</span>
-              </div>
-              <Progress value={0} />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {mostRecentDoc.status === "ready" ? "Ready to study" : mostRecentDoc.status}
-                </span>
-                <Button size="sm" onClick={() => router.push(`/sessions/${mostRecentDoc.id}`)}>
-                  <PlayCircle className="size-3.5" data-icon="inline-start" />
-                  Continue
-                </Button>
-              </div>
+            <CardContent className="space-y-2">
+              {recentDocuments.slice(0, 3).map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted transition-colors cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/sessions/${doc.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") router.push(`/sessions/${doc.id}`)
+                  }}
+                >
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
+                    {getDocumentIcon(doc.type)}
+                  </div>
+                  <span className="truncate text-sm font-medium text-foreground flex-1">
+                    {doc.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {formatRelativeDate(doc.updatedAt)}
+                  </span>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </motion.div>
@@ -450,11 +586,10 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <Progress value={0} />
+                    <CardContent>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          {courseDocCount} document{courseDocCount !== 1 ? "s" : ""}
+                          {courseDocCount} document{courseDocCount !== 1 ? "s" : ""} uploaded
                         </span>
                         <span>{formatRelativeDate(course.updatedAt)}</span>
                       </div>
@@ -509,7 +644,7 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-lg px-3 -mx-3 transition-colors"
+                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 hover:bg-muted rounded-lg px-3 -mx-3 transition-colors"
                     >
                       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                         {getDocumentIcon(doc.type)}

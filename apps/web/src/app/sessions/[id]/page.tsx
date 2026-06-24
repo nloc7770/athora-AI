@@ -15,7 +15,11 @@ import {
   Sparkles,
   Headphones,
   Network,
+  AlertCircle,
+  CheckCircle2,
+  RotateCcw,
 } from 'lucide-react'
+import { useToastStore } from '@/stores/toast-store'
 import { useSession } from '@/hooks/use-sessions'
 import { useDocuments, useDocumentStatus } from '@/hooks/use-documents'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
@@ -29,6 +33,13 @@ import { Badge } from '@/components/ui/badge'
 import { SummaryTab, FlashcardsTab, ExamTab, MindMapTab } from './_components'
 
 type TabValue = 'documents' | 'chat' | 'flashcards' | 'exam' | 'summary' | 'mindmap'
+
+interface FileUploadStatus {
+  fileName: string
+  file: File
+  status: 'pending' | 'uploading' | 'success' | 'error'
+  error?: string
+}
 
 function DocumentStatusBadge({ docId }: { docId: string }) {
   const { status, progress } = useDocumentStatus(docId)
@@ -159,14 +170,27 @@ function DocumentInsight({ documentId, document }: { documentId: string; documen
   )
 }
 
+function getUploadErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase()
+    if (msg.includes('too large') || msg.includes('size')) return 'File too large (max 50MB)'
+    if (msg.includes('network') || msg.includes('fetch')) return 'Network error — check your connection'
+    if (msg.includes('401') || msg.includes('auth') || msg.includes('unauthorized') || msg.includes('expired'))
+      return 'Authentication expired — please sign in again'
+    return err.message
+  }
+  return 'Upload failed'
+}
+
 export default function SessionWorkspace() {
   const params = useParams()
   const router = useRouter()
   const sessionId = params.id as string
-  const { session, documents, isLoading, refresh } = useSession(sessionId)
+  const { session, documents, isLoading, error, refresh } = useSession(sessionId)
   const { uploadDocument } = useDocuments({ sessionId })
   const [activeTab, setActiveTab] = useState<TabValue>('documents')
   const [uploading, setUploading] = useState(false)
+  const [uploadStatuses, setUploadStatuses] = useState<FileUploadStatus[]>([])
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -196,12 +220,92 @@ export default function SessionWorkspace() {
 
   const handleUpload = async (files: FileList | null) => {
     if (!files) return
+    const fileArray = Array.from(files)
+    const statuses: FileUploadStatus[] = fileArray.map((file) => ({
+      fileName: file.name,
+      file,
+      status: 'pending' as const,
+    }))
+    setUploadStatuses(statuses)
     setUploading(true)
-    for (const file of Array.from(files)) {
-      await uploadDocument(file, { sessionId })
+
+    let hasError = false
+    for (let i = 0; i < fileArray.length; i++) {
+      setUploadStatuses((prev) =>
+        prev.map((s, idx) => (idx === i ? { ...s, status: 'uploading' } : s))
+      )
+      try {
+        await uploadDocument(fileArray[i], { sessionId })
+        setUploadStatuses((prev) =>
+          prev.map((s, idx) => (idx === i ? { ...s, status: 'success' } : s))
+        )
+      } catch (err: unknown) {
+        hasError = true
+        const message = getUploadErrorMessage(err)
+        setUploadStatuses((prev) =>
+          prev.map((s, idx) => (idx === i ? { ...s, status: 'error', error: message } : s))
+        )
+      }
     }
+
     setUploading(false)
-    refresh()
+    if (!hasError) {
+      refresh()
+      setUploadStatuses([])
+    } else {
+      useToastStore.getState().addToast('Some files failed to upload', 'error')
+    }
+  }
+
+  const handleRetryFailed = async () => {
+    const failedStatuses = uploadStatuses.filter((s) => s.status === 'error')
+    if (failedStatuses.length === 0) return
+
+    setUploading(true)
+    setUploadStatuses((prev) =>
+      prev.map((s) => (s.status === 'error' ? { ...s, status: 'pending', error: undefined } : s))
+    )
+
+    let hasError = false
+    for (const failed of failedStatuses) {
+      const idx = uploadStatuses.findIndex((s) => s.fileName === failed.fileName && s.status === 'error')
+      setUploadStatuses((prev) =>
+        prev.map((s) =>
+          s.fileName === failed.fileName && (s.status === 'pending' || s.status === 'error')
+            ? { ...s, status: 'uploading' }
+            : s
+        )
+      )
+      try {
+        await uploadDocument(failed.file, { sessionId })
+        setUploadStatuses((prev) =>
+          prev.map((s) =>
+            s.fileName === failed.fileName && s.status === 'uploading'
+              ? { ...s, status: 'success' }
+              : s
+          )
+        )
+      } catch (err: unknown) {
+        hasError = true
+        const message = getUploadErrorMessage(err)
+        setUploadStatuses((prev) =>
+          prev.map((s) =>
+            s.fileName === failed.fileName && s.status === 'uploading'
+              ? { ...s, status: 'error', error: message }
+              : s
+          )
+        )
+      }
+    }
+
+    setUploading(false)
+    const remaining = uploadStatuses.filter((s) => s.status === 'error')
+    if (!hasError) {
+      refresh()
+      setUploadStatuses([])
+    } else {
+      useToastStore.getState().addToast('Some files still failed to upload', 'error')
+    }
   }
 
   const handleUploadRef = useRef(handleUpload)
@@ -220,7 +324,12 @@ export default function SessionWorkspace() {
     }
     const msg = chatInput
     setChatInput('')
-    await sendMessage(msg)
+    try {
+      await sendMessage(msg)
+    } catch {
+      setChatInput(msg)
+      useToastStore.getState().addToast('Message failed to send. Please try again.', 'error')
+    }
   }
 
   const handleSessionGenerate = async (type: 'summary' | 'flashcards' | 'exam' | 'mindmap') => {
@@ -233,6 +342,35 @@ export default function SessionWorkspace() {
         <AppLayout>
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+          </div>
+        </AppLayout>
+      </ProtectedRoute>
+    )
+  }
+
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <AppLayout>
+          <div className="flex h-full flex-col items-center justify-center gap-4">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+            <p className="text-lg font-medium text-gray-900">
+              {error || 'Failed to load session'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => refresh()}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => router.push('/sessions')}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Back to sessions
+              </button>
+            </div>
           </div>
         </AppLayout>
       </ProtectedRoute>
@@ -297,6 +435,8 @@ export default function SessionWorkspace() {
                 selectedDocId={selectedDocId}
                 setSelectedDocId={setSelectedDocId}
                 uploading={uploading}
+                uploadStatuses={uploadStatuses}
+                onRetryFailed={handleRetryFailed}
                 fileInputRef={fileInputRef}
                 handleDrop={handleDrop}
                 handleUpload={handleUpload}
@@ -364,6 +504,8 @@ interface DocumentsTabProps {
   selectedDocId: string | null
   setSelectedDocId: (id: string | null) => void
   uploading: boolean
+  uploadStatuses: FileUploadStatus[]
+  onRetryFailed: () => void
   fileInputRef: React.RefObject<HTMLInputElement | null>
   handleDrop: (e: React.DragEvent) => void
   handleUpload: (files: FileList | null) => void
@@ -374,10 +516,14 @@ function DocumentsTab({
   selectedDocId,
   setSelectedDocId,
   uploading,
+  uploadStatuses,
+  onRetryFailed,
   fileInputRef,
   handleDrop,
   handleUpload,
 }: DocumentsTabProps) {
+  const hasFailedUploads = uploadStatuses.some((s) => s.status === 'error')
+
   return (
     <div className="flex h-full gap-4">
       {/* Left: Upload + File List */}
@@ -403,6 +549,31 @@ function DocumentsTab({
             onChange={(e) => handleUpload(e.target.files)}
           />
         </div>
+
+        {/* Upload status list */}
+        {uploadStatuses.length > 0 && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-600">Upload Progress</p>
+              {hasFailedUploads && !uploading && (
+                <Button size="sm" variant="outline" onClick={onRetryFailed} className="gap-1 h-7 text-xs">
+                  <RotateCcw className="h-3 w-3" />
+                  Retry failed
+                </Button>
+              )}
+            </div>
+            {uploadStatuses.map((s, idx) => (
+              <div key={`${s.fileName}-${idx}`} className="flex items-center gap-2 text-sm">
+                {s.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                {s.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />}
+                {s.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-amber-500 shrink-0" />}
+                {s.status === 'pending' && <div className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0" />}
+                <span className="truncate flex-1 text-gray-700">{s.fileName}</span>
+                {s.error && <span className="text-xs text-red-500 shrink-0">{s.error}</span>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Document list */}
         {documents.length === 0 ? (

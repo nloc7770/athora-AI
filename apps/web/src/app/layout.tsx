@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { CookieConsent } from "@/components/ui/cookie-consent";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -55,6 +56,7 @@ export default function RootLayout({
             <AuthProvider>
               {children}
               <ToastContainer />
+              <CookieConsent />
             </AuthProvider>
           </TooltipProvider>
         </ErrorBoundary>

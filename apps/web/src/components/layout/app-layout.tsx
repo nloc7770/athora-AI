@@ -4,7 +4,7 @@ import { Sidebar, MobileHeader } from '@/components/layout/sidebar'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <MobileHeader />

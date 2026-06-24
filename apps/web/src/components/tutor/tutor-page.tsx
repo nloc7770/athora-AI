@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Mic,
-  MicOff,
   Send,
   BookOpen,
   Sparkles,
@@ -15,23 +13,26 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
 import { useCourses } from '@/hooks/use-courses'
 
 type TutorState = 'idle' | 'speaking'
 
-const suggestedQuestions = [
-  'Explain the concept of recursion with a simple example',
-  'What are the key differences between stacks and queues?',
-  'Help me understand Big O notation',
-  'How does memory allocation work in programming?',
+const genericQuestions = [
+  'What would you like to learn about today?',
+  'Help me understand a concept from my notes',
+  'Quiz me on my recent uploads',
 ]
+
+function getSuggestedQuestions(courseName: string | null): string[] {
+  if (!courseName) return genericQuestions
+  return [
+    `Explain a key concept from ${courseName}`,
+    `Quiz me on ${courseName} topics`,
+    `Summarize my ${courseName} notes`,
+    `What should I focus on for my ${courseName} exam?`,
+  ]
+}
 
 export default function TutorPage() {
   const [state, setState] = useState<TutorState>('idle')
@@ -197,8 +198,8 @@ export default function TutorPage() {
                       <div
                         className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-zinc-800 text-zinc-200'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card text-card-foreground'
                         }`}
                       >
                         {msg.content}
@@ -213,7 +214,7 @@ export default function TutorPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="flex justify-start"
                     >
-                      <div className="flex items-center gap-2 rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm text-zinc-400">
+                      <div className="flex items-center gap-2 rounded-2xl bg-card px-4 py-2.5 text-sm text-muted-foreground">
                         <Loader2 className="size-3.5 animate-spin" />
                         <span>Thinking...</span>
                       </div>
@@ -226,7 +227,7 @@ export default function TutorPage() {
             {/* Suggested questions */}
             {messages.length === 0 && !messagesLoading && (
               <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {suggestedQuestions.map((question, index) => (
+                {getSuggestedQuestions(activeCourse?.name ?? null).map((question, index) => (
                   <motion.div
                     key={question}
                     initial={{ opacity: 0, y: 8 }}
@@ -234,7 +235,7 @@ export default function TutorPage() {
                     transition={{ duration: 0.3, delay: index * 0.08 }}
                   >
                     <Card
-                      className="cursor-pointer bg-white border border-zinc-200 border-l-2 border-l-indigo-400 hover:border-indigo-200 hover:bg-indigo-50/60 p-4 transition-all duration-200"
+                      className="cursor-pointer bg-card border border-border border-l-2 border-l-indigo-400 hover:border-indigo-200 hover:bg-indigo-50/60 p-4 transition-all duration-200"
                       onClick={() => handleSuggestionClick(question)}
                     >
                       <div className="flex items-start gap-3">
@@ -270,7 +271,7 @@ export default function TutorPage() {
             }}
             placeholder="Ask anything..."
             disabled={isInitializing || isStreaming}
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition-colors focus:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <Button
             variant="ghost"
@@ -288,23 +289,6 @@ export default function TutorPage() {
         </div>
       </div>
 
-      {/* Voice interaction button - coming soon */}
-      <div className="mt-8">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger
-              disabled
-              className="relative flex size-16 items-center justify-center rounded-full bg-indigo-600/50 text-white/60 shadow-lg shadow-indigo-500/10 cursor-not-allowed"
-              aria-label="Voice input - coming soon"
-            >
-              <Mic className="relative z-10 size-6" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Coming soon</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
     </div>
   )
 }

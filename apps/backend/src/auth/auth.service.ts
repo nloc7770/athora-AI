@@ -64,6 +64,15 @@ export class AuthService {
     return { user: data.user, session: data.session };
   }
 
+  async forgotPassword(email: string) {
+    // Always return success to avoid email enumeration
+    await this.supabaseService
+      .getAuthClient()
+      .auth.resetPasswordForEmail(email);
+
+    return { message: 'If an account exists, a reset link has been sent.' };
+  }
+
   async getProfile(userId: string) {
     const { data, error } = await this.supabaseService
       .getClient()
