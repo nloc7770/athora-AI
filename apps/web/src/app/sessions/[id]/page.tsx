@@ -504,8 +504,8 @@ function ChatTab({
             <p className="text-sm text-gray-500">Ask anything about your documents</p>
           </div>
         )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+        {messages.map((msg, idx) => (
+          <div key={msg.id || `msg-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
               msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-800'
             }`}>
