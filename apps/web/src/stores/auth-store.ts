@@ -30,7 +30,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
-  isLoading: true,
+  isLoading: false,
   isAuthenticated: false,
 
   login: async (email, password) => {
@@ -124,9 +124,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const token = localStorage.getItem(TOKEN_KEY)
 
     if (!token) {
-      set({ isLoading: false })
+      set({ isLoading: false, isAuthenticated: false })
       return
     }
+
+    set({ isLoading: true })
 
     try {
       const user = await apiClient.get<User>('/auth/me')

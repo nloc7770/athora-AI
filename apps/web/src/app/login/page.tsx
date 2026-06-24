@@ -8,11 +8,13 @@ import { AuthForm } from '@/components/auth/auth-form'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isLoading } = useAuthStore()
+  const { login } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   async function handleLogin(email: string, password: string) {
     setError(null)
+    setSubmitting(true)
 
     try {
       await login(email, password)
@@ -23,6 +25,8 @@ export default function LoginPage() {
       } else {
         setError('An unexpected error occurred. Please try again.')
       }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -30,7 +34,7 @@ export default function LoginPage() {
     <AuthForm
       mode="login"
       onSubmit={handleLogin}
-      isLoading={isLoading}
+      isLoading={submitting}
       error={error}
     />
   )

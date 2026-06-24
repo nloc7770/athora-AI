@@ -8,11 +8,13 @@ import { AuthForm } from '@/components/auth/auth-form'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { register, isLoading } = useAuthStore()
+  const { register } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   async function handleRegister(email: string, password: string) {
     setError(null)
+    setSubmitting(true)
 
     try {
       await register(email, password)
@@ -23,6 +25,8 @@ export default function RegisterPage() {
       } else {
         setError('An unexpected error occurred. Please try again.')
       }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -30,7 +34,7 @@ export default function RegisterPage() {
     <AuthForm
       mode="register"
       onSubmit={handleRegister}
-      isLoading={isLoading}
+      isLoading={submitting}
       error={error}
     />
   )
