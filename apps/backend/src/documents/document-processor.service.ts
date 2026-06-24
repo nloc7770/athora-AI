@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RagflowService } from '../ragflow/ragflow.service';
+import { AiGenerationService } from '../ai-generation/ai-generation.service';
+import { GenerationType } from '../ai-generation/dto/generate.dto';
 
 interface ProcessingResult {
   fileUrl: string;
@@ -20,6 +22,7 @@ export class DocumentProcessorService {
     private readonly supabaseService: SupabaseService,
     private readonly ragflowService: RagflowService,
     private readonly configService: ConfigService,
+    private readonly aiGenerationService: AiGenerationService,
   ) {
     this.storageBucket = this.configService.get<string>(
       'SUPABASE_STORAGE_BUCKET',
@@ -75,6 +78,11 @@ export class DocumentProcessorService {
       await this.updateDocumentStatus(userId, documentId, 'ready', 100);
 
       this.logger.log(`Document ${documentId} processed successfully`);
+
+      // Auto-generate all AI content in background
+      this.autoGenerate(userId, documentId).catch((err) => {
+        this.logger.error(`Auto-generation failed for ${documentId}: ${err.message}`);
+      });
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'Unknown processing error';
@@ -284,5 +292,25 @@ export class DocumentProcessorService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async autoGenerate(userId: string, documentId: string): Promise<void> {
+    const types = [
+      GenerationType.SUMMARY,
+      GenerationType.FLASHCARD,
+      GenerationType.EXAM,
+      GenerationType.MINDMAP,
+    ];
+
+    for (const type of types) {
+      try {
+        this.logger.log(`Auto-generating ${type} for document ${documentId}`);
+        await this.aiGenerationService.generate(userId, documentId, type);
+        this.logger.log(`Auto-generated ${type} for document ${documentId}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Auto-generation of ${type} failed for ${documentId}: ${message}`);
+      }
+    }
   }
 }
