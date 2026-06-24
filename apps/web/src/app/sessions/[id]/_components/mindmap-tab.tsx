@@ -175,7 +175,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 }
 
 export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }: MindMapTabProps) {
-  const [zoom, setZoom] = useState(1.2)
+  const [zoom, setZoom] = useState(2.0)
   const filtered = generations.filter((g) => g.type === 'mindmap')
   const latest = filtered.find((g) => g.status === 'completed')
   const pending = filtered.find((g) => g.status === 'pending' || g.status === 'processing')
