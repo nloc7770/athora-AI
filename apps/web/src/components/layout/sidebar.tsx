@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -13,8 +13,10 @@ import {
   BookOpen,
   Menu,
   X,
+  LogOut,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/app-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 
 const navigation = [
@@ -28,7 +30,14 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { sidebarOpen, setSidebarOpen } = useAppStore()
+  const { user, logout } = useAuthStore()
+
+  async function handleLogout() {
+    await logout()
+    router.push('/login')
+  }
 
   return (
     <>
@@ -87,6 +96,34 @@ export function Sidebar() {
             )
           })}
         </nav>
+
+        {/* User info & Logout */}
+        <div className="border-t border-zinc-100 p-4">
+          {user && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg px-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-medium text-white">
+                {user.email?.charAt(0).toUpperCase() ?? 'U'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-zinc-900">
+                  {user.name ?? 'Student'}
+                </p>
+                <p className="truncate text-xs text-zinc-500">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-zinc-500 hover:text-zinc-700"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
 
         {/* Usage card */}
         <div className="border-t border-zinc-100 p-4">

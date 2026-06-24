@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 
 import { courses, documents } from "@/data/mock"
+import { useAuthStore } from "@/stores/auth-store"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -73,6 +74,7 @@ const courseThumbnails: Record<string, string> = {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuthStore()
   const recentDoc = documents[0]
   const recentCourse = courses.find((c) => c.id === recentDoc.courseId)
   const recentDocuments = documents.filter((d) => d.lastStudied).slice(0, 4)
@@ -95,7 +97,7 @@ export default function DashboardPage() {
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/90 to-violet-500/80 p-8 mb-8 shadow-inner shadow-white/10">
           <img src="/images/dashboard-banner.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-soft-light" />
           <div className="relative">
-            <h2 className="text-2xl font-bold text-white">Welcome back, Alex</h2>
+            <h2 className="text-2xl font-bold text-white">Welcome back, {user?.name ?? user?.email ?? 'Student'}</h2>
             <p className="mt-1 text-indigo-100">You've studied 12 hours this week. Keep it up!</p>
             <Button className="mt-4 bg-white text-indigo-600 hover:bg-indigo-50">Continue learning</Button>
           </div>
