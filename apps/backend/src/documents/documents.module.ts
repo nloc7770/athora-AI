@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { DocumentProcessorService } from './document-processor.service';
+import { AiModule } from '../ai/ai.module';
+import { RagflowModule } from '../ragflow/ragflow.module';
 
 @Module({
+  imports: [AiModule, RagflowModule],
   controllers: [DocumentsController],
-  providers: [DocumentsService],
+  providers: [DocumentsService, DocumentProcessorService],
+  exports: [DocumentsService, DocumentProcessorService],
 })
 export class DocumentsModule {}
