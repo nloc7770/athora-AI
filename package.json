@@ -1,0 +1,15 @@
+{
+  "name": "athora",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:web": "pnpm --filter @athora/web dev",
+    "dev:backend": "pnpm --filter @athora/backend dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @athora/web build",
+    "build:backend": "pnpm --filter @athora/backend build",
+    "lint": "pnpm -r run lint"
+  },
+  "packageManager": "pnpm@11.4.0"
+}
