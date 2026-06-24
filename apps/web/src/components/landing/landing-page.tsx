@@ -360,23 +360,25 @@ export default function LandingPage() {
 
           <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { icon: MessageSquareText, badge: 'Core', badgeColor: 'bg-amber-500/10 text-amber-400', title: 'Document Chat', desc: 'Ask questions about your PDFs, get cited answers grounded in your materials. No hallucinations.' },
-              { icon: Sparkles, badge: 'Popular', badgeColor: 'bg-amber-500/10 text-amber-300', title: 'AI Flashcards', desc: 'Auto-generate spaced-repetition flashcards from any document. Study at the optimal time.' },
-              { icon: ClipboardCheck, badge: 'New', badgeColor: 'bg-orange-500/10 text-orange-400', title: 'Exam Generator', desc: 'Practice tests that mirror your exam format. Multiple choice, true/false, short answer.' },
-              { icon: BookOpen, badge: 'Auto', badgeColor: 'bg-green-500/10 text-green-400', title: 'Smart Summary', desc: 'Chapter-by-chapter breakdown with key takeaways. Understand 50 pages in 2 minutes.' },
-              { icon: Sparkles, badge: 'Visual', badgeColor: 'bg-purple-500/10 text-purple-400', title: 'Mind Map', desc: 'Visual concept maps auto-generated from your content. See how topics connect.' },
-              { icon: Headphones, badge: 'AI', badgeColor: 'bg-blue-500/10 text-blue-400', title: 'AI Tutor', desc: 'Chat with an AI tutor that knows your materials. Get explanations, not just answers.' },
+              { img: '/images/feature-chat.png', badge: 'Core', badgeColor: 'bg-amber-500/10 text-amber-400', title: 'Document Chat', desc: 'Ask questions about your PDFs, get cited answers grounded in your materials.' },
+              { img: '/images/feature-flashcards.png', badge: 'Popular', badgeColor: 'bg-amber-500/10 text-amber-300', title: 'AI Flashcards', desc: 'Auto-generate spaced-repetition flashcards from any document.' },
+              { img: '/images/feature-exam.png', badge: 'New', badgeColor: 'bg-orange-500/10 text-orange-400', title: 'Exam Generator', desc: 'Practice tests that mirror your exam format. AI targets your weak spots.' },
+              { img: '/images/feature-summary.png', badge: 'Auto', badgeColor: 'bg-green-500/10 text-green-400', title: 'Smart Summary', desc: 'Chapter-by-chapter breakdown with key takeaways. 50 pages in 2 minutes.' },
+              { img: '/images/feature-mindmap.png', badge: 'Visual', badgeColor: 'bg-purple-500/10 text-purple-400', title: 'Mind Map', desc: 'Visual concept maps auto-generated from your content.' },
+              { img: '/images/feature-tutor.png', badge: 'AI', badgeColor: 'bg-blue-500/10 text-blue-400', title: 'AI Tutor', desc: 'Chat with an AI tutor that knows your materials. Guided learning.' },
             ].map((feature, i) => (
               <FadeUp key={i} delay={i * 0.05}>
-                <Card className="border-stone-700/50 bg-stone-800 p-6 h-full hover:bg-stone-750 transition group">
-                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium mb-4 ${feature.badgeColor}`}>
-                    {feature.badge}
-                  </span>
-                  <div className="flex items-start gap-3 mb-3">
-                    <feature.icon className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-                    <h3 className="text-lg font-bold text-white">{feature.title}</h3>
+                <Card className="border-stone-700/50 bg-stone-800 p-0 overflow-hidden h-full hover:border-stone-600 transition group">
+                  <div className="aspect-[4/3] overflow-hidden">
+                    <img src={feature.img} alt={feature.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                   </div>
-                  <p className="text-sm text-stone-400 leading-relaxed">{feature.desc}</p>
+                  <div className="p-5">
+                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium mb-3 ${feature.badgeColor}`}>
+                      {feature.badge}
+                    </span>
+                    <h3 className="text-base font-bold text-white mb-1">{feature.title}</h3>
+                    <p className="text-sm text-stone-400 leading-relaxed">{feature.desc}</p>
+                  </div>
                 </Card>
               </FadeUp>
             ))}
