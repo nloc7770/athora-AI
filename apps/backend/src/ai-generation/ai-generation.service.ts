@@ -31,7 +31,7 @@ export class AiGenerationService {
     type: GenerationType,
   ): Promise<AiGeneration> {
     const document = await this.getDocument(userId, documentId);
-    const datasetId = document.dataset_id;
+    const datasetId = document.ragflow_dataset_id;
 
     if (!datasetId) {
       throw new NotFoundException(
@@ -120,7 +120,6 @@ export class AiGenerationService {
         document_id: documentId,
         type,
         status: 'pending',
-        output: null,
       })
       .select()
       .single();
@@ -140,6 +139,12 @@ export class AiGenerationService {
     type: GenerationType,
   ): Promise<void> {
     try {
+      await this.supabaseService
+        .getAdminClient()
+        .from('ai_generations')
+        .update({ status: 'processing' })
+        .eq('id', generationId);
+
       const output = await this.runGenerator(userId, datasetId, documentId, type);
 
       await this.supabaseService
@@ -147,19 +152,20 @@ export class AiGenerationService {
         .from('ai_generations')
         .update({
           status: 'completed',
-          output,
+          result: output,
           updated_at: new Date().toISOString(),
         })
         .eq('id', generationId);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Generation ${generationId} failed: ${message}`);
 
       await this.supabaseService
         .getAdminClient()
         .from('ai_generations')
         .update({
-          status: 'failed',
-          error: message,
+          status: 'error',
+          error_message: message,
           updated_at: new Date().toISOString(),
         })
         .eq('id', generationId);

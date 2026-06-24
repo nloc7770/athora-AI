@@ -124,11 +124,12 @@ export class RagflowService {
     topK = 5,
   ): Promise<Chunk[]> {
     const response = await this.client.post(
-      `/api/v1/datasets/${datasetId}/retrieval`,
+      '/api/v1/retrieval',
       {
         question: query,
-        datasets: [datasetId],
+        dataset_ids: [datasetId],
         top_k: topK,
+        similarity_threshold: 0.0,
       },
     );
 
