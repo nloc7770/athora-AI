@@ -67,33 +67,26 @@ export class LlmService {
     };
 
     const allMessages: ChatMessage[] = [systemMessage, ...messages];
+    const mappedMessages = allMessages.map((m) => ({ role: m.role, content: m.content }));
 
-    let content: string | null = null;
+    this.logger.log(`Calling LLM with ${mappedMessages.length} messages, model: ${this.model}`);
 
-    try {
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        stream: false,
-      });
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages: mappedMessages,
+      temperature: 0,
+      stream: false,
+    });
 
-      content = response.choices?.[0]?.message?.content ?? null;
-    } catch {
-      // Fallback: some models don't support response_format
-      this.logger.warn('response_format not supported, retrying without it');
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
-        temperature: 0,
-        stream: false,
-      });
+    this.logger.log(`LLM response: choices=${response.choices?.length}, id=${response.id}`);
 
-      content = response.choices?.[0]?.message?.content ?? null;
-    }
+    const choice = response.choices?.[0];
+    const content = choice?.message?.content ?? null;
+
+    this.logger.log(`LLM content: length=${content?.length ?? 0}, role=${choice?.message?.role}, finish=${choice?.finish_reason}`);
 
     if (!content) {
+      this.logger.error(`LLM empty content. message=${JSON.stringify(choice?.message).slice(0, 300)}`);
       throw new Error('LLM returned empty response for JSON generation');
     }
 

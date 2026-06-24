@@ -145,17 +145,24 @@ export class AiGenerationService {
         .update({ status: 'processing' })
         .eq('id', generationId);
 
+      this.logger.log(`Running generator ${type} for ${generationId}`);
       const output = await this.runGenerator(userId, datasetId, documentId, type);
+      this.logger.log(`Generator ${type} completed for ${generationId}, saving result...`);
 
-      await this.supabaseService
+      const { error: updateError } = await this.supabaseService
         .getAdminClient()
         .from('ai_generations')
         .update({
           status: 'completed',
           result: output,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', generationId);
+
+      if (updateError) {
+        this.logger.error(`Failed to save generation result: ${updateError.message}`);
+      } else {
+        this.logger.log(`Generation ${generationId} saved successfully`);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Generation ${generationId} failed: ${message}`);
@@ -166,7 +173,6 @@ export class AiGenerationService {
         .update({
           status: 'error',
           error_message: message,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', generationId);
     }
