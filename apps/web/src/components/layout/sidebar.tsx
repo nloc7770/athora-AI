@@ -11,6 +11,10 @@ import {
   GraduationCap,
   Settings,
   BookOpen,
+  Layers,
+  GraduationCap,
+  Settings,
+  BookOpen,
   Menu,
   X,
   LogOut,
@@ -21,6 +25,7 @@ import { Button } from '@/components/ui/button'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Sessions', href: '/sessions', icon: BookOpen },
   { name: 'Library', href: '/library', icon: Library },
   { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
   { name: 'Flashcards', href: '/flashcards', icon: Layers },
