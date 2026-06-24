@@ -176,22 +176,38 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
 
 export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }: MindMapTabProps) {
   const [zoom, setZoom] = useState(3.0)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const dragRef = useRef({ dragging: false, startX: 0, startY: 0, panX: 0, panY: 0 })
+  const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const panRef = useRef({ x: 0, y: 0 })
+  const dragRef = useRef({ dragging: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
+
+  const applyTransform = useCallback(() => {
+    if (svgRef.current) {
+      svgRef.current.style.transform = `translate(${panRef.current.x}px, ${panRef.current.y}px)`
+    }
+  }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
-  }, [pan])
+    dragRef.current = {
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPanX: panRef.current.x,
+      startPanY: panRef.current.y,
+    }
+    if (containerRef.current) containerRef.current.style.cursor = 'grabbing'
+  }, [])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragRef.current.dragging) return
-    const dx = e.clientX - dragRef.current.startX
-    const dy = e.clientY - dragRef.current.startY
-    setPan({ x: dragRef.current.panX + dx, y: dragRef.current.panY + dy })
-  }, [])
+    panRef.current.x = dragRef.current.startPanX + (e.clientX - dragRef.current.startX)
+    panRef.current.y = dragRef.current.startPanY + (e.clientY - dragRef.current.startY)
+    applyTransform()
+  }, [applyTransform])
 
   const handleMouseUp = useCallback(() => {
     dragRef.current.dragging = false
+    if (containerRef.current) containerRef.current.style.cursor = 'grab'
   }, [])
   const filtered = generations.filter((g) => g.type === 'mindmap')
   const latest = filtered.find((g) => g.status === 'completed')
@@ -256,7 +272,7 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
     )
   }
 
-  // Compute viewBox
+  // Compute viewBox - fixed, pan handled by CSS transform
   const padding = 150
   const allX = layoutNodes.map(n => n.x)
   const allY = layoutNodes.map(n => n.y)
@@ -267,11 +283,10 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
   const width = maxX - minX
   const height = maxY - minY
 
-  // Zoom works by scaling the viewBox inversely, pan offsets the center
   const vbW = width / zoom
   const vbH = height / zoom
-  const vbX = minX + (width - vbW) / 2 - pan.x / zoom
-  const vbY = minY + (height - vbH) / 2 - pan.y / zoom
+  const vbX = minX + (width - vbW) / 2
+  const vbY = minY + (height - vbH) / 2
 
   return (
     <div className="mx-auto max-w-full space-y-4">
@@ -296,11 +311,12 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
 
       {/* SVG Mind Map */}
       <div
+        ref={containerRef}
         className="rounded-xl border bg-gradient-to-br from-gray-50 to-white overflow-hidden select-none"
-        style={{ height: '600px', cursor: dragRef.current.dragging ? 'grabbing' : 'grab' }}
+        style={{ height: '600px', cursor: 'grab' }}
         onWheel={(e) => {
           e.preventDefault()
-          setZoom(z => Math.max(0.3, Math.min(5, z + (e.deltaY > 0 ? -0.15 : 0.15))))
+          setZoom(z => Math.max(0.5, Math.min(6, z + (e.deltaY > 0 ? -0.2 : 0.2))))
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -308,10 +324,12 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
         onMouseLeave={handleMouseUp}
       >
         <svg
+          ref={svgRef}
           width="100%"
           height="100%"
           viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
           preserveAspectRatio="xMidYMid meet"
+          style={{ willChange: 'transform' }}
         >
           {/* Edges - dotted curved lines */}
           {layoutEdges.map((edge, i) => {
