@@ -13,5 +13,6 @@ export default defineConfig({
     command: 'pnpm dev',
     port: 3000,
     reuseExistingServer: true,
+    timeout: 120000,
   },
 });

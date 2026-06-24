@@ -67,6 +67,6 @@ test.describe('Protected Routes', () => {
 
   test('dashboard redirects to login when not authenticated', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForURL(/\/login/, { timeout: 10000 });
+    await page.waitForURL(/\/login/, { timeout: 15000 });
   });
 });

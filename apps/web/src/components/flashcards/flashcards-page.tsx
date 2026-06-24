@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useFlashcardSets, useDueCards } from '@/hooks/use-flashcards'
 import { useCourses } from '@/hooks/use-courses'
+import { apiClient } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -53,10 +54,15 @@ export default function FlashcardsPage() {
     setIsFlipped((prev) => !prev)
   }
 
-  function handleDifficultySelect(_difficulty: Difficulty) {
+  function handleDifficultySelect(difficulty: Difficulty) {
     if (!currentCard) return
     setReviewedCards((prev) => new Set([...prev, currentCard.id]))
     setIsFlipped(false)
+
+    apiClient.patch(`/flashcards/cards/${currentCard.id}`, {
+      difficulty,
+      last_reviewed: new Date().toISOString(),
+    })
 
     if (currentCardIndex < filteredCards.length - 1) {
       setTimeout(() => {

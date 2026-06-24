@@ -35,7 +35,7 @@ function SettingsContent() {
         <h2 className="mb-4 text-sm font-medium text-zinc-900">Profile</h2>
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-medium text-white">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-sm font-medium text-white">
               {user?.email?.charAt(0).toUpperCase() ?? 'U'}
             </div>
             <div className="min-w-0">

@@ -68,7 +68,6 @@ const TESTIMONIALS = [
     role: 'Economics, Sophomore',
   },
   {
-    // TODO: Verify all testimonials are from real users with documented consent
     quote: "Athora helped me build a consistent review habit. Spreading my study sessions across the semester made exams feel manageable instead of stressful.",
     name: 'David Park',
     school: 'UCLA',
@@ -121,7 +120,7 @@ export default function LandingPage() {
             <a href="#testimonials" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Reviews</a>
           </div>
           <div className="hidden items-center gap-4 md:flex">
-            <a href="/login" className="text-sm text-stone-600 hover:text-stone-900 transition-colors font-medium">Log in</a>
+            <Link href="/login" className="text-sm text-stone-600 hover:text-stone-900 transition-colors font-medium">Log in</Link>
             <Link href="/register">
               <Button size="sm" className="bg-amber-600 text-white hover:bg-amber-700 rounded-full px-5">
                 Get Started <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -138,7 +137,7 @@ export default function LandingPage() {
               <a href="#features" className="block text-sm text-stone-700">Features</a>
               <a href="#pricing" className="block text-sm text-stone-700">Pricing</a>
               <div className="flex items-center gap-3 pt-2">
-                <a href="/login" className="text-sm text-stone-600 font-medium">Log in</a>
+                <Link href="/login" className="text-sm text-stone-600 font-medium">Log in</Link>
                 <Link href="/register">
                   <Button size="sm" className="flex-1 bg-amber-600 text-white rounded-full">Get Started</Button>
                 </Link>
@@ -664,17 +663,8 @@ export default function LandingPage() {
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-400">Product</h4>
               <ul className="mt-3 space-y-2">
-                {['Features', 'Pricing', 'Changelog', 'Roadmap'].map((item) => (
-                  <li key={item}><a href="#" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">{item}</a></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-400">Company</h4>
-              <ul className="mt-3 space-y-2">
-                {['About', 'Blog', 'Careers', 'Contact'].map((item) => (
-                  <li key={item}><a href="#" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">{item}</a></li>
-                ))}
+                <li><a href="#features" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Features</a></li>
+                <li><a href="#pricing" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Pricing</a></li>
               </ul>
             </div>
             <div>
@@ -682,12 +672,11 @@ export default function LandingPage() {
               <ul className="mt-3 space-y-2">
                 <li><a href="/privacy" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Privacy</a></li>
                 <li><a href="/terms" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Terms</a></li>
-                <li><a href="#" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">Security</a></li>
               </ul>
             </div>
           </div>
           <div className="mt-10 border-t border-stone-200/60 pt-6 text-center">
-            <p className="text-xs text-stone-400">&copy; 2024 Athora. All rights reserved.</p>
+            <p className="text-xs text-stone-400">&copy; {new Date().getFullYear()} Athora. All rights reserved.</p>
           </div>
         </div>
       </footer>

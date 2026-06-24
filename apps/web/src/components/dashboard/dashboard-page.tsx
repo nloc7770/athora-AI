@@ -209,8 +209,8 @@ function OnboardingHero({
           }}
           className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-16 text-center transition-all duration-200 ${
             isDragging
-              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
-              : "border-zinc-200 bg-zinc-50/50 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20"
+              ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
+              : "border-zinc-200 bg-zinc-50/50 hover:border-amber-400 hover:bg-amber-50/50 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-amber-500 dark:hover:bg-amber-950/20"
           }`}
         >
           <input
@@ -221,9 +221,9 @@ function OnboardingHero({
             onChange={handleFileChange}
           />
           {isUploading ? (
-            <Loader2 className="size-12 animate-spin text-indigo-500" />
+            <Loader2 className="size-12 animate-spin text-amber-500" />
           ) : (
-            <Upload className="size-12 text-indigo-500" />
+            <Upload className="size-12 text-amber-500" />
           )}
           <h1 className="mt-6 text-2xl font-bold text-foreground">
             Drop your first PDF here to get started
@@ -463,7 +463,7 @@ export default function DashboardPage() {
       {/* Recent Activity */}
       {recentDocuments.length > 0 && (
         <motion.div variants={item}>
-          <Card className="border-l-4 border-l-indigo-500 bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/20">
+          <Card className="border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50/50 to-transparent dark:from-amber-950/20">
             <CardHeader>
               <CardDescription>Recent Activity</CardDescription>
               <CardTitle className="text-lg">
@@ -676,8 +676,8 @@ export default function DashboardPage() {
           <Card className="h-fit border-l-2 border-l-emerald-400">
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10">
-                  <BookOpen className="size-4 text-indigo-500" />
+                <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10">
+                  <BookOpen className="size-4 text-amber-500" />
                 </div>
                 <div>
                   <p className="text-sm font-medium tabular-nums">
@@ -687,8 +687,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10">
-                  <FileText className="size-4 text-violet-500" />
+                <div className="flex size-8 items-center justify-center rounded-lg bg-orange-500/10">
+                  <FileText className="size-4 text-orange-500" />
                 </div>
                 <div>
                   <p className="text-sm font-medium tabular-nums">
@@ -725,7 +725,7 @@ export default function DashboardPage() {
             className="h-auto flex-col gap-1.5 py-4"
             onClick={() => router.push("/tutor")}
           >
-            <MessageSquare className="size-5 text-indigo-500" />
+            <MessageSquare className="size-5 text-amber-500" />
             <span className="text-xs">Ask AI</span>
           </Button>
           <Button
@@ -743,7 +743,7 @@ export default function DashboardPage() {
             className="h-auto flex-col gap-1.5 py-4"
             onClick={() => router.push("/exam")}
           >
-            <Sparkles className="size-5 text-violet-500" />
+            <Sparkles className="size-5 text-orange-500" />
             <span className="text-xs">Start Exam</span>
           </Button>
           <Button
