@@ -24,14 +24,9 @@ import { Input } from '@/components/ui/input'
 
 function FadeUp({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
-      className={className}
-    >
+    <div className={className}>
       {children}
-    </motion.div>
+    </div>
   )
 }
 
@@ -163,35 +158,29 @@ export default function LandingPage() {
                 <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-3 shadow-xl rotate-1 hover:rotate-0 transition-transform duration-500">
                   <img src="/images/hero-product.png" alt="Athora AI workspace" className="w-full rounded-2xl" />
                 </div>
-                <motion.div
+                <div
                   className="absolute -bottom-6 -left-6 rounded-xl border border-zinc-200 bg-white p-3 shadow-lg max-w-[200px]"
-                  animate={{ y: [0, -4, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
                     <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                     <span className="text-xs font-semibold text-zinc-900">AI Generated</span>
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-snug">12 flashcards created from Chapter 4: Cell Biology</p>
-                </motion.div>
-                <motion.div
+                </div>
+                <div
                   className="absolute -top-4 -right-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-md"
-                  animate={{ y: [0, -3, 0] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
                 >
                   <p className="text-[11px] font-bold text-emerald-600">+23% <span className="font-normal text-emerald-500">this week</span></p>
-                </motion.div>
-                <motion.div
+                </div>
+                <div
                   className="absolute top-1/2 -left-10 flex -space-x-2"
-                  animate={{ y: [0, -2, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
                 >
                   {['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500'].map((color, i) => (
                     <div key={i} className={`h-6 w-6 rounded-full ${color} ring-2 ring-white flex items-center justify-center`}>
                       <span className="text-[8px] font-bold text-white">{['S', 'M', 'E'][i]}</span>
                     </div>
                   ))}
-                </motion.div>
+                </div>
               </div>
             </FadeUp>
           </div>
@@ -471,10 +460,8 @@ export default function LandingPage() {
               { src: '/images/exam-success.png', alt: 'Student celebrating after a successful exam result' },
             ].map((image, i) => (
               <FadeUp key={image.src} delay={0.08 + i * 0.06}>
-                <motion.div
+                <div
                   className="group relative overflow-hidden rounded-2xl border border-zinc-200"
-                  whileHover={{ scale: 1.02, y: -4 }}
-                  transition={{ duration: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
                 >
                   <div className="aspect-[9/16] overflow-hidden">
                     <img
@@ -484,7 +471,7 @@ export default function LandingPage() {
                     />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                </motion.div>
+                </div>
               </FadeUp>
             ))}
           </div>
