@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Search, FileText, Clock, Trash2, X } from 'lucide-react'
 import { useSessions } from '@/hooks/use-sessions'
 import { ProtectedRoute } from '@/components/auth/protected-route'
+import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -52,8 +53,9 @@ export default function SessionsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="mx-auto max-w-6xl">
+      <AppLayout>
+        <div className="min-h-screen bg-gray-50 p-6">
+          <div className="mx-auto max-w-6xl">
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -159,8 +161,9 @@ export default function SessionsPage() {
               </tbody>
             </table>
           </div>
+          </div>
         </div>
-      </div>
+      </AppLayout>
 
       {/* Create Modal */}
       <AnimatePresence>
