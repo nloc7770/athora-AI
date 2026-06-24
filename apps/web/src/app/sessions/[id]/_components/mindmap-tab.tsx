@@ -109,7 +109,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
     y: cy,
     color: { bg: '#ffffff', border: '#374151', text: '#111827' },
     level: 0,
-    fontSize: 16,
+    fontSize: 24,
   })
 
   // Level 1
@@ -126,7 +126,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
     layoutNodes.push({
       id: child.id,
       label: (child.label ?? child.title ?? child.id).slice(0, 30),
-      x, y, color, level: 1, fontSize: 13,
+      x, y, color, level: 1, fontSize: 18,
     })
     layoutEdges.push({ x1: cx, y1: cy, x2: x, y2: y, color: color.border })
 
@@ -145,7 +145,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
       layoutNodes.push({
         id: grandchild.id,
         label: (grandchild.label ?? grandchild.title ?? grandchild.id).slice(0, 25),
-        x: gx, y: gy, color, level: 2, fontSize: 11,
+        x: gx, y: gy, color, level: 2, fontSize: 15,
       })
       layoutEdges.push({ x1: x, y1: y, x2: gx, y2: gy, color: color.border })
 
@@ -164,7 +164,7 @@ function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[
         layoutNodes.push({
           id: leaf.id,
           label: (leaf.label ?? leaf.title ?? leaf.id).slice(0, 20),
-          x: lx, y: ly, color, level: 3, fontSize: 10,
+          x: lx, y: ly, color, level: 3, fontSize: 13,
         })
         layoutEdges.push({ x1: gx, y1: gy, x2: lx, y2: ly, color: color.border })
       })
