@@ -247,20 +247,112 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* How it Works — 3 Steps */}
+      <section className="px-6 py-24 md:py-32 bg-stone-50 border-y border-stone-200">
+        <div className="mx-auto max-w-5xl">
+          <FadeUp className="text-center mb-16">
+            <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 mb-3">How it works</p>
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl" style={{ letterSpacing: '-0.03em' }}>
+              3 steps to better grades
+            </h2>
+          </FadeUp>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4 relative">
+            {/* Connecting line (desktop) */}
+            <div className="hidden md:block absolute top-16 left-[20%] right-[20%] h-0.5 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300" />
+
+            {/* Step 1 */}
+            <FadeUp className="text-center relative">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 text-xl font-bold border-2 border-amber-200 relative z-10">
+                1
+              </div>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">Upload your materials</h3>
+              <p className="text-sm text-stone-500 leading-relaxed max-w-xs mx-auto">
+                Drop PDFs, lecture slides, textbooks, or notes. Any format, any subject, any language.
+              </p>
+              <div className="mt-4 rounded-xl bg-white border border-stone-200 p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-red-500" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-medium text-stone-700">Chapter_5_Biology.pdf</p>
+                    <p className="text-xs text-stone-400">2.4 MB • Uploaded</p>
+                  </div>
+                  <Check className="h-4 w-4 text-green-500 ml-auto" />
+                </div>
+              </div>
+            </FadeUp>
+
+            {/* Step 2 */}
+            <FadeUp delay={0.1} className="text-center relative">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 text-xl font-bold border-2 border-amber-200 relative z-10">
+                2
+              </div>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">AI reads & understands</h3>
+              <p className="text-sm text-stone-500 leading-relaxed max-w-xs mx-auto">
+                Athora parses, chunks, and indexes your content. Creates a personal knowledge base in seconds.
+              </p>
+              <div className="mt-4 rounded-xl bg-white border border-stone-200 p-4 shadow-sm">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-400" />
+                    <span className="text-xs text-stone-600">Summary generated</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-400" />
+                    <span className="text-xs text-stone-600">24 flashcards created</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-400" />
+                    <span className="text-xs text-stone-600">Exam questions ready</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-400" />
+                    <span className="text-xs text-stone-600">Mind map built</span>
+                  </div>
+                </div>
+              </div>
+            </FadeUp>
+
+            {/* Step 3 */}
+            <FadeUp delay={0.2} className="text-center relative">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 text-xl font-bold border-2 border-amber-200 relative z-10">
+                3
+              </div>
+              <h3 className="text-lg font-bold text-stone-900 mb-2">Study & ace your exam</h3>
+              <p className="text-sm text-stone-500 leading-relaxed max-w-xs mx-auto">
+                Chat with your docs, review flashcards, take practice exams. All grounded in YOUR materials.
+              </p>
+              <div className="mt-4 rounded-xl bg-white border border-stone-200 p-4 shadow-sm">
+                <div className="space-y-2">
+                  <div className="rounded-lg bg-amber-50 px-3 py-2">
+                    <p className="text-xs font-medium text-stone-700">"Explain mitosis in simple terms"</p>
+                  </div>
+                  <div className="rounded-lg bg-stone-50 px-3 py-2">
+                    <p className="text-xs text-stone-600">Based on your Chapter 5 notes: Mitosis is cell division in 4 phases...</p>
+                  </div>
+                </div>
+              </div>
+            </FadeUp>
+          </div>
+        </div>
+      </section>
+
       {/* Features — Bento Grid */}
       <section id="features" className="px-6 py-24 md:py-32 bg-stone-900">
         <div className="mx-auto max-w-7xl">
           <FadeUp>
-            <p className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-3">How it works</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-3">Features</p>
             <h2
               className="text-3xl font-bold tracking-tight md:text-5xl lg:text-6xl text-balance text-white"
               style={{ letterSpacing: '-0.03em' }}
             >
-              Upload. Ask.{' '}
-              <span className="text-amber-400">Master.</span>
+              Everything you need to{' '}
+              <span className="text-amber-400">study smarter.</span>
             </h2>
             <p className="mt-4 text-stone-400 max-w-lg text-base leading-relaxed">
-              Drop in your lectures, notes, or textbooks. Athora does the rest — from understanding to exam-ready.
+              One platform. All your materials. AI that actually helps you learn — not just generates content.
             </p>
           </FadeUp>
 
