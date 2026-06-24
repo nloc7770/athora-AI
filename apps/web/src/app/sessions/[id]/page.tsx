@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { SummaryTab, FlashcardsTab, ExamTab, MindMapTab } from './_components'
 
 type TabValue = 'documents' | 'chat' | 'flashcards' | 'exam' | 'summary' | 'mindmap'
 
@@ -315,54 +316,38 @@ export default function SessionWorkspace() {
             )}
 
             {activeTab === 'flashcards' && (
-              <SessionGenerationTab
-                type="flashcards"
-                icon={Brain}
-                label="Flashcards"
+              <FlashcardsTab
                 hasReadyDocs={hasReadyDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
-                onGenerate={handleSessionGenerate}
-                emptyMessage="Upload documents first to generate flashcards"
+                onGenerate={() => handleSessionGenerate('flashcards')}
               />
             )}
 
             {activeTab === 'exam' && (
-              <SessionGenerationTab
-                type="exam"
-                icon={ClipboardList}
-                label="Exam"
+              <ExamTab
                 hasReadyDocs={hasReadyDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
-                onGenerate={handleSessionGenerate}
-                emptyMessage="Upload documents first to generate exams"
+                onGenerate={() => handleSessionGenerate('exam')}
               />
             )}
 
             {activeTab === 'summary' && (
-              <SessionGenerationTab
-                type="summary"
-                icon={BookOpen}
-                label="Summary"
+              <SummaryTab
                 hasReadyDocs={hasReadyDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
-                onGenerate={handleSessionGenerate}
-                emptyMessage="Upload documents first to generate summary"
+                onGenerate={() => handleSessionGenerate('summary')}
               />
             )}
 
             {activeTab === 'mindmap' && (
-              <SessionGenerationTab
-                type="mindmap"
-                icon={Network}
-                label="Mind Map"
+              <MindMapTab
                 hasReadyDocs={hasReadyDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
-                onGenerate={handleSessionGenerate}
-                emptyMessage="Upload documents first to generate mind map"
+                onGenerate={() => handleSessionGenerate('mindmap')}
               />
             )}
           </div>
@@ -538,149 +523,3 @@ function ChatTab({
   )
 }
 
-/* ─── Session Generation Tab (Flashcards / Exam / Summary / Mind Map) ─── */
-
-interface SessionGenerationTabProps {
-  type: 'flashcards' | 'exam' | 'summary' | 'mindmap'
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  hasReadyDocs: boolean
-  generations: any[]
-  isLoading: boolean
-  onGenerate: (type: 'flashcards' | 'exam' | 'summary' | 'mindmap') => void
-  emptyMessage: string
-}
-
-function SessionGenerationTab({
-  type,
-  icon: Icon,
-  label,
-  hasReadyDocs,
-  generations,
-  isLoading,
-  onGenerate,
-  emptyMessage,
-}: SessionGenerationTabProps) {
-  const filtered = generations.filter((g) => g.type === type)
-
-  if (!hasReadyDocs) {
-    return (
-      <div className="mx-auto max-w-3xl text-center pt-16">
-        <Icon className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-        <p className="text-gray-500">{emptyMessage}</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div className="text-center">
-        <Button onClick={() => onGenerate(type)} disabled={isLoading} className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          {isLoading ? 'Generating...' : `Generate ${label}`}
-        </Button>
-      </div>
-
-      {filtered.map((gen) => (
-        <Card key={gen.id}>
-          <CardContent className="p-4 text-left">
-            <Badge className="mb-2 capitalize">{gen.status}</Badge>
-
-            {gen.status === 'pending' || gen.status === 'processing' ? (
-              <div className="flex items-center gap-2 mt-2">
-                <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
-                <span className="text-sm text-gray-500">Processing...</span>
-              </div>
-            ) : null}
-
-            {gen.status === 'completed' && type === 'flashcards' && gen.result?.cards && (
-              <div className="space-y-2 mt-2">
-                {gen.result.cards.slice(0, 5).map((card: any, i: number) => (
-                  <div key={i} className="rounded-lg border p-3">
-                    <p className="text-sm font-medium">{card.front}</p>
-                    <p className="mt-1 text-sm text-gray-500">{card.back}</p>
-                  </div>
-                ))}
-                {gen.result.cards.length > 5 && (
-                  <p className="text-xs text-gray-400">+{gen.result.cards.length - 5} more cards</p>
-                )}
-              </div>
-            )}
-
-            {gen.status === 'completed' && type === 'exam' && gen.result?.questions && (
-              <div className="space-y-3 mt-2">
-                {gen.result.questions.map((q: any, i: number) => (
-                  <div key={i} className="rounded-lg border p-3">
-                    <p className="text-sm font-medium">{i + 1}. {q.question}</p>
-                    {q.options && (
-                      <ul className="mt-1 space-y-1 pl-4">
-                        {q.options.map((opt: string, j: number) => (
-                          <li key={j} className="text-sm text-gray-600">{opt}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {gen.status === 'completed' && type === 'summary' && gen.result && (
-              <div className="mt-2 space-y-2">
-                {gen.result.overview && <p className="text-sm text-gray-700">{gen.result.overview}</p>}
-                {gen.result.chapters?.map((ch: any, i: number) => (
-                  <div key={i}>
-                    <p className="text-sm font-medium">{ch.title}</p>
-                    <ul className="pl-4">
-                      {ch.keyPoints?.map((kp: string, j: number) => (
-                        <li key={j} className="text-sm text-gray-600">• {kp}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                {gen.result.takeaways && (
-                  <div className="rounded-lg bg-indigo-50 p-3 mt-2">
-                    <p className="text-xs font-semibold text-indigo-700 mb-1">Key Takeaways</p>
-                    <ul className="space-y-1">
-                      {gen.result.takeaways.map((t: string, i: number) => (
-                        <li key={i} className="text-sm text-indigo-800">• {t}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {gen.status === 'completed' && type === 'mindmap' && gen.result && (
-              <div className="mt-2 space-y-2">
-                {gen.result.nodes && (
-                  <div className="space-y-1">
-                    {gen.result.nodes.map((node: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 rounded border p-2">
-                        <Network className="h-3 w-3 text-indigo-400 shrink-0" />
-                        <span className="text-sm text-gray-700">{node.label ?? node.title ?? node.id}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {gen.result.edges && (
-                  <p className="text-xs text-gray-400">{gen.result.edges.length} connections</p>
-                )}
-              </div>
-            )}
-
-            {gen.status === 'failed' && (
-              <p className="text-sm text-red-500 mt-2">Generation failed. Please try again.</p>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-
-      {filtered.length === 0 && (
-        <div className="text-center pt-8">
-          <Icon className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-          <p className="text-sm text-gray-400">No {label.toLowerCase()} generated yet</p>
-        </div>
-      )}
-    </div>
-  )
-}
