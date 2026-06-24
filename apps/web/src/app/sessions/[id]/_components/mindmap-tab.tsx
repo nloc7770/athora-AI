@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Network,
   Loader2,
   Sparkles,
   RotateCcw,
   AlertCircle,
-  ChevronRight,
-  Minus,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -19,169 +20,166 @@ interface MindMapTabProps {
   onGenerate: () => void
 }
 
-interface TreeNode {
+interface RawNode {
   id: string
   label?: string
   title?: string
-  children?: TreeNode[]
   parentId?: string | null
 }
 
-const levelColors = [
-  { bg: 'bg-indigo-100', text: 'text-indigo-700', line: 'border-indigo-300' },
-  { bg: 'bg-violet-100', text: 'text-violet-700', line: 'border-violet-300' },
-  { bg: 'bg-sky-100', text: 'text-sky-700', line: 'border-sky-300' },
-  { bg: 'bg-teal-100', text: 'text-teal-700', line: 'border-teal-300' },
-  { bg: 'bg-amber-100', text: 'text-amber-700', line: 'border-amber-300' },
-  { bg: 'bg-rose-100', text: 'text-rose-700', line: 'border-rose-300' },
+const BRANCH_COLORS = [
+  { bg: '#dcfce7', border: '#4ade80', text: '#166534' },
+  { bg: '#dbeafe', border: '#60a5fa', text: '#1e3a5a' },
+  { bg: '#fef9c3', border: '#facc15', text: '#713f12' },
+  { bg: '#f3e8ff', border: '#c084fc', text: '#581c87' },
+  { bg: '#ffe4e6', border: '#fb7185', text: '#881337' },
+  { bg: '#ccfbf1', border: '#2dd4bf', text: '#134e4a' },
+  { bg: '#fef3c7', border: '#f59e0b', text: '#78350f' },
+  { bg: '#e0e7ff', border: '#818cf8', text: '#312e81' },
 ]
 
-function buildTree(nodes: any[], edges?: any[]): TreeNode[] {
-  if (!nodes || nodes.length === 0) return []
-
-  // If nodes already have children arrays, use them directly
-  if (nodes[0]?.children) {
-    return nodes
-  }
-
-  // Build from flat nodes + edges
-  const nodeMap = new Map<string, TreeNode>()
-  nodes.forEach((n) => {
-    nodeMap.set(n.id, { ...n, children: [] })
-  })
-
-  const roots: TreeNode[] = []
-
-  if (edges && edges.length > 0) {
-    edges.forEach((edge: any) => {
-      const parent = nodeMap.get(edge.source ?? edge.from)
-      const child = nodeMap.get(edge.target ?? edge.to)
-      if (parent && child) {
-        parent.children = parent.children ?? []
-        parent.children.push(child)
-        child.parentId = parent.id
-      }
-    })
-    nodeMap.forEach((node) => {
-      if (!node.parentId) roots.push(node)
-    })
-  } else {
-    // No edges: treat as flat list with parentId references
-    nodes.forEach((n) => {
-      const node = nodeMap.get(n.id)
-      if (!node) return
-      if (n.parentId && nodeMap.has(n.parentId)) {
-        const parent = nodeMap.get(n.parentId)!
-        parent.children = parent.children ?? []
-        parent.children.push(node)
-      } else {
-        roots.push(node)
-      }
-    })
-  }
-
-  return roots.length > 0 ? roots : nodes.map((n) => ({ ...n, children: [] }))
+interface LayoutNode {
+  id: string
+  label: string
+  x: number
+  y: number
+  color: typeof BRANCH_COLORS[0]
+  level: number
+  fontSize: number
 }
 
-function TreeNodeComponent({
-  node,
-  level,
-  collapsedNodes,
-  toggleCollapse,
-}: {
-  node: TreeNode
-  level: number
-  collapsedNodes: Set<string>
-  toggleCollapse: (id: string) => void
-}) {
-  const colorSet = levelColors[level % levelColors.length]
-  const hasChildren = node.children && node.children.length > 0
-  const isCollapsed = collapsedNodes.has(node.id)
-  const label = node.label ?? node.title ?? node.id
+interface LayoutEdge {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  color: string
+}
 
-  return (
-    <div className="relative">
-      {/* Node */}
-      <div className="flex items-center gap-2">
-        {/* Connector line */}
-        {level > 0 && (
-          <div className={`absolute left-0 top-1/2 w-4 border-t ${colorSet.line}`} style={{ marginLeft: `-${level > 1 ? 4 : 0}px` }} />
-        )}
+function layoutMindMap(rawNodes: RawNode[], edges?: any[]): { nodes: LayoutNode[]; edges: LayoutEdge[] } {
+  if (!rawNodes || rawNodes.length === 0) return { nodes: [], edges: [] }
 
-        {/* Expand/collapse button */}
-        {hasChildren ? (
-          <button
-            onClick={() => toggleCollapse(node.id)}
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition ${colorSet.bg} ${colorSet.text} hover:opacity-80`}
-          >
-            <ChevronRight className={`h-3 w-3 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-          </button>
-        ) : (
-          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${colorSet.bg}`}>
-            <Minus className={`h-2.5 w-2.5 ${colorSet.text}`} />
-          </span>
-        )}
+  // Build parent-child map
+  const childrenMap = new Map<string, RawNode[]>()
+  let rootNode: RawNode | undefined
 
-        {/* Label */}
-        <span className={`rounded-md px-2.5 py-1 text-sm font-medium ${colorSet.bg} ${colorSet.text}`}>
-          {label}
-        </span>
-      </div>
+  if (edges && edges.length > 0) {
+    // Build from edges
+    const childSet = new Set<string>()
+    edges.forEach((e: any) => {
+      const parentId = e.source ?? e.from
+      const childId = e.target ?? e.to
+      childSet.add(childId)
+      const children = childrenMap.get(parentId) || []
+      const child = rawNodes.find(n => n.id === childId)
+      if (child) children.push(child)
+      childrenMap.set(parentId, children)
+    })
+    rootNode = rawNodes.find(n => !childSet.has(n.id))
+  } else {
+    // Build from parentId
+    rawNodes.forEach(n => {
+      if (n.parentId) {
+        const children = childrenMap.get(n.parentId) || []
+        children.push(n)
+        childrenMap.set(n.parentId, children)
+      }
+    })
+    rootNode = rawNodes.find(n => !n.parentId)
+  }
 
-      {/* Children */}
-      {hasChildren && !isCollapsed && (
-        <div className={`ml-6 mt-1 space-y-1 border-l-2 pl-4 ${colorSet.line}`}>
-          {node.children!.map((child) => (
-            <TreeNodeComponent
-              key={child.id}
-              node={child}
-              level={level + 1}
-              collapsedNodes={collapsedNodes}
-              toggleCollapse={toggleCollapse}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  if (!rootNode) rootNode = rawNodes[0]
+
+  const layoutNodes: LayoutNode[] = []
+  const layoutEdges: LayoutEdge[] = []
+
+  const cx = 500
+  const cy = 400
+
+  // Root
+  layoutNodes.push({
+    id: rootNode.id,
+    label: rootNode.label ?? rootNode.title ?? rootNode.id,
+    x: cx,
+    y: cy,
+    color: { bg: '#ffffff', border: '#374151', text: '#111827' },
+    level: 0,
+    fontSize: 18,
+  })
+
+  // Level 1
+  const level1 = childrenMap.get(rootNode.id) || []
+  const angleStep1 = (2 * Math.PI) / Math.max(level1.length, 1)
+  const radius1 = 200
+
+  level1.forEach((child, i) => {
+    const angle = angleStep1 * i - Math.PI / 2
+    const x = cx + Math.cos(angle) * radius1
+    const y = cy + Math.sin(angle) * radius1
+    const color = BRANCH_COLORS[i % BRANCH_COLORS.length]
+
+    layoutNodes.push({
+      id: child.id,
+      label: child.label ?? child.title ?? child.id,
+      x, y, color, level: 1, fontSize: 14,
+    })
+    layoutEdges.push({ x1: cx, y1: cy, x2: x, y2: y, color: color.border })
+
+    // Level 2
+    const level2 = childrenMap.get(child.id) || []
+    const spread2 = Math.min(Math.PI * 0.6, angleStep1 * 0.8)
+    const startAngle2 = angle - spread2 / 2
+    const step2 = level2.length > 1 ? spread2 / (level2.length - 1) : 0
+    const radius2 = 140
+
+    level2.forEach((grandchild, j) => {
+      const a2 = level2.length === 1 ? angle : startAngle2 + step2 * j
+      const gx = x + Math.cos(a2) * radius2
+      const gy = y + Math.sin(a2) * radius2
+
+      layoutNodes.push({
+        id: grandchild.id,
+        label: grandchild.label ?? grandchild.title ?? grandchild.id,
+        x: gx, y: gy, color, level: 2, fontSize: 12,
+      })
+      layoutEdges.push({ x1: x, y1: y, x2: gx, y2: gy, color: color.border })
+
+      // Level 3
+      const level3 = childrenMap.get(grandchild.id) || []
+      const spread3 = Math.min(Math.PI * 0.4, spread2 * 0.6)
+      const startAngle3 = a2 - spread3 / 2
+      const step3 = level3.length > 1 ? spread3 / (level3.length - 1) : 0
+      const radius3 = 100
+
+      level3.forEach((leaf, k) => {
+        const a3 = level3.length === 1 ? a2 : startAngle3 + step3 * k
+        const lx = gx + Math.cos(a3) * radius3
+        const ly = gy + Math.sin(a3) * radius3
+
+        layoutNodes.push({
+          id: leaf.id,
+          label: leaf.label ?? leaf.title ?? leaf.id,
+          x: lx, y: ly, color, level: 3, fontSize: 11,
+        })
+        layoutEdges.push({ x1: gx, y1: gy, x2: lx, y2: ly, color: color.border })
+      })
+    })
+  })
+
+  return { nodes: layoutNodes, edges: layoutEdges }
 }
 
 export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }: MindMapTabProps) {
+  const [zoom, setZoom] = useState(0.9)
   const filtered = generations.filter((g) => g.type === 'mindmap')
   const latest = filtered.find((g) => g.status === 'completed')
   const pending = filtered.find((g) => g.status === 'pending' || g.status === 'processing')
   const failed = filtered.find((g) => g.status === 'failed')
 
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
-
-  const toggleCollapse = (id: string) => {
-    setCollapsedNodes((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  const expandAll = () => setCollapsedNodes(new Set())
-
-  const collapseAll = () => {
-    const tree = buildTree(latest?.result?.nodes ?? [], latest?.result?.edges)
-    const allIds = new Set<string>()
-    const collectIds = (nodes: TreeNode[]) => {
-      nodes.forEach((n) => {
-        if (n.children && n.children.length > 0) {
-          allIds.add(n.id)
-          collectIds(n.children)
-        }
-      })
-    }
-    collectIds(tree)
-    setCollapsedNodes(allIds)
-  }
+  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
+    if (!latest?.result?.nodes) return { nodes: [], edges: [] }
+    return layoutMindMap(latest.result.nodes, latest.result.edges)
+  }, [latest])
 
   if (!hasReadyDocs) {
     return (
@@ -189,7 +187,7 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
         <div className="rounded-full bg-gray-100 p-4 mb-4">
           <Network className="h-8 w-8 text-gray-400" />
         </div>
-        <p className="text-gray-500 text-center">Upload documents first to generate a mind map</p>
+        <p className="text-gray-500">Upload documents first to generate a mind map</p>
       </div>
     )
   }
@@ -208,73 +206,144 @@ export function MindMapTab({ hasReadyDocs, generations, isLoading, onGenerate }:
 
   if (failed && !latest) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex flex-col items-center justify-center pt-12">
-          <div className="rounded-full bg-red-50 p-4 mb-4">
-            <AlertCircle className="h-8 w-8 text-red-400" />
-          </div>
-          <p className="text-sm font-medium text-gray-700">Mind map generation failed</p>
-          <p className="text-xs text-gray-400 mt-1">Something went wrong. Please try again.</p>
-          <Button onClick={onGenerate} disabled={isLoading} variant="outline" className="mt-4 gap-2">
-            <RotateCcw className="h-4 w-4" />
-            Retry
-          </Button>
+      <div className="mx-auto max-w-3xl flex flex-col items-center pt-16">
+        <div className="rounded-full bg-red-50 p-4 mb-4">
+          <AlertCircle className="h-8 w-8 text-red-400" />
         </div>
+        <p className="text-sm font-medium text-gray-700">Generation failed</p>
+        <Button onClick={onGenerate} disabled={isLoading} variant="outline" className="mt-4 gap-2">
+          <RotateCcw className="h-4 w-4" /> Retry
+        </Button>
       </div>
     )
   }
 
-  if (!latest || !latest.result?.nodes || latest.result.nodes.length === 0) {
+  if (!latest || layoutNodes.length === 0) {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex justify-center pt-4">
           <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Generate Mind Map
+            <Sparkles className="h-4 w-4" /> Generate Mind Map
           </Button>
         </div>
-        <div className="flex flex-col items-center justify-center pt-12">
-          <div className="rounded-full bg-gray-100 p-4 mb-4">
-            <Network className="h-8 w-8 text-gray-300" />
-          </div>
-          <p className="text-sm text-gray-400">No mind map generated yet</p>
+        <div className="flex flex-col items-center pt-12">
+          <Network className="h-12 w-12 text-gray-200 mb-3" />
+          <p className="text-sm text-gray-400">Visualize document concepts as a mind map</p>
         </div>
       </div>
     )
   }
 
-  const tree = buildTree(latest.result.nodes, latest.result.edges)
+  // Compute viewBox
+  const padding = 80
+  const allX = layoutNodes.map(n => n.x)
+  const allY = layoutNodes.map(n => n.y)
+  const minX = Math.min(...allX) - padding
+  const minY = Math.min(...allY) - padding
+  const maxX = Math.max(...allX) + padding
+  const maxY = Math.max(...allY) + padding
+  const width = maxX - minX
+  const height = maxY - minY
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={expandAll} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition">
-            Expand all
-          </button>
-          <span className="text-gray-300">|</span>
-          <button onClick={collapseAll} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition">
-            Collapse all
-          </button>
-        </div>
+    <div className="mx-auto max-w-full space-y-4">
+      {/* Controls */}
+      <div className="flex items-center justify-between px-2">
         <Button onClick={onGenerate} disabled={isLoading} variant="outline" size="sm" className="gap-2">
-          <RotateCcw className="h-3 w-3" />
-          Regenerate
+          <RotateCcw className="h-3 w-3" /> Regenerate
         </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.max(0.4, z - 0.15))}>
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.min(2, z + 0.15))}>
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setZoom(0.9)}>
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Tree */}
-      <div className="rounded-xl border bg-white p-6 space-y-2 overflow-x-auto">
-        {tree.map((node) => (
-          <TreeNodeComponent
-            key={node.id}
-            node={node}
-            level={0}
-            collapsedNodes={collapsedNodes}
-            toggleCollapse={toggleCollapse}
-          />
-        ))}
+      {/* SVG Mind Map */}
+      <div className="rounded-xl border bg-gradient-to-br from-gray-50 to-white overflow-auto" style={{ height: '550px' }}>
+        <svg
+          width={width * zoom}
+          height={height * zoom}
+          viewBox={`${minX} ${minY} ${width} ${height}`}
+          className="mx-auto"
+        >
+          {/* Edges - dotted curved lines */}
+          {layoutEdges.map((edge, i) => {
+            const mx = (edge.x1 + edge.x2) / 2
+            const my = (edge.y1 + edge.y2) / 2
+            // Slight curve
+            const dx = edge.x2 - edge.x1
+            const dy = edge.y2 - edge.y1
+            const cx1 = mx + dy * 0.1
+            const cy1 = my - dx * 0.1
+
+            return (
+              <path
+                key={`edge-${i}`}
+                d={`M ${edge.x1} ${edge.y1} Q ${cx1} ${cy1} ${edge.x2} ${edge.y2}`}
+                fill="none"
+                stroke={edge.color}
+                strokeWidth="2"
+                strokeDasharray="5 4"
+                opacity={0.7}
+              />
+            )
+          })}
+
+          {/* Nodes */}
+          {layoutNodes.map((node) => {
+            const textLen = node.label.length * node.fontSize * 0.55
+            const padX = 16
+            const padY = 8
+            const rectW = textLen + padX * 2
+            const rectH = node.fontSize + padY * 2
+            const rx = node.level === 0 ? 6 : 14
+
+            return (
+              <g key={node.id}>
+                {/* Shadow */}
+                <rect
+                  x={node.x - rectW / 2 + 2}
+                  y={node.y - rectH / 2 + 2}
+                  width={rectW}
+                  height={rectH}
+                  rx={rx}
+                  fill="rgba(0,0,0,0.05)"
+                />
+                {/* Background */}
+                <rect
+                  x={node.x - rectW / 2}
+                  y={node.y - rectH / 2}
+                  width={rectW}
+                  height={rectH}
+                  rx={rx}
+                  fill={node.color.bg}
+                  stroke={node.color.border}
+                  strokeWidth={node.level === 0 ? 3 : 2}
+                />
+                {/* Text */}
+                <text
+                  x={node.x}
+                  y={node.y + node.fontSize * 0.35}
+                  textAnchor="middle"
+                  fontSize={node.fontSize}
+                  fontWeight={node.level <= 1 ? 'bold' : 'normal'}
+                  fill={node.color.text}
+                  fontFamily="Inter, system-ui, sans-serif"
+                >
+                  {node.label}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
       </div>
     </div>
   )
