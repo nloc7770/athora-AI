@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mic,
@@ -8,21 +8,16 @@ import {
   Send,
   BookOpen,
   Sparkles,
+  Loader2,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { suggestedQuestions } from '@/data/mock'
+import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
 
 type TutorState = 'idle' | 'listening' | 'speaking'
-
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
 
 const courseOptions = [
   { id: 'cs101', label: 'CS 101' },
@@ -30,46 +25,77 @@ const courseOptions = [
   { id: 'bio150', label: 'BIO 150' },
 ]
 
-const displayedSuggestions = suggestedQuestions.slice(0, 4)
+const suggestedQuestions = [
+  'Explain the concept of recursion with a simple example',
+  'What are the key differences between stacks and queues?',
+  'Help me understand Big O notation',
+  'How does memory allocation work in programming?',
+]
 
 export default function TutorPage() {
   const [state, setState] = useState<TutorState>('idle')
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [activeCourse, setActiveCourse] = useState(courseOptions[0])
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const { sessions, isLoading: sessionsLoading, createSession } = useChatSessions()
+  const { messages, isLoading: messagesLoading, sendMessage, isStreaming } = useChatMessages(sessionId)
+
+  // Create or resume a tutor session on mount
+  useEffect(() => {
+    if (sessionsLoading) return
+
+    const tutorSession = sessions.find((s) => s.type === 'tutor')
+    if (tutorSession) {
+      setSessionId(tutorSession.id)
+    } else {
+      createSession({ type: 'tutor' })
+        .then((session) => setSessionId(session.id))
+        .catch(() => {
+          // Session creation failed - user can still see the UI
+        })
+    }
+  }, [sessions, sessionsLoading, createSession])
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages, isStreaming])
 
   const statusText: Record<TutorState, string> = {
     idle: 'Ready to help',
     listening: 'Listening...',
-    speaking: 'Speaking...',
+    speaking: 'Thinking...',
   }
 
   function toggleVoice() {
     setState((prev) => (prev === 'listening' ? 'idle' : 'listening'))
   }
 
-  function handleSend() {
-    if (!inputValue.trim()) return
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: inputValue.trim(),
-    }
-    const aiMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content:
-        "That's a great question! Let me think about this in the context of your course material...",
-    }
-    setMessages((prev) => [...prev, userMsg, aiMsg])
+  async function handleSend() {
+    const content = inputValue.trim()
+    if (!content || !sessionId || isStreaming) return
+
     setInputValue('')
     setState('speaking')
-    setTimeout(() => setState('idle'), 2000)
+
+    try {
+      await sendMessage(content)
+    } catch {
+      // Error is handled in the hook
+    } finally {
+      setState('idle')
+    }
   }
 
   function handleSuggestionClick(question: string) {
     setInputValue(question)
   }
+
+  const isInitializing = sessionsLoading || (!sessionId && !sessionsLoading)
 
   return (
     <div className="flex min-h-screen flex-col items-center px-4 py-8 md:py-12">
@@ -131,9 +157,9 @@ export default function TutorPage() {
           )}
         </AnimatePresence>
 
-        {/* Speaking wave animation */}
+        {/* Speaking/thinking wave animation */}
         <AnimatePresence>
-          {state === 'speaking' && (
+          {(state === 'speaking' || isStreaming) && (
             <motion.div
               className="absolute inset-0 rounded-full bg-indigo-500/10"
               initial={{ scale: 1 }}
@@ -144,7 +170,7 @@ export default function TutorPage() {
         </AnimatePresence>
 
         {/* Subtle idle ring pulse */}
-        {state === 'idle' && (
+        {state === 'idle' && !isStreaming && (
           <motion.div
             className="absolute inset-0 rounded-full border-2 border-indigo-300/30"
             animate={{ scale: [1, 1.12, 1], opacity: [0.4, 0.15, 0.4] }}
@@ -161,63 +187,97 @@ export default function TutorPage() {
 
       {/* Status text */}
       <motion.p
-        key={state}
+        key={isStreaming ? 'streaming' : state}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-8 text-sm font-medium text-zinc-400"
       >
-        {statusText[state]}
+        {isStreaming ? 'Thinking...' : statusText[state]}
       </motion.p>
 
       {/* Conversation area */}
       <div className="w-full max-w-2xl flex-1">
-        {messages.length > 0 && (
-          <ScrollArea className="mb-8 max-h-[320px] w-full">
-            <div className="space-y-4 px-2">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-zinc-800 text-zinc-200'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-
-        {/* Suggested questions */}
-        {messages.length === 0 && (
-          <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {displayedSuggestions.map((question, index) => (
-              <motion.div
-                key={question}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.08 }}
-              >
-                <Card
-                  className="cursor-pointer bg-white border border-zinc-200 border-l-2 border-l-indigo-400 hover:border-indigo-200 hover:bg-indigo-50/60 p-4 transition-all duration-200"
-                  onClick={() => handleSuggestionClick(question)}
-                >
-                  <div className="flex items-start gap-3">
-                    <BookOpen className="mt-0.5 size-4 shrink-0 text-indigo-400" />
-                    <span className="text-sm leading-snug text-zinc-700">
-                      {question}
-                    </span>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+        {isInitializing ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="size-5 animate-spin text-zinc-400" />
+            <span className="ml-2 text-sm text-zinc-400">Setting up your tutor session...</span>
           </div>
+        ) : (
+          <>
+            {messages.length > 0 && (
+              <ScrollArea className="mb-8 max-h-[320px] w-full" ref={scrollRef}>
+                <div className="space-y-4 px-2">
+                  {messages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                          msg.role === 'user'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-zinc-800 text-zinc-200'
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {/* Streaming indicator */}
+                  {isStreaming && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex justify-start"
+                    >
+                      <div className="flex items-center gap-2 rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm text-zinc-400">
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>Thinking...</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+
+            {/* Suggested questions */}
+            {messages.length === 0 && !messagesLoading && (
+              <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {suggestedQuestions.map((question, index) => (
+                  <motion.div
+                    key={question}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.08 }}
+                  >
+                    <Card
+                      className="cursor-pointer bg-white border border-zinc-200 border-l-2 border-l-indigo-400 hover:border-indigo-200 hover:bg-indigo-50/60 p-4 transition-all duration-200"
+                      onClick={() => handleSuggestionClick(question)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <BookOpen className="mt-0.5 size-4 shrink-0 text-indigo-400" />
+                        <span className="text-sm leading-snug text-zinc-700">
+                          {question}
+                        </span>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Loading state for messages */}
+            {messagesLoading && messages.length === 0 && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-4 animate-spin text-zinc-400" />
+                <span className="ml-2 text-sm text-zinc-400">Loading messages...</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Text input row */}
@@ -227,19 +287,24 @@ export default function TutorPage() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSend()
+              if (e.key === 'Enter' && !e.shiftKey) handleSend()
             }}
             placeholder="Ask anything..."
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition-colors focus:border-indigo-300"
+            disabled={isInitializing || isStreaming}
+            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition-colors focus:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <Button
             variant="ghost"
             size="icon"
             onClick={handleSend}
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || isInitializing || isStreaming}
             className="size-10 rounded-xl"
           >
-            <Send className="size-4" />
+            {isStreaming ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
           </Button>
         </div>
       </div>
@@ -249,11 +314,12 @@ export default function TutorPage() {
         <motion.button
           onClick={toggleVoice}
           whileTap={{ scale: 0.92 }}
+          disabled={isInitializing}
           className={`relative flex size-16 items-center justify-center rounded-full shadow-lg shadow-indigo-500/20 transition-colors ${
             state === 'listening'
               ? 'bg-red-500 text-white shadow-red-500/20'
               : 'bg-indigo-600 text-white hover:bg-indigo-500'
-          }`}
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
           aria-label={state === 'listening' ? 'Stop listening' : 'Start voice input'}
         >
           {state === 'listening' && (
@@ -263,7 +329,7 @@ export default function TutorPage() {
               transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
             />
           )}
-          {state === 'idle' && (
+          {state === 'idle' && !isInitializing && (
             <motion.span
               className="absolute inset-0 rounded-full bg-indigo-400/20"
               animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.2, 0.5] }}

@@ -10,8 +10,11 @@ import {
   Zap,
   Clock,
   Check,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
-import { flashcards, courses } from '@/data/mock'
+import { useFlashcardSets, useDueCards } from '@/hooks/use-flashcards'
+import { useCourses } from '@/hooks/use-courses'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -19,38 +22,39 @@ import { Badge } from '@/components/ui/badge'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 
-const courseImageMap: Record<string, string> = {
-  cs101: '/images/course-cs.png',
-  math201: '/images/course-math.png',
-  bio150: '/images/course-bio.png',
-  phil100: '/images/course-phil.png',
-}
-
 export default function FlashcardsPage() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
   const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set())
 
+  const { courses, isLoading: coursesLoading } = useCourses()
+  const { sets, isLoading: setsLoading } = useFlashcardSets(selectedCourse ?? undefined)
+  const { cards: dueCards, isLoading: cardsLoading, error: cardsError, refresh: refreshDueCards } = useDueCards()
+
+  const isLoading = coursesLoading || cardsLoading
+
   const filteredCards = useMemo(() => {
-    if (!selectedCourse) return flashcards
-    return flashcards.filter((card) => card.courseId === selectedCourse)
-  }, [selectedCourse])
+    if (!selectedCourse) return dueCards
+    return dueCards.filter((card) => {
+      const cardSet = sets.find((s) => s.id === card.id.split('/')[0])
+      return cardSet?.courseId === selectedCourse
+    })
+  }, [selectedCourse, dueCards, sets])
 
   const currentCard = filteredCards[currentCardIndex]
-  const cardCourse = courses.find((c) => c.id === currentCard?.courseId)
 
-  const totalStreak = flashcards.reduce((sum, card) => sum + card.streak, 0)
-  const cardsDueToday = flashcards.filter(
-    (card) => card.nextReview === 'Today' || card.nextReview === null
+  const totalDue = dueCards.length
+  const masteredCards = dueCards.filter(
+    (card) => card.difficulty === 'easy'
   ).length
-  const masteredCards = flashcards.filter((card) => card.streak >= 5).length
 
   function handleFlip() {
     setIsFlipped((prev) => !prev)
   }
 
   function handleDifficultySelect(_difficulty: Difficulty) {
+    if (!currentCard) return
     setReviewedCards((prev) => new Set([...prev, currentCard.id]))
     setIsFlipped(false)
 
@@ -85,6 +89,31 @@ export default function FlashcardsPage() {
     setCurrentCardIndex(0)
     setIsFlipped(false)
     setReviewedCards(new Set())
+    refreshDueCards()
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6">
+        <Loader2 className="h-10 w-10 animate-spin text-zinc-400" />
+        <p className="text-sm text-zinc-500">Loading flashcards...</p>
+      </div>
+    )
+  }
+
+  if (cardsError) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6">
+        <div className="rounded-full bg-red-50 p-6">
+          <AlertCircle className="h-12 w-12 text-red-400" />
+        </div>
+        <h2 className="text-xl font-semibold text-zinc-800">Something went wrong</h2>
+        <p className="text-sm text-zinc-500">{cardsError}</p>
+        <Button className="mt-2" onClick={refreshDueCards}>
+          Try again
+        </Button>
+      </div>
+    )
   }
 
   if (filteredCards.length === 0) {
@@ -97,13 +126,24 @@ export default function FlashcardsPage() {
         <p className="text-sm text-zinc-500">
           All caught up! Generate new cards from your documents.
         </p>
-        <Button className="mt-2">Generate from documents</Button>
+        {selectedCourse && (
+          <Button
+            variant="outline"
+            className="mt-2"
+            onClick={() => {
+              setSelectedCourse(null)
+              setCurrentCardIndex(0)
+            }}
+          >
+            Show all courses
+          </Button>
+        )}
       </div>
     )
   }
 
   const progressPercent =
-    ((reviewedCards.size) / filteredCards.length) * 100
+    (reviewedCards.size / filteredCards.length) * 100
 
   return (
     <div className="min-h-screen bg-zinc-50 p-4 md:p-8">
@@ -112,13 +152,13 @@ export default function FlashcardsPage() {
         <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm">
           <Zap className="h-4 w-4 text-orange-500" />
           <span className="text-sm font-medium text-zinc-700">
-            Streak: {totalStreak}
+            Sets: {sets.length}
           </span>
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm">
           <Clock className="h-4 w-4 text-blue-500" />
           <span className="text-sm font-medium text-zinc-700">
-            Due today: {cardsDueToday}
+            Due today: {totalDue}
           </span>
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm">
@@ -139,27 +179,20 @@ export default function FlashcardsPage() {
         </div>
 
         {/* Course filter badges */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {courses.map((course) => (
-            <Badge
-              key={course.id}
-              variant={selectedCourse === course.id ? 'default' : 'outline'}
-              className="cursor-pointer transition-colors"
-              onClick={() => handleCourseFilter(course.id)}
-            >
-              {courseImageMap[course.id] && (
-                <span className="inline-block overflow-hidden rounded-lg ring-1 ring-zinc-200 mr-1">
-                  <img
-                    src={courseImageMap[course.id]}
-                    alt=""
-                    className="h-4 w-4 object-cover opacity-80"
-                  />
-                </span>
-              )}
-              {course.code}
-            </Badge>
-          ))}
-        </div>
+        {courses.length > 0 && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            {courses.map((course) => (
+              <Badge
+                key={course.id}
+                variant={selectedCourse === course.id ? 'default' : 'outline'}
+                className="cursor-pointer transition-colors"
+                onClick={() => handleCourseFilter(course.id)}
+              >
+                {course.code ?? course.name}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="mb-8">
@@ -202,13 +235,12 @@ export default function FlashcardsPage() {
                 className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-0 bg-white p-8 shadow-lg"
                 style={{ backfaceVisibility: 'hidden' }}
               >
-                {cardCourse && (
+                {currentCard.difficulty && (
                   <Badge
                     variant="outline"
                     className="absolute left-4 top-4 text-xs"
-                    style={{ borderColor: cardCourse.color, color: cardCourse.color }}
                   >
-                    {cardCourse.code}
+                    {currentCard.difficulty}
                   </Badge>
                 )}
                 <p className="text-center text-lg font-medium text-zinc-800 md:text-xl">
@@ -227,13 +259,12 @@ export default function FlashcardsPage() {
                   transform: 'rotateY(180deg)',
                 }}
               >
-                {cardCourse && (
+                {currentCard.difficulty && (
                   <Badge
                     variant="outline"
                     className="absolute left-4 top-4 text-xs"
-                    style={{ borderColor: cardCourse.color, color: cardCourse.color }}
                   >
-                    {cardCourse.code}
+                    {currentCard.difficulty}
                   </Badge>
                 )}
                 <p className="whitespace-pre-line text-center text-base text-zinc-700 md:text-lg">

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   FileText,
@@ -17,6 +18,9 @@ import {
   RotateCcw,
   PanelLeftClose,
   PanelLeftOpen,
+  Brain,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,8 +28,17 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { documents, chatMessages, suggestedQuestions } from "@/data/mock"
-import type { Message } from "@/data/mock"
+import { useChatSessions, useChatMessages } from "@/hooks/use-chat"
+import { useAiGeneration } from "@/hooks/use-ai-generation"
+import { useDocuments } from "@/hooks/use-documents"
+
+interface ChatMessageItem {
+  id: string
+  sessionId: string
+  role: "user" | "assistant"
+  content: string
+  createdAt: string
+}
 
 function formatMarkdownBold(text: string): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
@@ -41,46 +54,50 @@ function formatMarkdownBold(text: string): React.ReactNode[] {
   })
 }
 
-function DocumentViewer() {
+function formatTimestamp(isoString: string): string {
+  const date = new Date(isoString)
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+interface DocumentViewerProps {
+  document: { id: string; name: string; type: string; pageCount?: number } | null
+  isLoading: boolean
+}
+
+function DocumentViewer({ document, isLoading }: DocumentViewerProps) {
   const [zoom, setZoom] = useState(100)
   const [currentPage, setCurrentPage] = useState(1)
-  const document = documents[0]
-  const totalPages = document.pages ?? 42
+  const totalPages = document?.pageCount ?? 1
 
   const documentLines = [
-    { width: "85%" },
-    { width: "92%" },
-    { width: "78%" },
-    { width: "95%" },
-    { width: "88%" },
-    { width: "45%" },
-    { width: "0%" },
-    { width: "90%" },
-    { width: "82%" },
-    { width: "96%" },
-    { width: "74%" },
-    { width: "91%" },
-    { width: "87%" },
-    { width: "60%" },
-    { width: "0%" },
-    { width: "93%" },
-    { width: "85%" },
-    { width: "79%" },
-    { width: "94%" },
-    { width: "88%" },
-    { width: "52%" },
-    { width: "0%" },
-    { width: "86%" },
-    { width: "91%" },
-    { width: "77%" },
-    { width: "95%" },
-    { width: "83%" },
-    { width: "69%" },
+    { width: "85%" }, { width: "92%" }, { width: "78%" }, { width: "95%" },
+    { width: "88%" }, { width: "45%" }, { width: "0%" }, { width: "90%" },
+    { width: "82%" }, { width: "96%" }, { width: "74%" }, { width: "91%" },
+    { width: "87%" }, { width: "60%" }, { width: "0%" }, { width: "93%" },
+    { width: "85%" }, { width: "79%" }, { width: "94%" }, { width: "88%" },
+    { width: "52%" }, { width: "0%" }, { width: "86%" }, { width: "91%" },
+    { width: "77%" }, { width: "95%" }, { width: "83%" }, { width: "69%" },
   ]
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!document) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+        <FileText className="size-10 opacity-40" />
+        <p className="text-sm">No document selected</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col">
-      {/* Document header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10">
           <FileText className="size-4 text-indigo-500" />
@@ -89,25 +106,15 @@ function DocumentViewer() {
           <h2 className="truncate text-sm font-semibold">{document.name}</h2>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-[10px]">
-              {document.courseName}
+              {document.type}
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {totalPages} pages
+              {totalPages} {totalPages === 1 ? "page" : "pages"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Course thumbnail bar */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-zinc-100 bg-zinc-50/50">
-        <img src="/images/course-cs.png" alt="CS 101" className="h-8 w-8 rounded object-cover" />
-        <div>
-          <p className="text-sm font-medium text-zinc-900">Chapter 5 - Data Structures</p>
-          <p className="text-xs text-zinc-500">CS 101 • Page 1 of 42</p>
-        </div>
-      </div>
-
-      {/* Document content area */}
       <div className="relative flex-1 overflow-hidden bg-[#fafaf9] dark:bg-zinc-900/50">
         <ScrollArea className="h-full">
           <div className="flex justify-center p-6 md:p-10">
@@ -115,11 +122,8 @@ function DocumentViewer() {
               className="w-full max-w-[620px] rounded-sm border border-zinc-200 bg-white p-8 shadow-sm md:p-12 dark:border-zinc-700 dark:bg-zinc-800/80"
               style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
             >
-              {/* Simulated heading */}
               <div className="mb-6 h-5 w-[65%] rounded-sm bg-zinc-300 dark:bg-zinc-600" />
               <div className="mb-8 h-3 w-[40%] rounded-sm bg-zinc-200 dark:bg-zinc-700" />
-
-              {/* Simulated text lines */}
               <div className="space-y-2.5">
                 {documentLines.map((line, i) =>
                   line.width === "0%" ? (
@@ -133,15 +137,11 @@ function DocumentViewer() {
                   )
                 )}
               </div>
-
-              {/* Simulated figure placeholder */}
               <div className="my-8 flex h-32 items-center justify-center rounded-md border-2 border-dashed border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50">
                 <span className="text-xs text-muted-foreground">
-                  Figure 5.3 — Hash Table with Chaining
+                  Document preview placeholder
                 </span>
               </div>
-
-              {/* More text lines */}
               <div className="space-y-2.5">
                 {documentLines.slice(0, 12).map((line, i) => (
                   <div
@@ -155,13 +155,11 @@ function DocumentViewer() {
           </div>
         </ScrollArea>
 
-        {/* Page indicator */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur-sm">
           Page {currentPage} of {totalPages}
         </div>
       </div>
 
-      {/* Document toolbar */}
       <div className="flex items-center justify-between border-t px-3 py-2">
         <div className="flex items-center gap-1">
           <Button
@@ -210,7 +208,7 @@ function DocumentViewer() {
   )
 }
 
-function ChatMessage({ message, index }: { message: Message; index: number }) {
+function ChatMessage({ message, index }: { message: ChatMessageItem; index: number }) {
   const isUser = message.role === "user"
 
   return (
@@ -233,32 +231,90 @@ function ChatMessage({ message, index }: { message: Message; index: number }) {
           </p>
         ))}
         <p className="mt-1.5 text-[10px] text-muted-foreground">
-          {message.timestamp}
+          {formatTimestamp(message.createdAt)}
         </p>
       </div>
     </motion.div>
   )
 }
 
-function AIProfessorPanel() {
+interface AIProfessorPanelProps {
+  documentId: string | null
+}
+
+function AIProfessorPanel({ documentId }: AIProfessorPanelProps) {
   const [inputValue, setInputValue] = useState("")
-  const [messages] = useState<Message[]>(chatMessages)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [generatingType, setGeneratingType] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const { sessions, createSession } = useChatSessions(documentId ?? undefined)
+  const { messages, sendMessage, isLoading: messagesLoading, isStreaming } = useChatMessages(activeSessionId)
+  const { generations, generate, isLoading: generationsLoading, refresh: refreshGenerations } = useAiGeneration(documentId)
+
+  // Auto-select or create session
+  useEffect(() => {
+    if (!documentId) {
+      setActiveSessionId(null)
+      return
+    }
+
+    if (sessions.length > 0 && !activeSessionId) {
+      setActiveSessionId(sessions[0].id)
+    }
+  }, [sessions, documentId, activeSessionId])
+
+  const ensureSession = useCallback(async (): Promise<string> => {
+    if (activeSessionId) return activeSessionId
+
+    if (!documentId) throw new Error("No document selected")
+
+    const session = await createSession({ documentId, type: "document_chat" })
+    setActiveSessionId(session.id)
+    return session.id
+  }, [activeSessionId, documentId, createSession])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  const handleSend = async () => {
+    const content = inputValue.trim()
+    if (!content) return
+
+    setInputValue("")
+    await ensureSession()
+    await sendMessage(content)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handleGenerate = async (type: "summary" | "flashcards" | "exam" | "mindmap") => {
+    if (!documentId) return
+    setGeneratingType(type)
+    try {
+      await generate(type)
+    } finally {
+      setGeneratingType(null)
+    }
+  }
+
+  const summaryGeneration = generations.find((g) => g.type === "summary")
+  const flashcardsGeneration = generations.find((g) => g.type === "flashcards")
+
   return (
     <div className="flex h-full flex-col">
-      {/* Panel header */}
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600">
           <Bot className="size-4 text-white" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <img src="/images/tutor-avatar.png" alt="AI Professor" className="h-6 w-6 rounded-full" />
             <h3 className="text-sm font-semibold">AI Professor</h3>
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
               <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
@@ -268,7 +324,6 @@ function AIProfessorPanel() {
         </div>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="chat" className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b px-4 pt-1">
           <TabsList variant="line" className="h-8">
@@ -278,200 +333,228 @@ function AIProfessorPanel() {
           </TabsList>
         </div>
 
-        {/* Chat tab */}
         <TabsContent value="chat" className="flex flex-1 flex-col overflow-hidden">
-          {/* Messages */}
           <ScrollArea className="flex-1">
             <div className="space-y-4 p-4">
-              <AnimatePresence mode="popLayout">
-                {messages.map((msg, i) => (
-                  <ChatMessage key={msg.id} message={msg} index={i} />
-                ))}
-              </AnimatePresence>
-              <div ref={messagesEndRef} />
-
-              {/* Suggested questions */}
-              <div className="pt-2">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Suggested questions
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {suggestedQuestions.slice(0, 4).map((q, i) => (
-                    <motion.button
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.3 + i * 0.05 }}
-                      className="rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-foreground"
-                      onClick={() => setInputValue(q)}
-                    >
-                      {q}
-                    </motion.button>
-                  ))}
+              {messagesLoading && messages.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
                 </div>
-              </div>
+              ) : messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                  <Bot className="size-8 text-indigo-400 opacity-60" />
+                  <p className="text-sm text-muted-foreground">
+                    Ask a question about this document
+                  </p>
+                </div>
+              ) : (
+                <AnimatePresence mode="popLayout">
+                  {messages.map((msg, i) => (
+                    <ChatMessage key={msg.id} message={msg} index={i} />
+                  ))}
+                </AnimatePresence>
+              )}
+              {isStreaming && (
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-2 rounded-2xl border-l-2 border-l-indigo-200 px-4 py-2.5">
+                    <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                    <span className="text-sm text-muted-foreground">Thinking...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
-          {/* Input area */}
           <div className="border-t p-3">
             <div className="flex items-center gap-2">
               <Input
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Ask about this document..."
                 className="flex-1 rounded-full border-zinc-200 bg-zinc-50 px-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/50"
+                disabled={!documentId}
               />
               <Button
                 size="icon"
                 className="shrink-0 rounded-full bg-indigo-600 hover:scale-105 hover:bg-indigo-700 transition-transform"
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || isStreaming || !documentId}
+                onClick={handleSend}
               >
                 <Send className="size-3.5" />
               </Button>
             </div>
             <div className="mt-2 flex items-center gap-1.5">
-              <Button variant="ghost" size="xs" className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors">
-                <Sparkles className="size-3" />
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors"
+                onClick={() => handleGenerate("summary")}
+                disabled={generatingType !== null || !documentId}
+              >
+                {generatingType === "summary" ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
                 Summarize
               </Button>
-              <Button variant="ghost" size="xs" className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors">
-                <Layers className="size-3" />
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors"
+                onClick={() => handleGenerate("flashcards")}
+                disabled={generatingType !== null || !documentId}
+              >
+                {generatingType === "flashcards" ? <Loader2 className="size-3 animate-spin" /> : <Layers className="size-3" />}
                 Flashcards
               </Button>
-              <Button variant="ghost" size="xs" className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors">
-                <Headphones className="size-3" />
-                Audio Lesson
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors"
+                onClick={() => handleGenerate("exam")}
+                disabled={generatingType !== null || !documentId}
+              >
+                {generatingType === "exam" ? <Loader2 className="size-3 animate-spin" /> : <BookOpen className="size-3" />}
+                Exam
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground hover:bg-zinc-100 rounded-lg transition-colors"
+                onClick={() => handleGenerate("mindmap")}
+                disabled={generatingType !== null || !documentId}
+              >
+                {generatingType === "mindmap" ? <Loader2 className="size-3 animate-spin" /> : <Brain className="size-3" />}
+                Mind Map
               </Button>
             </div>
           </div>
         </TabsContent>
 
-        {/* Summary tab */}
         <TabsContent value="summary" className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
               <div className="mb-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Chapter Summary</h4>
-                <Button variant="ghost" size="xs" className="text-muted-foreground">
-                  <RotateCcw className="size-3" />
-                  Regenerate
+                <h4 className="text-sm font-semibold">Document Summary</h4>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="text-muted-foreground"
+                  onClick={() => handleGenerate("summary")}
+                  disabled={generatingType !== null || !documentId}
+                >
+                  {generatingType === "summary" ? <Loader2 className="size-3 animate-spin" /> : <RotateCcw className="size-3" />}
+                  {summaryGeneration ? "Regenerate" : "Generate"}
                 </Button>
               </div>
-              <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-                <p className="font-medium text-foreground">
-                  Chapter 5: Data Structures — Key Takeaways
-                </p>
-                <ul className="list-inside space-y-2">
-                  <li className="flex gap-2">
-                    <span className="mt-1 shrink-0 text-indigo-500">•</span>
-                    <span>
-                      <strong className="text-foreground">Hash Tables</strong> provide O(1) average-case
-                      lookup by mapping keys to array indices via a hash function. Collisions are
-                      handled through chaining or open addressing.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-1 shrink-0 text-indigo-500">•</span>
-                    <span>
-                      <strong className="text-foreground">Load Factor</strong> (alpha = n/m) determines
-                      when to resize. Typical threshold is 0.75 to balance space and performance.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-1 shrink-0 text-indigo-500">•</span>
-                    <span>
-                      <strong className="text-foreground">Binary Search Trees</strong> maintain sorted
-                      order with O(log n) operations when balanced. AVL and Red-Black trees guarantee
-                      balance.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-1 shrink-0 text-indigo-500">•</span>
-                    <span>
-                      <strong className="text-foreground">Graphs</strong> represent relationships via
-                      adjacency lists or matrices. BFS and DFS are fundamental traversal algorithms
-                      with distinct use cases.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-1 shrink-0 text-indigo-500">•</span>
-                    <span>
-                      <strong className="text-foreground">Heaps</strong> enable efficient priority queue
-                      operations. Min-heaps and max-heaps support O(log n) insert and extract.
-                    </span>
-                  </li>
-                </ul>
-                <Separator />
-                <p className="text-xs text-muted-foreground">
-                  Generated from pages 1-42 • Last updated 2 minutes ago
-                </p>
-              </div>
+
+              {generationsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : summaryGeneration?.result ? (
+                <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+                  <p className="whitespace-pre-wrap">{String(summaryGeneration.result)}</p>
+                  <Separator />
+                  <p className="text-xs text-muted-foreground">
+                    Generated {new Date(summaryGeneration.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ) : summaryGeneration?.status === "processing" ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-8">
+                  <Loader2 className="size-5 animate-spin text-indigo-500" />
+                  <p className="text-sm text-muted-foreground">Generating summary...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                  <Sparkles className="size-8 text-indigo-400 opacity-50" />
+                  <p className="text-sm text-muted-foreground">
+                    No summary yet. Click Generate to create one.
+                  </p>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
 
-        {/* Flashcards tab */}
         <TabsContent value="flashcards" className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
               <div className="mb-4">
-                <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700">
-                  <Sparkles className="size-3.5" />
-                  Generate from this document
+                <Button
+                  className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700"
+                  onClick={() => handleGenerate("flashcards")}
+                  disabled={generatingType !== null || !documentId}
+                >
+                  {generatingType === "flashcards" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-3.5" />
+                  )}
+                  {flashcardsGeneration ? "Regenerate flashcards" : "Generate from this document"}
                 </Button>
               </div>
 
-              <p className="mb-3 text-xs font-medium text-muted-foreground">
-                Preview (3 cards generated)
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  {
-                    front: "What is the time complexity of hash table lookup (average case)?",
-                    back: "O(1) — constant time via direct array index access through hashing.",
-                    difficulty: "easy",
-                  },
-                  {
-                    front: "Name two collision resolution strategies for hash tables.",
-                    back: "1. Chaining (linked lists at each bucket)\n2. Open addressing (linear/quadratic probing, double hashing)",
-                    difficulty: "medium",
-                  },
-                  {
-                    front: "When should a hash table be resized?",
-                    back: "When the load factor (n/m) exceeds the threshold (typically 0.75). Resizing doubles the array and rehashes all entries — O(n) but amortized O(1).",
-                    difficulty: "medium",
-                  },
-                ].map((card, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                    className="rounded-xl border bg-background p-4"
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <Badge
-                        variant="secondary"
-                        className={`text-[10px] ${
-                          card.difficulty === "easy"
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                        }`}
+              {generationsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : flashcardsGeneration?.result ? (
+                <div className="space-y-3">
+                  <p className="mb-3 text-xs font-medium text-muted-foreground">
+                    Flashcards generated
+                  </p>
+                  {Array.isArray(flashcardsGeneration.result) ? (
+                    (flashcardsGeneration.result as Array<{ front: string; back: string; difficulty?: string }>).map((card, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.08 }}
+                        className="rounded-xl border bg-background p-4"
                       >
-                        {card.difficulty}
-                      </Badge>
-                      <BookOpen className="size-3 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium">{card.front}</p>
-                    <Separator className="my-2" />
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {card.back}
+                        <div className="mb-2 flex items-center justify-between">
+                          {card.difficulty && (
+                            <Badge
+                              variant="secondary"
+                              className={`text-[10px] ${
+                                card.difficulty === "easy"
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                  : card.difficulty === "hard"
+                                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                              }`}
+                            >
+                              {card.difficulty}
+                            </Badge>
+                          )}
+                          <BookOpen className="size-3 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium">{card.front}</p>
+                        <Separator className="my-2" />
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                          {card.back}
+                        </p>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {String(flashcardsGeneration.result)}
                     </p>
-                  </motion.div>
-                ))}
-              </div>
+                  )}
+                </div>
+              ) : flashcardsGeneration?.status === "processing" ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-8">
+                  <Loader2 className="size-5 animate-spin text-indigo-500" />
+                  <p className="text-sm text-muted-foreground">Generating flashcards...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                  <Layers className="size-8 text-indigo-400 opacity-50" />
+                  <p className="text-sm text-muted-foreground">
+                    No flashcards yet. Click the button above to generate.
+                  </p>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
@@ -481,11 +564,24 @@ function AIProfessorPanel() {
 }
 
 export default function WorkspacePage() {
+  const searchParams = useSearchParams()
+  const documentId = searchParams.get("documentId")
+
+  const { documents, isLoading: documentsLoading } = useDocuments()
+  const activeDocument = documents.find((d) => d.id === documentId) ?? null
+
   const [mobileView, setMobileView] = useState<"document" | "chat">("document")
   const [showPanel, setShowPanel] = useState(true)
 
   return (
     <div className="flex h-full flex-col overflow-x-hidden">
+      {!documentId && !documentsLoading && (
+        <div className="flex items-center gap-2 border-b bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
+          <AlertCircle className="size-4 shrink-0" />
+          <p>No document selected. Open a document from your library to start.</p>
+        </div>
+      )}
+
       {/* Mobile toggle */}
       <div className="flex items-center border-b p-2 md:hidden">
         <Button
@@ -510,15 +606,13 @@ export default function WorkspacePage() {
 
       {/* Desktop split layout */}
       <div className="hidden flex-1 overflow-hidden md:flex">
-        {/* Left panel — document viewer */}
         <div
           className="flex-1 overflow-hidden border-r border-zinc-200/60 transition-all dark:border-zinc-700/60"
           style={{ flex: showPanel ? "1 1 50%" : "1 1 100%" }}
         >
-          <DocumentViewer />
+          <DocumentViewer document={activeDocument} isLoading={documentsLoading} />
         </div>
 
-        {/* Toggle panel button */}
         <div className="relative">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white/80 to-transparent dark:from-zinc-900/80" />
           <button
@@ -534,7 +628,6 @@ export default function WorkspacePage() {
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white/80 to-transparent dark:from-zinc-900/80" />
         </div>
 
-        {/* Right panel — AI professor */}
         {showPanel && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
@@ -543,14 +636,18 @@ export default function WorkspacePage() {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <AIProfessorPanel />
+            <AIProfessorPanel documentId={documentId} />
           </motion.div>
         )}
       </div>
 
       {/* Mobile view */}
       <div className="flex flex-1 overflow-hidden md:hidden">
-        {mobileView === "document" ? <DocumentViewer /> : <AIProfessorPanel />}
+        {mobileView === "document" ? (
+          <DocumentViewer document={activeDocument} isLoading={documentsLoading} />
+        ) : (
+          <AIProfessorPanel documentId={documentId} />
+        )}
       </div>
     </div>
   )
