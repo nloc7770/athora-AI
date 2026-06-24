@@ -121,6 +121,7 @@ export class ChatService {
     userId: string,
     sessionId: string,
     message: string,
+    courseContext?: string,
   ): Promise<ChatResponse> {
     const session = await this.getSessionOrThrow(userId, sessionId);
     const history = await this.getHistory(userId, sessionId);
@@ -139,7 +140,7 @@ export class ChatService {
       assistantContent = result.content;
       sources = result.sources;
     } else {
-      assistantContent = await this.handleTutorChat(message, history);
+      assistantContent = await this.handleTutorChat(message, history, courseContext);
     }
 
     const assistantMessage = await this.storeMessage(
@@ -305,9 +306,14 @@ export class ChatService {
   private async handleTutorChat(
     message: string,
     history: ChatMessageRecord[],
+    courseContext?: string,
   ): Promise<string> {
+    const systemPrompt = courseContext
+      ? `${TUTOR_SYSTEM_PROMPT}\n\nThe student is currently studying: ${courseContext}. Tailor your responses to this course context.`
+      : TUTOR_SYSTEM_PROMPT;
+
     const llmMessages: LlmChatMessage[] = [
-      { role: 'system', content: TUTOR_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...this.buildHistoryMessages(history),
       { role: 'user', content: message },
     ];

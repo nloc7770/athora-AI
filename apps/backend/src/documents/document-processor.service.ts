@@ -111,7 +111,7 @@ export class DocumentProcessorService {
     documentId: string,
   ): Promise<{ status: string; progress: number }> {
     const { data, error } = await this.supabaseService
-      .getAdminClient()
+      .getClient()
       .from('documents')
       .select('status, processing_progress')
       .eq('id', documentId)
@@ -128,12 +128,65 @@ export class DocumentProcessorService {
     };
   }
 
+  async getDocumentSignedUrl(
+    userId: string,
+    documentId: string,
+  ): Promise<{ url: string; expiresIn: number }> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('documents')
+      .select('file_url')
+      .eq('id', documentId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data?.file_url) {
+      throw new HttpException('Document not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Extract the storage path from the stored URL
+    // The file_url now contains a signed URL; derive path from known structure
+    const filePath = `${userId}/${documentId}`;
+
+    // List files in the document folder to find the actual file
+    const { data: files, error: listError } = await this.supabaseService
+      .getAdminClient()
+      .storage.from(this.storageBucket)
+      .list(filePath);
+
+    if (listError || !files || files.length === 0) {
+      throw new HttpException(
+        'Document file not found in storage',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const fullPath = `${filePath}/${files[0].name}`;
+    const expiresIn = 3600;
+
+    const { data: signedUrlData, error: signedUrlError } =
+      await this.supabaseService
+        .getAdminClient()
+        .storage.from(this.storageBucket)
+        .createSignedUrl(fullPath, expiresIn);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      throw new HttpException(
+        'Failed to generate signed URL',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return { url: signedUrlData.signedUrl, expiresIn };
+  }
+
   private async uploadToStorage(
     userId: string,
     documentId: string,
     file: Express.Multer.File,
   ): Promise<string> {
-    const filePath = `${userId}/${documentId}/${file.originalname}`;
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `${userId}/${documentId}/${safeName}`;
 
     const { error } = await this.supabaseService
       .getAdminClient()
@@ -147,14 +200,19 @@ export class DocumentProcessorService {
       throw new Error(`Storage upload failed: ${error.message}`);
     }
 
-    const {
-      data: { publicUrl },
-    } = this.supabaseService
-      .getAdminClient()
-      .storage.from(this.storageBucket)
-      .getPublicUrl(filePath);
+    const { data: signedUrlData, error: signedUrlError } =
+      await this.supabaseService
+        .getAdminClient()
+        .storage.from(this.storageBucket)
+        .createSignedUrl(filePath, 3600);
 
-    return publicUrl;
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      throw new Error(
+        `Failed to create signed URL: ${signedUrlError?.message ?? 'Unknown error'}`,
+      );
+    }
+
+    return signedUrlData.signedUrl;
   }
 
   private async getOrCreateDataset(
@@ -162,7 +220,7 @@ export class DocumentProcessorService {
     documentId: string,
   ): Promise<string> {
     const { data } = await this.supabaseService
-      .getAdminClient()
+      .getClient()
       .from('documents')
       .select('course_id, session_id')
       .eq('id', documentId)
@@ -175,7 +233,7 @@ export class DocumentProcessorService {
     // Priority 1: Use session's dataset (all docs in session share one dataset)
     if (sessionId) {
       const { data: session } = await this.supabaseService
-        .getAdminClient()
+        .getClient()
         .from('study_sessions')
         .select('ragflow_dataset_id')
         .eq('id', sessionId)
@@ -190,7 +248,7 @@ export class DocumentProcessorService {
     // Priority 2: Reuse course dataset if exists
     if (courseId) {
       const { data: existingDoc } = await this.supabaseService
-        .getAdminClient()
+        .getClient()
         .from('documents')
         .select('ragflow_dataset_id')
         .eq('user_id', userId)

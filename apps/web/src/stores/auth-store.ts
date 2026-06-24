@@ -5,6 +5,15 @@ import { apiClient } from '@/lib/api'
 
 const TOKEN_KEY = 'athora-token'
 const REFRESH_TOKEN_KEY = 'athora-refresh-token'
+const COOKIE_NAME = 'athora-token'
+
+function setTokenCookie(token: string): void {
+  document.cookie = `${COOKIE_NAME}=${token}; path=/; SameSite=Lax`
+}
+
+function clearTokenCookie(): void {
+  document.cookie = `${COOKIE_NAME}=; path=/; SameSite=Lax; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+}
 
 interface AuthState {
   user: User | null
@@ -35,6 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     localStorage.setItem(TOKEN_KEY, token)
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    setTokenCookie(token)
 
     set({
       user: response.user,
@@ -59,6 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(REFRESH_TOKEN_KEY)
+      clearTokenCookie()
 
       set({
         user: null,
@@ -85,6 +96,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       localStorage.setItem(TOKEN_KEY, newToken)
       localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken)
+      setTokenCookie(newToken)
 
       set({
         user: response.user,
@@ -96,6 +108,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(REFRESH_TOKEN_KEY)
+      clearTokenCookie()
 
       set({
         user: null,

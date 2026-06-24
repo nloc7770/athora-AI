@@ -26,7 +26,7 @@ const navigation = [
   { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
   { name: 'Flashcards', href: '/flashcards', icon: Layers },
   { name: 'Exam Mode', href: '/exam', icon: GraduationCap },
-  { name: 'Settings', href: '/dashboard', icon: Settings },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -79,7 +79,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navigation.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))
             return (
               <Link
                 key={item.name}
@@ -126,20 +126,9 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* Usage card */}
-        <div className="border-t border-zinc-100 p-4">
-          <div className="rounded-lg bg-zinc-50 p-3">
-            <div className="flex items-center justify-between text-xs text-zinc-500">
-              <span>AI Credits</span>
-              <span>847 / 1,000</span>
-            </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
-              <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-indigo-600 to-violet-600" />
-            </div>
-            <p className="mt-2 text-xs text-zinc-400">
-              Resets in 8 days
-            </p>
-          </div>
+        {/* Plan info */}
+        <div className="border-t border-zinc-100 px-4 py-3">
+          <p className="text-xs font-medium text-zinc-400">Free plan</p>
         </div>
       </aside>
     </>

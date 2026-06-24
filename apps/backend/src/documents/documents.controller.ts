@@ -60,6 +60,14 @@ export class DocumentsController {
     return this.documentProcessorService.getProcessingStatus(userId, id);
   }
 
+  @Get(':id/url')
+  getSignedUrl(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.documentProcessorService.getDocumentSignedUrl(userId, id);
+  }
+
   @Post()
   create(@CurrentUser('id') userId: string, @Body() dto: CreateDocumentDto) {
     return this.documentsService.create(userId, dto);

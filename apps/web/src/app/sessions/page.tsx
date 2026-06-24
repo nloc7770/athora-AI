@@ -11,6 +11,14 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr)
@@ -36,6 +44,7 @@ export default function SessionsPage() {
   const [creating, setCreating] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [search, setSearch] = useState('')
+  const [sessionToDelete, setSessionToDelete] = useState<{ id: string; name: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filteredSessions = sessions.filter((s) =>
@@ -180,7 +189,7 @@ export default function SessionsPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
-                            deleteSession(session.id)
+                            setSessionToDelete({ id: session.id, name: session.name })
                           }}
                         >
                           <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500" />
@@ -311,6 +320,37 @@ export default function SessionsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!sessionToDelete} onOpenChange={(open) => { if (!open) setSessionToDelete(null) }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete session</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <span className="font-medium text-foreground">&quot;{sessionToDelete?.name}&quot;</span>? All associated documents, quizzes, and flashcards will be permanently removed. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSessionToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (sessionToDelete) {
+                  deleteSession(sessionToDelete.id)
+                  setSessionToDelete(null)
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ProtectedRoute>
   )
 }

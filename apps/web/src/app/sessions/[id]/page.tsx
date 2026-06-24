@@ -170,7 +170,7 @@ export default function SessionWorkspace() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Chat state
-  const { sessions: chatSessions, createSession: createChatSession } = useChatSessions(sessionId)
+  const { sessions: chatSessions, createSession: createChatSession } = useChatSessions({ sessionId })
   const [chatSessionId, setChatSessionId] = useState<string | null>(null)
   const { messages, sendMessage, isLoading: chatLoading } = useChatMessages(chatSessionId)
   const [chatInput, setChatInput] = useState('')
@@ -203,9 +203,12 @@ export default function SessionWorkspace() {
     refresh()
   }
 
+  const handleUploadRef = useRef(handleUpload)
+  handleUploadRef.current = handleUpload
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    handleUpload(e.dataTransfer.files)
+    handleUploadRef.current(e.dataTransfer.files)
   }, [])
 
   const handleSendMessage = async () => {

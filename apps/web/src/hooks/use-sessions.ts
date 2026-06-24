@@ -62,8 +62,14 @@ export function useSessions() {
   }
 
   const deleteSession = async (id: string) => {
-    await apiClient.delete(`/sessions/${id}`)
-    setSessions((prev) => prev.filter((s) => s.id !== id))
+    const prev = sessions
+    try {
+      setSessions((s) => s.filter((session) => session.id !== id))
+      await apiClient.delete(`/sessions/${id}`)
+    } catch {
+      setSessions(prev)
+      useToastStore.getState().addToast('Failed to delete session', 'error')
+    }
   }
 
   const archiveSession = async (id: string) => {

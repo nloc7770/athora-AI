@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion, type Variants } from "framer-motion"
 import {
   BookOpen,
@@ -220,6 +221,7 @@ function CreateCourseForm({ onSubmit, isSubmitting }: CreateCourseFormProps) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { user } = useAuthStore()
   const { courses, isLoading: coursesLoading, createCourse } = useCourses()
   const { documents, isLoading: documentsLoading, uploadDocument } = useDocuments()
@@ -299,7 +301,10 @@ export default function DashboardPage() {
                 ? `You have ${coursesCount} course${coursesCount > 1 ? "s" : ""} and ${documentsCount} document${documentsCount !== 1 ? "s" : ""}.`
                 : "Get started by creating your first course."}
             </p>
-            <Button className="mt-4 bg-white text-indigo-600 hover:bg-indigo-50">
+            <Button
+              className="mt-4 bg-white text-indigo-600 hover:bg-indigo-50"
+              onClick={() => router.push(mostRecentDoc ? `/sessions/${mostRecentDoc.id}` : "/sessions")}
+            >
               Continue learning
             </Button>
           </div>
@@ -347,7 +352,7 @@ export default function DashboardPage() {
                 <span className="text-xs text-muted-foreground">
                   {mostRecentDoc.status === "ready" ? "Ready to study" : mostRecentDoc.status}
                 </span>
-                <Button size="sm">
+                <Button size="sm" onClick={() => router.push(`/sessions/${mostRecentDoc.id}`)}>
                   <PlayCircle className="size-3.5" data-icon="inline-start" />
                   Continue
                 </Button>
@@ -583,6 +588,7 @@ export default function DashboardPage() {
             variant="outline"
             size="lg"
             className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/tutor")}
           >
             <MessageSquare className="size-5 text-indigo-500" />
             <span className="text-xs">Ask AI</span>
@@ -591,6 +597,7 @@ export default function DashboardPage() {
             variant="outline"
             size="lg"
             className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/flashcards")}
           >
             <Zap className="size-5 text-amber-500" />
             <span className="text-xs">Review Flashcards</span>
@@ -599,6 +606,7 @@ export default function DashboardPage() {
             variant="outline"
             size="lg"
             className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/exam")}
           >
             <Sparkles className="size-5 text-violet-500" />
             <span className="text-xs">Start Exam</span>

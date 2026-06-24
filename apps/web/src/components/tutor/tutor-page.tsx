@@ -15,15 +15,16 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
+import { useCourses } from '@/hooks/use-courses'
 
-type TutorState = 'idle' | 'listening' | 'speaking'
-
-const courseOptions = [
-  { id: 'cs101', label: 'CS 101' },
-  { id: 'math201', label: 'MATH 201' },
-  { id: 'bio150', label: 'BIO 150' },
-]
+type TutorState = 'idle' | 'speaking'
 
 const suggestedQuestions = [
   'Explain the concept of recursion with a simple example',
@@ -35,12 +36,22 @@ const suggestedQuestions = [
 export default function TutorPage() {
   const [state, setState] = useState<TutorState>('idle')
   const [inputValue, setInputValue] = useState('')
-  const [activeCourse, setActiveCourse] = useState(courseOptions[0])
+  const [activeCourseId, setActiveCourseId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  const { courses, isLoading: coursesLoading } = useCourses()
   const { sessions, isLoading: sessionsLoading, createSession } = useChatSessions()
   const { messages, isLoading: messagesLoading, sendMessage, isStreaming } = useChatMessages(sessionId)
+
+  // Set initial active course when courses load
+  useEffect(() => {
+    if (courses.length > 0 && !activeCourseId) {
+      setActiveCourseId(courses[0].id)
+    }
+  }, [courses, activeCourseId])
+
+  const activeCourse = courses.find((c) => c.id === activeCourseId) ?? null
 
   // Create or resume a tutor session on mount
   useEffect(() => {
@@ -67,13 +78,9 @@ export default function TutorPage() {
 
   const statusText: Record<TutorState, string> = {
     idle: 'Ready to help',
-    listening: 'Listening...',
     speaking: 'Thinking...',
   }
 
-  function toggleVoice() {
-    setState((prev) => (prev === 'listening' ? 'idle' : 'listening'))
-  }
 
   async function handleSend() {
     const content = inputValue.trim()
@@ -83,7 +90,8 @@ export default function TutorPage() {
     setState('speaking')
 
     try {
-      await sendMessage(content)
+      const courseContext = activeCourse?.name ?? undefined
+      await sendMessage(content, courseContext)
     } catch {
       // Error is handled in the hook
     } finally {
@@ -104,16 +112,22 @@ export default function TutorPage() {
         <Sparkles className="size-4 text-zinc-400" />
         <span className="text-sm text-zinc-500">Context:</span>
         <div className="flex gap-1.5">
-          {courseOptions.map((course) => (
-            <Badge
-              key={course.id}
-              variant={activeCourse.id === course.id ? 'default' : 'outline'}
-              className="cursor-pointer transition-colors"
-              onClick={() => setActiveCourse(course)}
-            >
-              {course.label}
-            </Badge>
-          ))}
+          {coursesLoading ? (
+            <Loader2 className="size-3.5 animate-spin text-zinc-400" />
+          ) : courses.length === 0 ? (
+            <span className="text-xs text-zinc-400">No courses yet</span>
+          ) : (
+            courses.map((course) => (
+              <Badge
+                key={course.id}
+                variant={activeCourseId === course.id ? 'default' : 'outline'}
+                className="cursor-pointer transition-colors"
+                onClick={() => setActiveCourseId(course.id)}
+              >
+                {course.code ?? course.name}
+              </Badge>
+            ))
+          )}
         </div>
       </div>
 
@@ -121,41 +135,6 @@ export default function TutorPage() {
       <div className="relative mb-6 flex items-center justify-center">
         {/* Radial glow behind avatar */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,_rgba(129,140,248,0.15)_0%,_transparent_70%)] pointer-events-none" />
-        {/* Pulsing rings when listening */}
-        <AnimatePresence>
-          {state === 'listening' && (
-            <>
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-indigo-400/40"
-                initial={{ scale: 1, opacity: 0.6 }}
-                animate={{ scale: 1.6, opacity: 0 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
-              />
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-indigo-400/30"
-                initial={{ scale: 1, opacity: 0.4 }}
-                animate={{ scale: 2, opacity: 0 }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: 'easeOut',
-                  delay: 0.4,
-                }}
-              />
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-indigo-400/20"
-                initial={{ scale: 1, opacity: 0.3 }}
-                animate={{ scale: 2.4, opacity: 0 }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: 'easeOut',
-                  delay: 0.8,
-                }}
-              />
-            </>
-          )}
-        </AnimatePresence>
 
         {/* Speaking/thinking wave animation */}
         <AnimatePresence>
@@ -309,39 +288,22 @@ export default function TutorPage() {
         </div>
       </div>
 
-      {/* Voice interaction button */}
+      {/* Voice interaction button - coming soon */}
       <div className="mt-8">
-        <motion.button
-          onClick={toggleVoice}
-          whileTap={{ scale: 0.92 }}
-          disabled={isInitializing}
-          className={`relative flex size-16 items-center justify-center rounded-full shadow-lg shadow-indigo-500/20 transition-colors ${
-            state === 'listening'
-              ? 'bg-red-500 text-white shadow-red-500/20'
-              : 'bg-indigo-600 text-white hover:bg-indigo-500'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-          aria-label={state === 'listening' ? 'Stop listening' : 'Start voice input'}
-        >
-          {state === 'listening' && (
-            <motion.span
-              className="absolute inset-0 rounded-full bg-red-400/30"
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          )}
-          {state === 'idle' && !isInitializing && (
-            <motion.span
-              className="absolute inset-0 rounded-full bg-indigo-400/20"
-              animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.2, 0.5] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          )}
-          {state === 'listening' ? (
-            <MicOff className="relative z-10 size-6" />
-          ) : (
-            <Mic className="relative z-10 size-6" />
-          )}
-        </motion.button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger
+              disabled
+              className="relative flex size-16 items-center justify-center rounded-full bg-indigo-600/50 text-white/60 shadow-lg shadow-indigo-500/10 cursor-not-allowed"
+              aria-label="Voice input - coming soon"
+            >
+              <Mic className="relative z-10 size-6" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Coming soon</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   )

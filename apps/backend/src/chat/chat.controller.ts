@@ -52,7 +52,7 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) sessionId: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.chatService.sendMessage(userId, sessionId, dto.content);
+    return this.chatService.sendMessage(userId, sessionId, dto.content, dto.courseContext);
   }
 
   @Sse('sessions/:id/messages/stream')

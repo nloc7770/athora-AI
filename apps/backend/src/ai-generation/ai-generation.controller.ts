@@ -7,6 +7,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import { AiGenerationService } from './ai-generation.service';
 import { GenerateDto, GenerateSessionDto } from './dto/generate.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
@@ -18,6 +19,8 @@ export class AiGenerationController {
   constructor(private readonly aiGenerationService: AiGenerationService) {}
 
   @Post('generate')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   generate(
     @CurrentUser('id') userId: string,
     @Body() dto: GenerateDto,
@@ -26,6 +29,8 @@ export class AiGenerationController {
   }
 
   @Post('generate-session')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   generateSession(
     @CurrentUser('id') userId: string,
     @Body() dto: GenerateSessionDto,

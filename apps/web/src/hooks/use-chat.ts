@@ -36,11 +36,23 @@ interface UseChatMessagesReturn {
   messages: ChatMessage[]
   isLoading: boolean
   error: string | null
-  sendMessage: (content: string) => Promise<void>
+  sendMessage: (content: string, courseContext?: string) => Promise<void>
   isStreaming: boolean
 }
 
-export function useChatSessions(documentId?: string): UseChatSessionsReturn {
+interface ChatSessionsConfig {
+  sessionId?: string
+  documentId?: string
+}
+
+export function useChatSessions(config?: string | ChatSessionsConfig): UseChatSessionsReturn {
+  // Support legacy string argument as documentId for backward compatibility
+  const resolvedConfig: ChatSessionsConfig | undefined =
+    typeof config === 'string' ? { documentId: config } : config
+
+  const sessionId = resolvedConfig?.sessionId
+  const documentId = resolvedConfig?.documentId
+
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +62,11 @@ export function useChatSessions(documentId?: string): UseChatSessionsReturn {
     setError(null)
 
     try {
-      const params = documentId ? `?documentId=${documentId}` : ''
+      const searchParams = new URLSearchParams()
+      if (sessionId) searchParams.set('sessionId', sessionId)
+      if (documentId) searchParams.set('documentId', documentId)
+      const query = searchParams.toString()
+      const params = query ? `?${query}` : ''
       const data = await apiClient.get<ChatSession[]>(`/chat/sessions${params}`)
       setSessions(data)
     } catch (err) {
@@ -59,7 +75,7 @@ export function useChatSessions(documentId?: string): UseChatSessionsReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [documentId])
+  }, [sessionId, documentId])
 
   useEffect(() => {
     fetchSessions()
@@ -119,7 +135,7 @@ export function useChatMessages(sessionId: string | null): UseChatMessagesReturn
     }
   }, [sessionId])
 
-  const sendMessage = useCallback(async (content: string): Promise<void> => {
+  const sendMessage = useCallback(async (content: string, courseContext?: string): Promise<void> => {
     if (!sessionId) return
 
     // Optimistically add user message
@@ -135,15 +151,23 @@ export function useChatMessages(sessionId: string | null): UseChatMessagesReturn
     setIsStreaming(true)
 
     try {
+      const body: { content: string; courseContext?: string } = { content }
+      if (courseContext) {
+        body.courseContext = courseContext
+      }
+
       const response = await apiClient.post<ChatMessage>(
         `/chat/sessions/${sessionId}/messages`,
-        { content }
+        body
       )
 
-      // Replace optimistic message and add assistant response
+      // Confirm the optimistic user message and append assistant response
       setMessages((prev) => {
-        const withoutOptimistic = prev.filter((m) => m.id !== optimisticUserMessage.id)
-        return [...withoutOptimistic, response]
+        return prev.map((m) =>
+          m.id === optimisticUserMessage.id
+            ? { ...m, id: `confirmed-${Date.now()}` }
+            : m
+        ).concat(response)
       })
     } catch (err) {
       // Remove optimistic message on failure
