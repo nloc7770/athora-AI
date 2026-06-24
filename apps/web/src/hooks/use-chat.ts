@@ -22,6 +22,7 @@ interface ChatMessage {
 
 interface CreateSessionInput {
   documentId?: string
+  sessionId?: string
   type: 'document_chat' | 'tutor'
 }
 

@@ -214,7 +214,7 @@ export default function SessionWorkspace() {
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return
     if (!chatSessionId) {
-      const newSession = await createChatSession({ documentId: undefined, type: 'document_chat' })
+      const newSession = await createChatSession({ sessionId, type: 'document_chat' })
       setChatSessionId(newSession.id)
     }
     const msg = chatInput
