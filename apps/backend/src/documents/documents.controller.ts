@@ -17,6 +17,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { DocumentsService } from './documents.service';
 import { DocumentProcessorService } from './document-processor.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -74,6 +75,7 @@ export class DocumentsController {
   }
 
   @Post('upload')
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @CurrentUser('id') userId: string,
@@ -90,6 +92,20 @@ export class DocumentsController {
     @Body('courseId') courseId?: string,
     @Body('sessionId') sessionId?: string,
   ) {
+    // Validate PDF magic bytes
+    if (!file.buffer || file.buffer.length < 5) {
+      throw new BadRequestException(
+        'Invalid PDF file: file is empty or too small',
+      );
+    }
+
+    const header = file.buffer.subarray(0, 5).toString();
+    if (!header.startsWith('%PDF-')) {
+      throw new BadRequestException(
+        'Invalid PDF file: content does not match PDF format',
+      );
+    }
+
     const documentName = name || file.originalname.replace(/\.pdf$/i, '');
 
     const document = await this.documentsService.create(userId, {

@@ -11,6 +11,7 @@ import {
   MessageEvent,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
+import { Throttle } from '@nestjs/throttler';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
@@ -47,6 +48,7 @@ export class ChatController {
   }
 
   @Post('sessions/:id/messages')
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   async sendMessage(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) sessionId: string,

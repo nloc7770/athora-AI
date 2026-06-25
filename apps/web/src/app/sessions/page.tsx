@@ -119,6 +119,7 @@ export default function SessionsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
+                aria-label="Search sessions"
               />
             </div>
           </div>
@@ -187,6 +188,7 @@ export default function SessionsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label="Delete session"
                           onClick={(e) => {
                             e.stopPropagation()
                             setSessionToDelete({ id: session.id, name: session.name })

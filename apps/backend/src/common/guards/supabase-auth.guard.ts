@@ -12,15 +12,13 @@ export class SupabaseAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers['authorization'];
+    const token = this.extractToken(request);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       throw new UnauthorizedException(
-        'Missing or invalid authorization header',
+        'Missing or invalid authorization token',
       );
     }
-
-    const token = authHeader.replace('Bearer ', '');
 
     const {
       data: { user },
@@ -33,5 +31,21 @@ export class SupabaseAuthGuard implements CanActivate {
 
     request.user = user;
     return true;
+  }
+
+  private extractToken(request: any): string | null {
+    const authHeader = request.headers['authorization'];
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      return authHeader.replace('Bearer ', '');
+    }
+
+    // Fallback to httpOnly cookie
+    const cookieToken = request.cookies?.['athora-token'];
+    if (cookieToken) {
+      return cookieToken;
+    }
+
+    return null;
   }
 }

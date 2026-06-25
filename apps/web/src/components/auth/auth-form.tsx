@@ -59,7 +59,7 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && (
-              <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}

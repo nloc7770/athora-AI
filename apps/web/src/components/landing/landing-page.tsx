@@ -18,6 +18,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react'
 import { useInView } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -127,7 +128,12 @@ export default function LandingPage() {
               </Button>
             </Link>
           </div>
-          <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+          >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
@@ -200,7 +206,7 @@ export default function LandingPage() {
             <FadeUp delay={0.2}>
               <div className="relative lg:mt-6">
                 <div className="rounded-3xl border border-stone-200 bg-white p-3 shadow-xl rotate-2 hover:rotate-0 transition-transform duration-500">
-                  <img src="/images/hero-product.png" alt="Athora AI workspace" className="w-full rounded-2xl" />
+                  <Image src="/images/hero-product.png" alt="Athora AI workspace" width={800} height={600} priority sizes="(max-width: 768px) 100vw, 50vw" className="w-full rounded-2xl" />
                 </div>
                 <div
                   className="absolute -bottom-6 -left-6 rounded-xl border border-stone-200 bg-white p-3 shadow-lg max-w-[200px]"
@@ -395,8 +401,8 @@ export default function LandingPage() {
                     <h3 className="text-sm font-bold text-white mb-1">{feature.title}</h3>
                     <p className="text-xs text-stone-400 leading-relaxed">{feature.desc}</p>
                   </div>
-                  <div className="aspect-[4/3] overflow-hidden border-t border-stone-700/50">
-                    <img src={feature.img} alt={feature.title} className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500" />
+                  <div className="aspect-[4/3] overflow-hidden border-t border-stone-700/50 relative">
+                    <Image src={feature.img} alt={feature.title} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw" className="object-cover object-top group-hover:scale-105 transition duration-500" />
                   </div>
                 </Card>
               </FadeUp>
@@ -591,11 +597,13 @@ export default function LandingPage() {
                 <div
                   className={`group relative overflow-hidden rounded-2xl border border-stone-200 ${i === 1 ? 'sm:-translate-y-4' : ''} ${i === 2 ? 'sm:translate-y-4' : ''}`}
                 >
-                  <div className="aspect-[9/16] overflow-hidden">
-                    <img
+                  <div className="aspect-[9/16] overflow-hidden relative">
+                    <Image
                       src={image.src}
                       alt={image.alt}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 640px) 50vw, 25vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
@@ -636,6 +644,7 @@ export default function LandingPage() {
                 placeholder="you@university.edu"
                 value={ctaEmail}
                 onChange={(e) => setCtaEmail(e.target.value)}
+                aria-label="Email address"
                 className="h-12 flex-1 border-stone-700 bg-stone-800 text-white placeholder:text-stone-500 focus-visible:ring-amber-500 rounded-xl"
               />
               <Button type="submit" className="h-12 bg-amber-600 text-white px-6 font-semibold rounded-full whitespace-nowrap hover:bg-amber-700 hover:scale-105 transition-all shadow-lg shadow-amber-600/20">

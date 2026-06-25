@@ -3,9 +3,6 @@ import type { ApiError } from './api-types'
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-const TOKEN_KEY = 'athora-token'
-const REFRESH_TOKEN_KEY = 'athora-refresh-token'
-
 const DEFAULT_TIMEOUT_MS = 30_000
 const UPLOAD_TIMEOUT_MS = 120_000
 const RETRY_DELAY_MS = 1_000
@@ -28,41 +25,13 @@ class ApiRequestError extends Error {
   }
 }
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  // Try cookie first
-  const cookie = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${TOKEN_KEY}=`))
-
-  if (cookie) {
-    return cookie.split('=')[1]
-  }
-
-  // Fall back to localStorage
-  return localStorage.getItem(TOKEN_KEY)
-}
-
-function clearAuthAndRedirect(): void {
+function redirectToLogin(): void {
   if (typeof window === 'undefined') return
-
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
-  document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
   window.location.href = '/login'
 }
 
 async function attemptTokenRefresh(): Promise<boolean> {
   if (typeof window === 'undefined') return false
-
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-
-  if (!refreshToken) {
-    return false
-  }
 
   // Deduplicate concurrent refresh attempts
   if (isRefreshing && refreshPromise) {
@@ -70,7 +39,7 @@ async function attemptTokenRefresh(): Promise<boolean> {
   }
 
   isRefreshing = true
-  refreshPromise = doRefresh(refreshToken)
+  refreshPromise = doRefresh()
 
   try {
     return await refreshPromise
@@ -80,30 +49,16 @@ async function attemptTokenRefresh(): Promise<boolean> {
   }
 }
 
-async function doRefresh(refreshToken: string): Promise<boolean> {
+async function doRefresh(): Promise<boolean> {
   try {
     const response = await fetch(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: 'include',
+      body: JSON.stringify({}),
     })
 
-    if (!response.ok) {
-      return false
-    }
-
-    const data = await response.json()
-    const newToken = data.session?.access_token
-    const newRefreshToken = data.session?.refresh_token
-
-    if (!newToken || !newRefreshToken) {
-      return false
-    }
-
-    localStorage.setItem(TOKEN_KEY, newToken)
-    localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken)
-
-    return true
+    return response.ok
   } catch {
     return false
   }
@@ -133,16 +88,11 @@ async function request<T>(
   body?: unknown,
   options?: RequestOptions
 ): Promise<T> {
-  const token = getToken()
   const isUpload = body instanceof FormData
   const timeoutMs = options?.timeoutMs ?? (isUpload ? UPLOAD_TIMEOUT_MS : DEFAULT_TIMEOUT_MS)
 
   const headers: Record<string, string> = {
     ...options?.headers,
-  }
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
   }
 
   if (body && !isUpload) {
@@ -170,6 +120,7 @@ async function request<T>(
         headers,
         body: isUpload ? body : body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
+        credentials: 'include',
       })
 
       clearTimeout(timeoutId)
@@ -186,12 +137,12 @@ async function request<T>(
           })
         }
 
-        clearAuthAndRedirect()
+        redirectToLogin()
         throw new ApiRequestError('Unauthorized', 401)
       }
 
       if (response.status === 401) {
-        clearAuthAndRedirect()
+        redirectToLogin()
         throw new ApiRequestError('Unauthorized', 401)
       }
 

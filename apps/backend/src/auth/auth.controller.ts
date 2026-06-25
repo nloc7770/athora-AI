@@ -3,9 +3,11 @@ import {
   Controller,
   Get,
   Post,
-  Headers,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -14,6 +16,15 @@ import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+const COOKIE_NAME = 'athora-token';
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
 
 @Controller('auth')
 export class AuthController {
@@ -29,15 +40,23 @@ export class AuthController {
   @Post('login')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto);
+
+    res.cookie(COOKIE_NAME, result.session.access_token, COOKIE_OPTIONS);
+
+    return result;
   }
 
   @Post('refresh')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  refresh(@Body() dto: RefreshDto) {
-    return this.authService.refreshSession(dto.refresh_token);
+  async refresh(@Body() dto: RefreshDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.refreshSession(dto.refresh_token);
+
+    res.cookie(COOKIE_NAME, result.session.access_token, COOKIE_OPTIONS);
+
+    return result;
   }
 
   @Post('forgot-password')
@@ -49,8 +68,12 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(SupabaseAuthGuard)
-  logout(@Headers('authorization') authHeader: string) {
-    const token = authHeader.replace('Bearer ', '');
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token =
+      req.headers['authorization']?.replace('Bearer ', '') ??
+      req.cookies?.['athora-token'] ??
+      '';
+    res.clearCookie(COOKIE_NAME, { path: '/' });
     return this.authService.logout(token);
   }
 

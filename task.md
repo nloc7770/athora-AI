@@ -1,316 +1,111 @@
-# Sprint: Critical UX & Trust Fixes
+# Sprint: Security, Performance & Production Readiness
 
-**Sprint Goal:** Fix all dead-end user flows, add legal compliance baseline, and resolve data-loss bugs so new users can sign up, upload, and study without hitting broken paths.
+**Sprint Goal:** Eliminate critical security vulnerabilities, fix performance blockers destroying Core Web Vitals, resolve navigation bugs, and establish baseline accessibility and SEO compliance.
 
-**Duration:** 1 week  
-**Priority:** P0 tasks are blockers. P1 tasks are high-value trust and retention fixes.
-
----
-
-## P0 - Launch Blockers
-
-### TASK-001: Wire all landing page CTA buttons to /register
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/landing/landing-page.tsx`
-
-**Fix:**
-1. Import `Link` from `next/link` or `useRouter` from `next/navigation`
-2. Wrap the nav "Get Started" button (line 111) in `<Link href="/register">`
-3. Wrap the mobile nav "Get Started" button (line 125) in `<Link href="/register">`
-4. Wrap the hero "Start free" button (line 172) in `<Link href="/register">`
-5. Wrap the Free plan "Get started" button (line 505) in `<Link href="/register">`
-6. Wrap the Pro plan "Start 14-day free trial" button (line 532) in `<Link href="/register">`
-7. Wire the final CTA email input + button (lines 603-609) into a form that submits to `/register?email={value}`
-
-**Effort:** S
+**Duration:** 1 week
+**Priority:** Critical = ship-blocking security/perf/bugs. High = this sprint. Medium = next sprint.
 
 ---
 
-### TASK-002: Create privacy policy and terms of service pages + cookie consent
+## Critical (fix now)
 
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/app/privacy/page.tsx` (new)
-- `/Users/locnguyen/project/athora/apps/web/src/app/terms/page.tsx` (new)
-- `/Users/locnguyen/project/athora/apps/web/src/components/landing/landing-page.tsx`
-- `/Users/locnguyen/project/athora/apps/web/src/components/ui/cookie-consent.tsx` (new)
-- `/Users/locnguyen/project/athora/apps/web/src/app/layout.tsx`
-- `/Users/locnguyen/project/athora/apps/web/src/components/auth/auth-form.tsx`
+### TASK-001: Move auth tokens to httpOnly cookies
+- Files: `apps/web/src/stores/auth-store.ts`, `apps/backend/src/auth/auth.controller.ts`, `apps/web/src/lib/api.ts`
+- Fix: Remove `localStorage.setItem(TOKEN_KEY, token)` and `document.cookie = ...` from auth-store.ts. Add a `/auth/session` endpoint on the backend that sets `Set-Cookie: token=<jwt>; HttpOnly; Secure; SameSite=Strict; Path=/`. Update api.ts to rely on cookie-based auth (remove Authorization header injection from localStorage). Backend auth guard already reads from header — add cookie fallback via `request.cookies['athora-token']`.
+- Effort: L
+- Acceptance: Tokens no longer appear in `localStorage` or readable `document.cookie`. Network tab shows `Set-Cookie` with HttpOnly flag on login response. App still authenticates correctly on page refresh.
 
-**Fix:**
-1. Create `/privacy` page covering: data collected, AI processing, third-party services, retention, GDPR rights, FERPA acknowledgment, deletion requests
-2. Create `/terms` page covering: acceptable use, subscription terms, AI-generated content disclaimer, liability limits
-3. Update footer links: Privacy -> `/privacy`, Terms -> `/terms`, Security -> `/privacy#security`
-4. Add a cookie consent banner component that renders at bottom of viewport, stores consent in localStorage, renders in root layout
-5. Add a required checkbox on register form: "I agree to the Terms of Service and Privacy Policy" with links
+### TASK-002: Remove unsafe-eval and unsafe-inline from CSP script-src
+- Files: `apps/web/next.config.ts`, create `apps/web/src/middleware.ts`
+- Fix: Replace `"script-src 'self' 'unsafe-inline' 'unsafe-eval'"` with nonce-based CSP. Create middleware.ts that generates a per-request nonce via `crypto.randomUUID()`, sets it as `x-nonce` header, then reference in CSP as `script-src 'self' 'nonce-${nonce}'`. Remove `'unsafe-eval'` entirely. Keep `style-src 'self' 'unsafe-inline'` for Tailwind.
+- Effort: M
+- Acceptance: Response headers show nonce in script-src, no unsafe-eval, no unsafe-inline. App renders without console CSP errors. Inline scripts use the nonce attribute.
 
-**Effort:** L
+### TASK-003: Replace all img tags with next/image on landing page
+- Files: `apps/web/src/components/landing/landing-page.tsx`
+- Fix: Import `Image` from `next/image`. Replace every `<img src="/images/..."` with `<Image>`. Hero image: add `priority`, `sizes="(max-width: 768px) 100vw, 50vw"`, `width={800}`, `height={600}`. All below-fold images: default lazy loading with explicit width/height matching actual dimensions. Remove any inline width/height style overrides that conflict.
+- Effort: M
+- Acceptance: `grep -r '<img' apps/web/src/components/landing/` returns zero results. Lighthouse LCP < 3s on simulated 4G. No CLS from images.
 
----
+### TASK-004: Split landing page into Server and Client components
+- Files: `apps/web/src/components/landing/landing-page.tsx`, `apps/web/src/app/page.tsx`, create `apps/web/src/components/landing/mobile-menu.tsx`, `apps/web/src/components/landing/testimonials-carousel.tsx`, `apps/web/src/components/landing/cta-form.tsx`
+- Fix: Remove `'use client'` from landing-page.tsx. Extract interactive parts into separate client components: (1) mobile-menu.tsx — hamburger toggle + menu overlay, (2) testimonials-carousel.tsx — horizontal scroll with buttons, (3) cta-form.tsx — email input + submit. Keep all other sections as server-rendered JSX. Replace framer-motion `useInView` with a lightweight client island using native IntersectionObserver or CSS `@starting-style`.
+- Effort: L
+- Acceptance: `grep "'use client'" apps/web/src/components/landing/landing-page.tsx` returns nothing. Page renders identically. JS bundle for landing route drops by >40% (verify via `next build` output or network tab).
 
-### TASK-003: Add error handling to file upload with retry support
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/app/sessions/[id]/page.tsx`
-- `/Users/locnguyen/project/athora/apps/web/src/hooks/use-documents.ts`
-
-**Fix:**
-1. In `handleUpload` (line 197-205 of session page), wrap the upload loop in try-catch
-2. On failure: show toast with error message, preserve selected files in state, do NOT call `refresh()` on error
-3. Add per-file upload status tracking: `{fileName, status: 'uploading'|'done'|'error', error?: string}`
-4. Show inline file list with status indicators during upload
-5. Add a "Retry failed" button that re-attempts only failed files
-6. In the hook, surface specific error messages (file too large, network error, auth expired)
-
-**Effort:** M
+### TASK-005: Fix dashboard "Continue learning" navigation bug
+- Files: `apps/web/src/components/dashboard/dashboard-page.tsx`
+- Fix: Line ~435: change `router.push(\`/sessions/${mostRecentDoc.id}\`)` to `router.push(\`/sessions/${mostRecentDoc.sessionId}\`)`. Verify the documents query returns `sessionId` on each document. If not available, add it to the select/join or route to `/documents/${mostRecentDoc.id}` instead.
+- Effort: S
+- Acceptance: Click "Continue learning" on dashboard with existing documents. Navigates to a valid session page (not 404). Test with multiple sessions.
 
 ---
 
-### TASK-004: Fix first-time user dashboard to show upload-first experience
+## High (this sprint)
 
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/dashboard/dashboard-page.tsx`
+### TASK-006: Create robots.txt and sitemap.xml
+- Files: Create `apps/web/src/app/robots.ts`, create `apps/web/src/app/sitemap.ts`
+- Fix: robots.ts — disallow /dashboard, /settings, /library, /flashcards, /exam, /tutor, /sessions, /api/. Allow /. Reference sitemap URL. sitemap.ts — include /, /login, /register, /privacy, /terms with appropriate changeFrequency and priority. Use env var or hardcode `https://athora.app` as base.
+- Effort: S
+- Acceptance: `curl localhost:3000/robots.txt` returns valid robots directives. `curl localhost:3000/sitemap.xml` returns valid XML with all public URLs listed.
 
-**Fix:**
-1. Detect first-time user: `documents.length === 0 && courses.length === 0 && !documentsLoading && !coursesLoading`
-2. When detected, render a full-width onboarding hero instead of the empty course grid:
-   - Large upload dropzone with text: "Drop your first PDF here to get started"
-   - Subtext: "We'll generate summaries, flashcards, and practice exams automatically"
-   - Accept drag-and-drop and click-to-upload
-3. On successful upload, create a default session named after the file, redirect to `/sessions/{id}`
-4. Skip the "create a course first" requirement entirely for onboarding uploads
+### TASK-007: Add rate limiting to chat and upload endpoints
+- Files: `apps/backend/src/chat/chat.controller.ts`, `apps/backend/src/documents/documents.controller.ts`, `apps/backend/src/app.module.ts`
+- Fix: Add `@Throttle({ default: { ttl: 60000, limit: 10 } })` to chat sendMessage method. Add `@Throttle({ default: { ttl: 60000, limit: 3 } })` to documents upload method. Add ThrottlerGuard as global APP_GUARD provider in app.module.ts. Add `@SkipThrottle()` to health check endpoint.
+- Effort: S
+- Acceptance: 11th chat message within 60s returns HTTP 429. 4th file upload within 60s returns HTTP 429. Health endpoint responds 200 regardless of rate.
 
-**Effort:** M
+### TASK-008: Add skip navigation link and fix modal focus trapping
+- Files: `apps/web/src/app/layout.tsx`, `apps/web/src/app/sessions/page.tsx`, `apps/web/src/components/landing/landing-page.tsx`
+- Fix: (1) Add skip link as first child in layout.tsx: `<a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg">Skip to main content</a>`. Add `id="main-content"` to `<main>`. (2) Replace session create modal's motion.div with Radix Dialog or wrap with react-focus-lock. (3) Add focus trap to mobile menu: move focus to first link on open, trap within, return to toggle on close.
+- Effort: M
+- Acceptance: Tab from page load — first focusable element is skip link. Enter jumps to main. Create session modal traps focus (Tab cycles within). Mobile menu traps focus when open.
 
----
+### TASK-009: Add aria-labels to icon-only buttons and form inputs
+- Files: `apps/web/src/components/landing/landing-page.tsx`, `apps/web/src/app/sessions/page.tsx`, `apps/web/src/components/layout/sidebar.tsx`, `apps/web/src/components/auth/auth-form.tsx`
+- Fix: (1) Mobile menu button: `aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}` + `aria-expanded={mobileMenuOpen}`. (2) Delete session buttons: `aria-label="Delete session"`. (3) Sidebar close button: `aria-label="Close sidebar"`. (4) Sessions search input: `aria-label="Search sessions"`. (5) CTA email input: `aria-label="Email address"`. (6) Modal form labels: add `htmlFor` to each label, matching `id` on each input. (7) Auth error div: add `role="alert"`.
+- Effort: S
+- Acceptance: Lighthouse accessibility audit returns zero "elements do not have accessible name" violations on landing, sessions, sidebar, and auth pages.
 
-## P1 - Trust & Retention
+### TASK-010: Add OG image and JSON-LD structured data
+- Files: Create `apps/web/public/og-image.png`, modify `apps/web/src/app/layout.tsx` or `apps/web/src/app/page.tsx`
+- Fix: (1) Create 1200x630 branded OG image with Athora logo + tagline "Study less. Remember everything." on amber/stone background. (2) Add openGraph images array to root metadata in layout.tsx. (3) Add JSON-LD script tag in page.tsx: SoftwareApplication schema (name: Athora, applicationCategory: EducationalApplication, offers: [{price: 0, name: Free}, {price: 12, name: Pro, billingPeriod: month}]). Add Organization schema (name: Athora, url).
+- Effort: M
+- Acceptance: Twitter card validator shows image preview. Google Rich Results Test validates JSON-LD without errors.
 
-### TASK-005: Add error state handling to session workspace
+### TASK-011: Make sessions table responsive for mobile
+- Files: `apps/web/src/app/sessions/page.tsx`
+- Fix: Below `md` breakpoint, replace 6-column table with card layout. Each card: session name (bold, truncated), file count badge, status badge, relative date. Use `hidden md:table` on table element and `md:hidden` on card container. Cards must be clickable (navigate to session) and have keyboard support (tabIndex, onKeyDown for Enter). Add `aria-label="Delete session"` to delete buttons within cards.
+- Effort: M
+- Acceptance: At 375px viewport width, sessions display as stacked cards with no horizontal overflow. At 1024px, table renders. Both layouts navigable via keyboard. Delete works in both views.
 
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/app/sessions/[id]/page.tsx`
-
-**Fix:**
-1. After the `isLoading` check (line 230-240), add an error state check:
-   ```tsx
-   if (error) {
-     return (
-       <ProtectedRoute><AppLayout>
-         <div className="flex h-full flex-col items-center justify-center gap-4">
-           <AlertCircle className="h-10 w-10 text-red-400" />
-           <p className="text-gray-700 font-medium">Failed to load session</p>
-           <p className="text-sm text-gray-500">{error}</p>
-           <div className="flex gap-3">
-             <Button onClick={refresh}>Retry</Button>
-             <Button variant="outline" onClick={() => router.push('/sessions')}>Back to sessions</Button>
-           </div>
-         </div>
-       </AppLayout></ProtectedRoute>
-     )
-   }
-   ```
-2. The `useSession` hook already returns `error` - destructure it in line 166
-
-**Effort:** S
+### TASK-012: Validate uploaded files by magic bytes
+- Files: `apps/backend/src/documents/documents.controller.ts`
+- Fix: After ParseFilePipe validation passes, add: `const header = file.buffer.subarray(0, 5).toString(); if (!header.startsWith('%PDF-')) { throw new BadRequestException('Invalid PDF file: content does not match PDF format'); }`. Place before calling document service.
+- Effort: S
+- Acceptance: Upload a .txt file renamed to .pdf — returns 400 with "Invalid PDF file" message. Upload valid PDF — succeeds normally. Upload empty file — returns 400.
 
 ---
 
-### TASK-006: Preserve chat input on send failure
+## Medium (next sprint)
 
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/app/sessions/[id]/page.tsx`
+### TASK-013: Fix color contrast and unify design tokens
+- Files: `apps/web/src/components/landing/landing-page.tsx`, `apps/web/src/app/sessions/page.tsx`, `apps/web/src/app/settings/page.tsx`
+- Fix: (1) Replace all `text-stone-400` on light backgrounds with `text-stone-500` (4.6:1 ratio). (2) Replace `text-stone-500` on dark backgrounds (bg-stone-900) with `text-stone-400` (5.6:1 ratio). (3) Replace `gray-*` tokens in sessions page with `stone-*`. (4) Replace `zinc-*` tokens in settings page with `stone-*`. Standardize entire app on stone palette.
+- Effort: S
+- Acceptance: Lighthouse accessibility: zero contrast violations. `grep -r 'text-gray-\|text-zinc-\|bg-gray-\|bg-zinc-' apps/web/src/` returns zero results (excluding third-party UI components).
 
-**Fix:**
-1. In `handleSendMessage` (lines 215-224), store the message before clearing:
-   ```tsx
-   const msg = chatInput
-   setChatInput('')
-   try {
-     await sendMessage(msg)
-   } catch {
-     setChatInput(msg) // restore on failure
-   }
-   ```
-2. The `useChatMessages` hook already handles the error state and removes the optimistic message - the UI just needs the input restored
-3. Show a toast on failure: `useToastStore.getState().addToast('Message failed to send. Please try again.', 'error')`
+### TASK-014: Add per-page metadata to all public routes
+- Files: `apps/web/src/app/page.tsx`, `apps/web/src/app/login/page.tsx`, `apps/web/src/app/register/page.tsx`
+- Fix: Add `export const metadata: Metadata` to each. Homepage: title "Athora — AI Study Assistant | Flashcards, Quizzes & Exam Prep", description ~155 chars with CTA. Login: "Sign In — Athora". Register: "Create Account — Athora". Each with unique descriptions targeting relevant keywords.
+- Effort: S
+- Acceptance: View page source for each route — unique `<title>` and `<meta name="description">` tags. No route shows bare "Athora" as its only title text.
 
-**Effort:** S
-
----
-
-### TASK-007: Remove or fix progress bars showing 0%
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/dashboard/dashboard-page.tsx`
-
-**Fix:**
-1. Find all `<Progress value={0} />` or progress indicators on the dashboard
-2. Remove the progress bars entirely from course cards until real tracking is implemented
-3. Replace the "Continue Learning" card with a "Recent Activity" card that shows last-accessed documents with timestamps
-4. Remove any "0% complete" text - replace with document count per course: "3 documents uploaded"
-
-**Effort:** M
-
----
-
-### TASK-008: Make AI Tutor suggested questions dynamic based on user courses
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/tutor/tutor-page.tsx`
-
-**Fix:**
-1. Replace the hardcoded `suggestedQuestions` array (lines 29-34) with dynamic generation
-2. When `activeCourse` is set, show course-relevant placeholder questions based on course name/subject
-3. Fallback to generic learning questions if no courses exist: "What would you like to learn about today?", "Help me understand a concept from my notes", "Quiz me on my recent uploads"
-4. Remove the disabled microphone button entirely (remove the Mic icon button with "Coming soon" tooltip)
-
-**Effort:** S
-
----
-
-### TASK-009: Add password requirements display and forgot password link
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/auth/auth-form.tsx`
-
-**Fix:**
-1. Below the password input (after line 96), when `mode === 'register'`, render:
-   ```tsx
-   <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
-   ```
-2. Below the password input, when `mode === 'login'`, render:
-   ```tsx
-   <Link href="/forgot-password" className="text-xs text-primary hover:underline self-end">
-     Forgot password?
-   </Link>
-   ```
-3. Create a minimal `/forgot-password` page that accepts email and calls the Supabase password reset endpoint
-
-**Effort:** S
-
----
-
-### TASK-010: Fix inconsistent color system - standardize on semantic tokens
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/dashboard/dashboard-page.tsx`
-- `/Users/locnguyen/project/athora/apps/web/src/components/layout/app-layout.tsx`
-- `/Users/locnguyen/project/athora/apps/web/src/components/tutor/tutor-page.tsx`
-- `/Users/locnguyen/project/athora/apps/web/src/components/layout/sidebar.tsx`
-
-**Fix:**
-1. In `app-layout.tsx`: replace `bg-white` with `bg-background`
-2. In `sidebar.tsx`: replace `bg-white` with `bg-sidebar` or `bg-background`
-3. In `dashboard-page.tsx`: replace any `indigo/violet` gradient with amber/orange brand gradient; replace raw `zinc-*` classes with `text-foreground`, `text-muted-foreground`, `bg-muted`
-4. In `tutor-page.tsx`: replace `bg-white` in message bubbles with `bg-card`; use `bg-primary/text-primary-foreground` for user messages
-5. Ensure all surfaces use semantic tokens from globals.css so dark mode works
-
-**Effort:** M
-
----
-
-### TASK-011: Remove FadeUp dead code wrapper or implement real animation
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/landing/landing-page.tsx`
-
-**Fix:**
-1. The `FadeUp` component (lines 24-30) is a no-op div wrapper
-2. Either implement a real intersection-observer animation:
-   ```tsx
-   import { useInView } from 'framer-motion'
-   function FadeUp({ children, className, delay = 0 }) {
-     const ref = useRef(null)
-     const isInView = useInView(ref, { once: true, margin: '-50px' })
-     return (
-       <div ref={ref} className={className} style={{
-         opacity: isInView ? 1 : 0,
-         transform: isInView ? 'translateY(0)' : 'translateY(20px)',
-         transition: `opacity 0.5s ease ${delay}s, transform 0.5s ease ${delay}s`
-       }}>
-         {children}
-       </div>
-     )
-   }
-   ```
-3. Or remove all `<FadeUp>` wrappers and leave children unwrapped (reduces DOM nesting by ~30 nodes)
-
-**Effort:** S
-
----
-
-### TASK-012: Fix unsubstantiated marketing stats
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/landing/landing-page.tsx`
-
-**Fix:**
-1. Line 149: Change "Helping 12,000+ students learn faster" to "Helping students learn faster" (remove specific number until verified)
-2. Lines 394-398: Add asterisk to stats and a small disclaimer below: `*Based on early user surveys, [month] [year]` - OR replace with softer language: "2.4x" -> "Significantly", "89%" -> "Most students", "1M+" -> keep if verifiable from DB
-3. Testimonials: Add a note `// TODO: Verify testimonials are from real users or add "Names changed" disclaimer`
-4. For David Park testimonial (line 58-62): Replace with a quote about consistent study habits, not cramming
-
-**Effort:** S
-
----
-
-### TASK-013: Add mobile nav Reviews link and fix footer dead links
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/landing/landing-page.tsx`
-
-**Fix:**
-1. In mobile nav (lines 119-128): Add `<a href="#testimonials" className="block text-sm text-stone-700">Reviews</a>` between Pricing and the buttons
-2. Footer Product links (line 633): Wire Features -> `#features`, Pricing -> `#pricing`, remove Changelog and Roadmap (or link to real pages if they exist)
-3. Footer Company links (line 641): Remove dead links. Keep only "Contact" pointing to `mailto:` or a real contact page
-4. Footer Legal links (line 649): Wire Privacy -> `/privacy`, Terms -> `/terms`, Security -> `/privacy#security`
-5. Line 656: Replace `2024` with `{new Date().getFullYear()}`
-
-**Effort:** S
-
----
-
-### TASK-014: Add keyboard navigation to flashcards tab
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/app/sessions/[id]/_components/flashcards-tab.tsx`
-
-**Fix:**
-1. Add `tabIndex={0}` to the flashcard container
-2. Add `onKeyDown` handler:
-   - ArrowLeft: previous card
-   - ArrowRight: next card
-   - Space/Enter: flip card
-3. Add `aria-label="Flashcard {current} of {total}"` and `role="region"`
-4. Add `aria-live="polite"` to the card content area so screen readers announce card changes
-5. Show keyboard shortcut hints below the card on desktop: "Use arrow keys to navigate, space to flip"
-
-**Effort:** S
-
----
-
-### TASK-015: Fix pricing section - add monthly/annual toggle
-
-**Files:**
-- `/Users/locnguyen/project/athora/apps/web/src/components/landing/landing-page.tsx`
-
-**Fix:**
-1. Add state: `const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')`
-2. Above the pricing cards (after line 487), add a toggle:
-   ```tsx
-   <div className="flex items-center justify-center gap-3 mt-8">
-     <span className={billingCycle === 'monthly' ? 'font-semibold' : 'text-stone-400'}>Monthly</span>
-     <button onClick={() => setBillingCycle(b => b === 'monthly' ? 'yearly' : 'monthly')} className="relative h-6 w-11 rounded-full bg-amber-200">
-       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-amber-600 transition ${billingCycle === 'yearly' ? 'left-5.5' : 'left-0.5'}`} />
-     </button>
-     <span className={billingCycle === 'yearly' ? 'font-semibold' : 'text-stone-400'}>Yearly <span className="text-amber-600 text-xs font-medium">Save 33%</span></span>
-   </div>
-   ```
-3. Show `$12/mo` for monthly, `$8/mo` (billed $96/year) for yearly
-4. CTA button text should reflect selection: "Start monthly" or "Start yearly plan"
-
-**Effort:** S
+### TASK-015: Respect prefers-reduced-motion in FadeUp animations
+- Files: `apps/web/src/components/landing/landing-page.tsx` (FadeUp component)
+- Fix: Add check for `window.matchMedia('(prefers-reduced-motion: reduce)')` (or `useReducedMotion` from framer-motion if still imported). When reduced motion is preferred, render children immediately with no transform/opacity transition. For flashcard flip in flashcards-tab.tsx, replace rotateY with instant opacity crossfade when reduced motion active.
+- Effort: S
+- Acceptance: With OS "Reduce motion" enabled: landing page elements appear instantly (no slide-up). Flashcards swap content without 3D rotation. No layout shift during either behavior.
 
 ---
 
@@ -318,15 +113,18 @@
 
 | Priority | Count | Total Effort |
 |----------|-------|--------------|
-| P0       | 4     | S + L + M + M |
-| P1       | 11    | S + S + M + S + S + M + S + S + S + S + S |
+| Critical | 5     | L + M + M + L + S |
+| High     | 7     | S + S + M + S + M + M + S |
+| Medium   | 3     | S + S + S |
 | **Total**| **15**| ~1 week with 2 devs |
 
 ## Execution Order
 
-1. TASK-001 (unblocks signups immediately)
-2. TASK-004 (unblocks first-time user flow)
-3. TASK-003 (prevents data loss)
-4. TASK-005 + TASK-006 (error resilience, can parallelize)
-5. TASK-002 (legal, needs review - start early, land last)
-6. TASK-007 through TASK-015 (parallelize across devs)
+1. TASK-001 + TASK-002 (security — unblocks safe production deploy)
+2. TASK-005 (critical bug — quick win)
+3. TASK-003 + TASK-004 (performance — can parallelize, largest LCP/FCP impact)
+4. TASK-007 + TASK-012 (backend security hardening — parallelize)
+5. TASK-006 + TASK-010 (SEO foundation — parallelize)
+6. TASK-008 + TASK-009 (accessibility — parallelize)
+7. TASK-011 (mobile UX)
+8. TASK-013 through TASK-015 (polish — next sprint or time permitting)

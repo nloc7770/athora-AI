@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { motion, type Variants } from "framer-motion"
 import {
   BookOpen,
@@ -416,10 +417,12 @@ export default function DashboardPage() {
       {/* Welcome Banner */}
       <motion.div variants={item}>
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/90 to-orange-500/80 p-8 mb-8 shadow-inner shadow-white/10">
-          <img
+          <Image
             src="/images/dashboard-banner.png"
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-soft-light"
+            fill
+            sizes="100vw"
+            className="object-cover opacity-20 mix-blend-soft-light"
           />
           <div className="relative">
             <h2 className="text-2xl font-bold text-white">
@@ -432,7 +435,7 @@ export default function DashboardPage() {
             </p>
             <Button
               className="mt-4 bg-white text-amber-700 hover:bg-amber-50"
-              onClick={() => router.push(mostRecentDoc ? `/sessions/${mostRecentDoc.id}` : "/sessions")}
+              onClick={() => router.push(mostRecentDoc?.session_id ? `/sessions/${mostRecentDoc.session_id}` : mostRecentDoc ? `/documents/${mostRecentDoc.id}` : "/sessions")}
             >
               Continue learning
             </Button>
@@ -477,9 +480,9 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted transition-colors cursor-pointer"
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/sessions/${doc.id}`)}
+                  onClick={() => router.push(doc.session_id ? `/sessions/${doc.session_id}` : `/documents/${doc.id}`)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") router.push(`/sessions/${doc.id}`)
+                    if (e.key === "Enter" || e.key === " ") router.push(doc.session_id ? `/sessions/${doc.session_id}` : `/documents/${doc.id}`)
                   }}
                 >
                   <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
