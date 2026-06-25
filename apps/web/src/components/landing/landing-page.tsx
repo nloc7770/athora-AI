@@ -388,15 +388,15 @@ export default function LandingPage() {
             ].map((feature, i) => (
               <FadeUp key={i} delay={i * 0.05}>
                 <Card className="border-stone-700/50 bg-stone-800 p-0 overflow-hidden h-full hover:border-stone-600 transition group">
-                  <div className="aspect-square overflow-hidden">
-                    <img src={feature.img} alt={feature.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                  </div>
-                  <div className="p-4">
+                  <div className="p-4 pb-3">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium mb-2 ${feature.badgeColor}`}>
                       {feature.badge}
                     </span>
                     <h3 className="text-sm font-bold text-white mb-1">{feature.title}</h3>
                     <p className="text-xs text-stone-400 leading-relaxed">{feature.desc}</p>
+                  </div>
+                  <div className="aspect-[4/3] overflow-hidden border-t border-stone-700/50">
+                    <img src={feature.img} alt={feature.title} className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500" />
                   </div>
                 </Card>
               </FadeUp>
