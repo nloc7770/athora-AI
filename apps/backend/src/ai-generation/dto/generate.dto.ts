@@ -32,6 +32,7 @@ export interface SummaryOutput {
 
 export interface FlashcardOutput {
   cards: { front: string; back: string; difficulty: 'easy' | 'medium' | 'hard' }[];
+  setId?: string;
 }
 
 export interface ExamOutput {
@@ -43,6 +44,7 @@ export interface ExamOutput {
     explanation: string;
     predictedLikelihood: 'high' | 'medium' | 'low';
   }[];
+  examId?: string;
 }
 
 export interface MindmapOutput {

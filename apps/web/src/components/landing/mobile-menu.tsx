@@ -27,7 +27,7 @@ export function MobileMenu() {
             <div className="flex items-center gap-3 pt-2">
               <Link href="/login" className="text-sm text-stone-600 font-medium">Log in</Link>
               <Link href="/register">
-                <Button size="sm" className="flex-1 bg-amber-600 text-white rounded-full">
+                <Button size="sm" className="flex-1 bg-purple-600 text-white rounded-full">
                   Get Started <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </Link>

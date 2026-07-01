@@ -8,22 +8,29 @@ interface FlashcardSet {
   name: string
   courseId?: string
   documentId?: string
+  documentName?: string
   cardCount: number
+  dueCount?: number
+  masteredCount?: number
   createdAt: string
   updatedAt: string
 }
 
 interface Flashcard {
   id: string
+  setId?: string
+  set_id?: string
   front: string
   back: string
   difficulty: string
   nextReviewAt?: string
+  next_review?: string | null
   createdAt: string
+  created_at?: string
 }
 
 interface FlashcardSetWithCards extends FlashcardSet {
-  cards: Flashcard[]
+  flashcards: Flashcard[]
 }
 
 interface UseFlashcardSetsReturn {
@@ -47,7 +54,40 @@ interface UseDueCardsReturn {
   refresh: () => Promise<void>
 }
 
-export function useFlashcardSets(courseId?: string): UseFlashcardSetsReturn {
+interface FlashcardSetApiResponse {
+  id: string
+  name: string
+  course_id?: string
+  document_id?: string
+  session_id?: string
+  flashcards: Array<{ count: number }>
+  mastered_count?: number
+  mastery_percent?: number
+  due_count?: number
+  created_at: string
+  updated_at?: string
+}
+
+function mapFlashcardSet(raw: FlashcardSetApiResponse): FlashcardSet {
+  const cardCount = raw.flashcards?.[0]?.count ?? 0
+  return {
+    id: raw.id,
+    name: raw.name,
+    courseId: raw.course_id,
+    documentId: raw.document_id,
+    cardCount,
+    dueCount: raw.due_count,
+    masteredCount: raw.mastered_count ?? (
+      raw.mastery_percent != null && cardCount > 0
+        ? Math.round((raw.mastery_percent / 100) * cardCount)
+        : undefined
+    ),
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at ?? raw.created_at,
+  }
+}
+
+export function useFlashcardSets(courseId?: string, filters?: { documentId?: string; sessionId?: string }): UseFlashcardSetsReturn {
   const [sets, setSets] = useState<FlashcardSet[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,16 +97,20 @@ export function useFlashcardSets(courseId?: string): UseFlashcardSetsReturn {
     setError(null)
 
     try {
-      const params = courseId ? `?courseId=${courseId}` : ''
-      const data = await apiClient.get<FlashcardSet[]>(`/flashcards/sets${params}`)
-      setSets(data)
+      const params = new URLSearchParams()
+      if (courseId) params.set('courseId', courseId)
+      if (filters?.documentId) params.set('documentId', filters.documentId)
+      if (filters?.sessionId) params.set('sessionId', filters.sessionId)
+      const qs = params.toString() ? `?${params.toString()}` : ''
+      const data = await apiClient.get<FlashcardSetApiResponse[]>(`/flashcards/sets${qs}`)
+      setSets(data.map(mapFlashcardSet))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch flashcard sets'
       setError(message)
     } finally {
       setIsLoading(false)
     }
-  }, [courseId])
+  }, [courseId, filters?.documentId, filters?.sessionId])
 
   useEffect(() => {
     fetchSets()
@@ -121,7 +165,7 @@ export function useFlashcardSet(setId: string | null): UseFlashcardSetReturn {
 
   return {
     set,
-    cards: set?.cards ?? [],
+    cards: set?.flashcards ?? [],
     isLoading,
     error,
   }

@@ -18,6 +18,7 @@ import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 const COOKIE_NAME = 'athora-token';
+const REFRESH_COOKIE_NAME = 'athora-refresh';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -44,6 +45,7 @@ export class AuthController {
     const result = await this.authService.login(dto);
 
     res.cookie(COOKIE_NAME, result.session.access_token, COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE_NAME, result.session.refresh_token, COOKIE_OPTIONS);
 
     return result;
   }
@@ -51,10 +53,19 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  async refresh(@Body() dto: RefreshDto, @Res({ passthrough: true }) res: Response) {
-    const result = await this.authService.refreshSession(dto.refresh_token);
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? req.body?.refresh_token;
+
+    if (!refreshToken) {
+      res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+      res.clearCookie(REFRESH_COOKIE_NAME, COOKIE_OPTIONS);
+      return { error: 'No refresh token' };
+    }
+
+    const result = await this.authService.refreshSession(refreshToken);
 
     res.cookie(COOKIE_NAME, result.session.access_token, COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE_NAME, result.session.refresh_token, COOKIE_OPTIONS);
 
     return result;
   }
@@ -73,7 +84,8 @@ export class AuthController {
       req.headers['authorization']?.replace('Bearer ', '') ??
       req.cookies?.['athora-token'] ??
       '';
-    res.clearCookie(COOKIE_NAME, { path: '/' });
+    res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
+    res.clearCookie(REFRESH_COOKIE_NAME, COOKIE_OPTIONS);
     return this.authService.logout(token);
   }
 

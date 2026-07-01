@@ -1,0 +1,21 @@
+{
+  "name": "Athora - AI Study Assistant",
+  "short_name": "Athora",
+  "description": "AI-powered study assistant that helps students pass exams faster",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

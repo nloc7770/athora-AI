@@ -87,7 +87,7 @@ export default function PrivacyPage() {
           <p>
             You may delete your account and all associated data at any time from your account
             settings. Alternatively, email{' '}
-            <a href="mailto:privacy@athora.app" className="text-amber-700 underline hover:text-amber-900">
+            <a href="mailto:privacy@athora.app" className="text-purple-700 underline hover:text-purple-900">
               privacy@athora.app
             </a>{' '}
             and we will process your request within 30 days. Deletion is permanent and
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-stone-900 mb-3">9. Contact</h2>
           <p>
             For privacy questions or to exercise your rights, contact us at{' '}
-            <a href="mailto:privacy@athora.app" className="text-amber-700 underline hover:text-amber-900">
+            <a href="mailto:privacy@athora.app" className="text-purple-700 underline hover:text-purple-900">
               privacy@athora.app
             </a>.
           </p>

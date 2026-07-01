@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { apiClient } from '@/lib/api'
+import { apiClient, ApiRequestError } from '@/lib/api'
 
 type GenerationType = 'summary' | 'flashcards' | 'exam' | 'mindmap'
 
@@ -26,7 +26,7 @@ interface UseAiGenerationReturn {
 const POLL_INTERVAL_MS = 5000
 const ACTIVE_STATUSES = ['pending', 'processing']
 
-function hasActiveGenerations(generations: AiGeneration[]): boolean {
+function hasActiveGenerations(generations: Array<{ status: string }>): boolean {
   return generations.some((g) => ACTIVE_STATUSES.includes(g.status))
 }
 
@@ -97,8 +97,9 @@ export function useSessionGeneration(sessionId: string | null): UseSessionGenera
     }
   }, [sessionId])
 
+  // Start or stop polling based on generation statuses
   useEffect(() => {
-    if (generations.some((g) => ACTIVE_STATUSES.includes(g.status))) {
+    if (hasActiveGenerations(generations)) {
       if (!intervalRef.current) {
         intervalRef.current = setInterval(pollGenerations, POLL_INTERVAL_MS)
       }
@@ -191,6 +192,7 @@ export function useAiGeneration(documentId: string | null): UseAiGenerationRetur
   }, [documentId])
 
   // Start or stop polling based on generation statuses
+  // Only poll when there are active (pending/processing) generations
   useEffect(() => {
     if (hasActiveGenerations(generations)) {
       if (!intervalRef.current) {
@@ -218,13 +220,19 @@ export function useAiGeneration(documentId: string | null): UseAiGenerationRetur
       throw new Error('No document selected')
     }
 
-    const generation = await apiClient.post<AiGeneration>('/ai-generation/generate', {
-      documentId,
-      type,
-    })
-
-    setGenerations((prev) => [generation, ...prev])
-    return generation
+    try {
+      const generation = await apiClient.post<AiGeneration>('/ai-generation/generate', {
+        documentId,
+        type,
+      })
+      setGenerations((prev) => [generation, ...prev])
+      return generation
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.statusCode === 429) {
+        throw new Error('You\'re generating too fast. Please wait a moment before trying again.')
+      }
+      throw err
+    }
   }, [documentId])
 
   return {

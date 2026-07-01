@@ -58,8 +58,19 @@ export class RagflowService {
     file: Buffer,
     filename: string,
   ): Promise<{ id: string }> {
+    // Determine content type from filename
+    const ext = filename.split('.').pop()?.toLowerCase() ?? 'pdf';
+    const mimeMap: Record<string, string> = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      txt: 'text/plain',
+      md: 'text/markdown',
+    };
+    const contentType = mimeMap[ext] ?? 'application/octet-stream';
+
     const form = new FormData();
-    form.append('file', file, { filename, contentType: 'application/pdf' });
+    form.append('file', file, { filename, contentType });
 
     const response = await this.client.post(
       `/api/v1/datasets/${datasetId}/documents`,
@@ -119,17 +130,20 @@ export class RagflowService {
   }
 
   async retrieveChunks(
-    datasetId: string,
+    datasetId: string | string[],
     query: string,
     topK = 5,
   ): Promise<Chunk[]> {
+    const datasetIds = Array.isArray(datasetId) ? datasetId : [datasetId];
+
     const response = await this.client.post(
       '/api/v1/retrieval',
       {
         question: query,
-        dataset_ids: [datasetId],
+        dataset_ids: datasetIds,
         top_k: topK,
-        similarity_threshold: 0.0,
+        similarity_threshold: 0.1,
+        rerank_id: this.config.get<string>('RAGFLOW_RERANK_MODEL', ''),
       },
     );
 

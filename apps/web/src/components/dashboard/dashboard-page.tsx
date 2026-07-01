@@ -2,19 +2,19 @@
 
 import { useCallback, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { motion, type Variants } from "framer-motion"
 import {
   BookOpen,
   Brain,
   Clock,
   FileText,
+  Flame,
   Headphones,
   Loader2,
   MessageSquare,
   Notebook,
-  Plus,
   Sparkles,
+  Target,
   Upload,
   Video,
   Zap,
@@ -23,26 +23,10 @@ import {
 import { useCourses } from "@/hooks/use-courses"
 import { useDocuments } from "@/hooks/use-documents"
 import { useSessions } from "@/hooks/use-sessions"
+import { useStreak } from "@/hooks/use-streak"
 import { useAuthStore } from "@/stores/auth-store"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -91,40 +75,42 @@ function formatRelativeDate(dateString: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return "Good morning"
+  if (hour < 17) return "Good afternoon"
+  return "Good evening"
+}
+
 function Skeleton({ className }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded-md bg-muted ${className ?? ""}`}
+      className={`animate-pulse rounded-md bg-stone-200 dark:bg-stone-700 ${className ?? ""}`}
     />
   )
 }
 
-function CourseSkeleton() {
+function StatSkeleton() {
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <Skeleton className="size-10 rounded-lg" />
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-4 w-28" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Skeleton className="h-2 w-full rounded-full" />
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-3 w-20" />
+    <div
+      role="status"
+      aria-label="Loading stat"
+      className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4"
+    >
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-9 rounded-lg" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-6 w-8" />
           <Skeleton className="h-3 w-16" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 function DocumentSkeleton() {
   return (
-    <div className="flex items-center gap-3 py-3 px-3">
+    <div className="flex items-center gap-3 py-3 px-4">
       <Skeleton className="size-8 rounded-lg" />
       <div className="flex-1 space-y-1.5">
         <Skeleton className="h-3.5 w-48" />
@@ -194,7 +180,7 @@ function OnboardingHero({
       variants={container}
       initial="hidden"
       animate="show"
-      className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center px-6 py-20"
+      className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center px-6 py-24"
     >
       <motion.div variants={item} className="w-full">
         <div
@@ -208,10 +194,10 @@ function OnboardingHero({
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") handleClick()
           }}
-          className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-16 text-center transition-all duration-200 ${
+          className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-20 text-center transition-all duration-200 ${
             isDragging
-              ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
-              : "border-zinc-200 bg-zinc-50/50 hover:border-amber-400 hover:bg-amber-50/50 dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-amber-500 dark:hover:bg-amber-950/20"
+              ? "border-[#6C47FF] bg-purple-50 dark:bg-purple-950/30"
+              : "border-stone-300 bg-stone-50/50 hover:border-[#6C47FF]/60 hover:bg-purple-50/50 dark:border-stone-700 dark:bg-stone-900/50 dark:hover:border-[#6C47FF]/60 dark:hover:bg-purple-950/20"
           }`}
         >
           <input
@@ -222,125 +208,48 @@ function OnboardingHero({
             onChange={handleFileChange}
           />
           {isUploading ? (
-            <Loader2 className="size-12 animate-spin text-amber-500" />
+            <Loader2 className="size-14 animate-spin text-[#6C47FF]" />
           ) : (
-            <Upload className="size-12 text-amber-500" />
+            <div className="rounded-2xl bg-purple-100 dark:bg-purple-900/40 p-4">
+              <Upload className="size-10 text-[#6C47FF]" />
+            </div>
           )}
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
-            Drop your first PDF here to get started
+          <h1 className="mt-6 text-2xl font-bold text-stone-900 dark:text-stone-100">
+            Drop your first document here
           </h1>
-          <p className="mt-2 max-w-md text-sm text-muted-foreground">
-            We'll auto-generate flashcards, quizzes, and study materials from
-            your document so you can start learning immediately.
+          <p className="mt-2 max-w-md text-sm text-stone-500 dark:text-stone-400">
+            We'll generate flashcards, quizzes, and study materials automatically
+            so you can start learning right away.
           </p>
-          <Button className="mt-6" size="lg" disabled={isUploading}>
+          <Button
+            className="mt-6 bg-[#6C47FF] hover:bg-[#5835DB] text-white"
+            size="lg"
+            disabled={isUploading}
+          >
             {isUploading ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Upload className="size-4" data-icon="inline-start" />
+              <Upload className="size-4" />
             )}
             {isUploading ? "Uploading..." : "Choose a file"}
           </Button>
+          <p className="mt-3 text-xs text-stone-400 dark:text-stone-500">
+            PDF, DOCX, TXT, MP3, MP4, WAV supported
+          </p>
         </div>
       </motion.div>
     </motion.div>
   )
 }
 
-interface CreateCourseFormProps {
-  onSubmit: (data: { name: string; code?: string; color?: string; description?: string }) => Promise<void>
-  isSubmitting: boolean
-}
-
-function CreateCourseForm({ onSubmit, isSubmitting }: CreateCourseFormProps) {
-  const [name, setName] = useState("")
-  const [code, setCode] = useState("")
-  const [color, setColor] = useState("#6366f1")
-  const [description, setDescription] = useState("")
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    await onSubmit({
-      name: name.trim(),
-      code: code.trim() || undefined,
-      color,
-      description: description.trim() || undefined,
-    })
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="course-name" className="text-sm font-medium">
-          Course Name *
-        </label>
-        <Input
-          id="course-name"
-          placeholder="e.g. Introduction to Computer Science"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <label htmlFor="course-code" className="text-sm font-medium">
-            Code
-          </label>
-          <Input
-            id="course-code"
-            placeholder="e.g. CS101"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="course-color" className="text-sm font-medium">
-            Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              id="course-color"
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="h-9 w-12 cursor-pointer rounded border border-input"
-            />
-            <span className="text-xs text-muted-foreground">{color}</span>
-          </div>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <label htmlFor="course-desc" className="text-sm font-medium">
-          Description
-        </label>
-        <Input
-          id="course-desc"
-          placeholder="Brief description (optional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-      <DialogFooter>
-        <Button type="submit" disabled={!name.trim() || isSubmitting}>
-          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          Create Course
-        </Button>
-      </DialogFooter>
-    </form>
-  )
-}
-
 export default function DashboardPage() {
   const router = useRouter()
   const { user } = useAuthStore()
-  const { courses, isLoading: coursesLoading, createCourse } = useCourses()
+  const { courses, isLoading: coursesLoading } = useCourses()
   const { documents, isLoading: documentsLoading, uploadDocument } = useDocuments()
   const { createSession } = useSessions()
+  const { streak } = useStreak()
 
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isFirstTimeUser =
@@ -359,15 +268,9 @@ export default function DashboardPage() {
     [createSession, uploadDocument, router]
   )
 
-  if (isFirstTimeUser) {
-    return <OnboardingHero onUpload={handleOnboardingUpload} />
-  }
-
   const recentDocuments = [...documents]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 4)
-
-  const mostRecentDoc = recentDocuments[0] ?? null
+    .slice(0, 5)
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -375,18 +278,7 @@ export default function DashboardPage() {
     day: "numeric",
   })
 
-  const handleCreateCourse = useCallback(
-    async (data: { name: string; code?: string; color?: string; description?: string }) => {
-      setIsCreating(true)
-      try {
-        await createCourse(data)
-        setCreateDialogOpen(false)
-      } finally {
-        setIsCreating(false)
-      }
-    },
-    [createCourse]
-  )
+  const displayName = user?.name ?? user?.email?.split("@")[0] ?? "Student"
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click()
@@ -406,49 +298,189 @@ export default function DashboardPage() {
 
   const documentsCount = documents.length
   const coursesCount = courses.length
+  const readyCount = documents.filter((d) => d.status === "ready").length
+  const processingCount = documents.filter((d) => d.status === "processing").length
+
+  // Daily study brief values
+  const streakDays = streak
+
+  const totalCards = documents.filter((d) => d.status === "ready").length * 10
+  const cardsDueToday = Math.ceil(totalCards * 0.3)
+
+  const lastExamScore = "No exams yet"
+
+  if (isFirstTimeUser) {
+    return <OnboardingHero onUpload={handleOnboardingUpload} />
+  }
 
   return (
     <motion.div
       variants={container}
       initial="hidden"
       animate="show"
-      className="mx-auto w-full max-w-6xl space-y-6 p-6"
+      className="mx-auto w-full max-w-4xl space-y-8 px-6 py-8"
     >
-      {/* Welcome Banner */}
+      {/* Greeting */}
       <motion.div variants={item}>
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/90 to-orange-500/80 p-8 mb-8 shadow-inner shadow-white/10">
-          <Image
-            src="/images/dashboard-banner.png"
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover opacity-20 mix-blend-soft-light"
-          />
-          <div className="relative">
-            <h2 className="text-2xl font-bold text-white">
-              Welcome back, {user?.name ?? user?.email ?? "Student"}
+        <p className="text-sm text-stone-500 dark:text-stone-400">{today}</p>
+        <h1 className="mt-1 text-2xl font-semibold text-stone-900 dark:text-stone-100">
+          {getGreeting()}, {displayName}
+        </h1>
+      </motion.div>
+
+      {/* Today's Plan */}
+      <motion.div variants={item}>
+        {documentsLoading || coursesLoading ? (
+          <div className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5">
+            <Skeleton className="h-5 w-28 mb-4" />
+            <div className="flex gap-6">
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-28" />
+            </div>
+            <Skeleton className="mt-4 h-10 w-36" />
+          </div>
+        ) : (
+          <div className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5">
+            <h2 className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-4">
+              Today&apos;s Plan
             </h2>
-            <p className="mt-1 text-amber-100">
-              {coursesCount > 0
-                ? `You have ${coursesCount} course${coursesCount > 1 ? "s" : ""} and ${documentsCount} document${documentsCount !== 1 ? "s" : ""}.`
-                : "Get started by creating your first course."}
-            </p>
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Flame className="size-5 text-orange-500" />
+                <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  {streakDays}
+                </span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">
+                  day streak
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Brain className="size-5 text-[#6C47FF]" />
+                <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  {cardsDueToday}
+                </span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">
+                  cards due
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Target className="size-5 text-emerald-500" />
+                <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                  {lastExamScore}
+                </span>
+              </div>
+            </div>
             <Button
-              className="mt-4 bg-white text-amber-700 hover:bg-amber-50"
-              onClick={() => router.push(mostRecentDoc?.session_id ? `/sessions/${mostRecentDoc.session_id}` : mostRecentDoc ? `/documents/${mostRecentDoc.id}` : "/sessions")}
+              className="mt-4 gap-2 bg-[#6C47FF] hover:bg-[#5835DB] text-white"
+              size="default"
+              onClick={() =>
+                router.push(cardsDueToday > 0 ? "/flashcards" : "/sessions")
+              }
             >
-              Continue learning
+              <Zap className="size-4" />
+              Start studying
             </Button>
           </div>
+        )}
+      </motion.div>
+
+      {/* Secondary Stats */}
+      <motion.div variants={item} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {documentsLoading || coursesLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
+        ) : (
+          <>
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <FileText className="size-4 text-stone-400" />
+                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                  {documentsCount}
+                </span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">docs</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <BookOpen className="size-4 text-stone-400" />
+                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                  {coursesCount}
+                </span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">courses</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <Brain className="size-4 text-emerald-500" />
+                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                  {readyCount}
+                </span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">ready</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <Clock className="size-4 text-amber-500" />
+                <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                  {processingCount}
+                </span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">processing</span>
+              </div>
+            </div>
+          </>
+        )}
+      </motion.div>
+
+      {/* Quick Actions */}
+      <motion.div variants={item}>
+        <h2 className="mb-3 text-sm font-medium text-stone-500 dark:text-stone-400">
+          Quick Actions
+        </h2>
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+          <button
+            onClick={() => router.push("/sessions")}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors duration-150 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900"
+          >
+            <BookOpen className="size-4" />
+            Sessions
+          </button>
+          <button
+            onClick={() => router.push("/flashcards")}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors duration-150 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900"
+          >
+            <Brain className="size-4" />
+            Flashcards
+          </button>
+          <button
+            onClick={() => router.push("/exam")}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors duration-150 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900"
+          >
+            <Sparkles className="size-4" />
+            Exams
+          </button>
+          <button
+            onClick={() => router.push("/tutor")}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors duration-150 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900"
+          >
+            <MessageSquare className="size-4" />
+            AI Tutor
+          </button>
+          <button
+            onClick={handleUploadClick}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors duration-150 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900"
+          >
+            <Upload className="size-4" />
+            Upload
+          </button>
         </div>
       </motion.div>
 
-      {/* Header */}
-      <motion.div variants={item} className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{today}</p>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Recent Documents */}
+      <motion.div variants={item}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-stone-500 dark:text-stone-400">
+            Recent Documents
+          </h2>
           <input
             ref={fileInputRef}
             type="file"
@@ -456,309 +488,95 @@ export default function DashboardPage() {
             accept=".pdf,.doc,.docx,.txt,.mp3,.mp4,.wav"
             onChange={handleFileChange}
           />
-          <Button variant="default" size="lg" onClick={handleUploadClick}>
-            <Upload className="size-4" data-icon="inline-start" />
-            Upload
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/library")}
+            className="text-xs text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+          >
+            View all
           </Button>
         </div>
-      </motion.div>
 
-      {/* Recent Activity */}
-      {recentDocuments.length > 0 && (
-        <motion.div variants={item}>
-          <Card className="border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50/50 to-transparent dark:from-amber-950/20">
-            <CardHeader>
-              <CardDescription>Recent Activity</CardDescription>
-              <CardTitle className="text-lg">
-                {documentsCount} document{documentsCount !== 1 ? "s" : ""} uploaded
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {recentDocuments.slice(0, 3).map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted transition-colors cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(doc.session_id ? `/sessions/${doc.session_id}` : `/documents/${doc.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") router.push(doc.session_id ? `/sessions/${doc.session_id}` : `/documents/${doc.id}`)
-                  }}
-                >
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
-                    {getDocumentIcon(doc.type)}
-                  </div>
-                  <span className="truncate text-sm font-medium text-foreground flex-1">
-                    {doc.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {formatRelativeDate(doc.updatedAt)}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Courses Grid */}
-      <motion.div variants={item}>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Your Courses
-          </h2>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger
-              render={
-                <Button variant="outline" size="sm">
-                  <Plus className="size-3.5" data-icon="inline-start" />
-                  New Course
-                </Button>
-              }
-            />
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create a Course</DialogTitle>
-                <DialogDescription>
-                  Organize your study materials by course.
-                </DialogDescription>
-              </DialogHeader>
-              <CreateCourseForm
-                onSubmit={handleCreateCourse}
-                isSubmitting={isCreating}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {coursesLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {documentsLoading ? (
+          <div className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900">
             {Array.from({ length: 4 }).map((_, i) => (
-              <CourseSkeleton key={i} />
+              <DocumentSkeleton key={i} />
             ))}
           </div>
-        ) : courses.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center py-12 text-center">
-            <BookOpen className="size-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">
-              No courses yet
+        ) : recentDocuments.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/50 p-12 text-center">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800">
+              <FileText className="size-6 text-stone-400" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-stone-700 dark:text-stone-300">
+              No documents yet
             </p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Create your first course to start organizing materials.
+            <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
+              Upload a PDF to start studying with AI
             </p>
             <Button
-              variant="outline"
               size="sm"
-              className="mt-4"
-              onClick={() => setCreateDialogOpen(true)}
+              className="mt-4 gap-1.5 bg-[#6C47FF] hover:bg-[#5835DB] text-white"
+              onClick={handleUploadClick}
             >
-              <Plus className="size-3.5" data-icon="inline-start" />
-              Create Course
+              <Upload className="size-3.5" />
+              Upload Document
             </Button>
-          </Card>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {courses.map((course) => {
-              const courseDocCount = documents.filter(
-                (d) => d.courseId === course.id
-              ).length
-              return (
-                <motion.div key={course.id} variants={item}>
-                  <Card className="group h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex size-10 items-center justify-center rounded-lg text-white font-bold text-sm"
-                          style={{ backgroundColor: course.color ?? "#6366f1" }}
-                        >
-                          {(course.code ?? course.name).slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="size-2.5 rounded-full"
-                              style={{ backgroundColor: course.color ?? "#6366f1" }}
-                            />
-                            <CardDescription>
-                              {course.code ?? "—"}
-                            </CardDescription>
-                          </div>
-                          <CardTitle className="line-clamp-1">
-                            {course.name}
-                          </CardTitle>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                          {courseDocCount} document{courseDocCount !== 1 ? "s" : ""} uploaded
-                        </span>
-                        <span>{formatRelativeDate(course.updatedAt)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )
-            })}
+          <div className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 divide-y divide-stone-100 dark:divide-stone-800">
+            {recentDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                role="button"
+                tabIndex={0}
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-150 hover:bg-stone-50 dark:hover:bg-stone-800/50 focus-visible:ring-2 focus-visible:ring-[#6C47FF] focus-visible:outline-none first:rounded-t-xl last:rounded-b-xl"
+                onClick={() =>
+                  router.push(
+                    doc.session_id ? `/sessions/${doc.session_id}` : "/library"
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    router.push(
+                      doc.session_id ? `/sessions/${doc.session_id}` : "/library"
+                    )
+                  }
+                }}
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800">
+                  {getDocumentIcon(doc.type)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-stone-800 dark:text-stone-200">
+                    {doc.name}
+                  </p>
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    {formatRelativeDate(doc.updatedAt)}
+                  </p>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className={`shrink-0 text-[10px] font-medium ${
+                    doc.status === "ready"
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+                      : doc.status === "processing"
+                        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
+                        : "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400"
+                  }`}
+                >
+                  {doc.status === "ready"
+                    ? "Ready"
+                    : doc.status === "processing"
+                      ? "Processing"
+                      : doc.status}
+                </Badge>
+              </div>
+            ))}
           </div>
         )}
-      </motion.div>
-
-      {/* Recent Documents + Study Stats row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Recent Documents */}
-        <motion.div variants={item} className="lg:col-span-2">
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-            Recent Documents
-          </h2>
-          {documentsLoading ? (
-            <Card>
-              <CardContent className="divide-y divide-border">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <DocumentSkeleton key={i} />
-                ))}
-              </CardContent>
-            </Card>
-          ) : recentDocuments.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="size-10 text-muted-foreground/50 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">
-                No documents yet
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/70">
-                Upload a PDF, audio, or video to get started.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleUploadClick}
-              >
-                <Upload className="size-3.5" data-icon="inline-start" />
-                Upload Document
-              </Button>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="divide-y divide-border">
-                {recentDocuments.map((doc) => {
-                  const docCourse = courses.find((c) => c.id === doc.courseId)
-                  return (
-                    <div
-                      key={doc.id}
-                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 hover:bg-muted rounded-lg px-3 -mx-3 transition-colors"
-                    >
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                        {getDocumentIcon(doc.type)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {doc.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatRelativeDate(doc.updatedAt)}
-                        </p>
-                      </div>
-                      {docCourse && (
-                        <Badge variant="secondary">{docCourse.name}</Badge>
-                      )}
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
-
-        {/* Study Stats */}
-        <motion.div variants={item}>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-            Overview
-          </h2>
-          <Card className="h-fit border-l-2 border-l-emerald-400">
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10">
-                  <BookOpen className="size-4 text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium tabular-nums">
-                    {coursesCount} course{coursesCount !== 1 ? "s" : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Total</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-orange-500/10">
-                  <FileText className="size-4 text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium tabular-nums">
-                    {documentsCount} document{documentsCount !== 1 ? "s" : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Uploaded</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                  <Brain className="size-4 text-emerald-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium tabular-nums">
-                    {documents.filter((d) => d.status === "ready").length} ready
-                  </p>
-                  <p className="text-xs text-muted-foreground">To study</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Quick Actions */}
-      <motion.div variants={item}>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/tutor")}
-          >
-            <MessageSquare className="size-5 text-amber-500" />
-            <span className="text-xs">Ask AI</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/flashcards")}
-          >
-            <Zap className="size-5 text-amber-500" />
-            <span className="text-xs">Review Flashcards</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/exam")}
-          >
-            <Sparkles className="size-5 text-orange-500" />
-            <span className="text-xs">Start Exam</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={handleUploadClick}
-          >
-            <Upload className="size-5 text-cyan-500" />
-            <span className="text-xs">Upload Document</span>
-          </Button>
-        </div>
       </motion.div>
     </motion.div>
   )

@@ -51,14 +51,14 @@ export function TestimonialsCarousel() {
       <div className="hidden md:flex items-center gap-2">
         <button
           onClick={() => scrollTestimonials('left')}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 text-stone-500 hover:border-amber-300 hover:text-amber-600 transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 text-stone-500 hover:border-purple-300 hover:text-purple-600 transition-colors"
           aria-label="Scroll testimonials left"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <button
           onClick={() => scrollTestimonials('right')}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 text-stone-500 hover:border-amber-300 hover:text-amber-600 transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 text-stone-500 hover:border-purple-300 hover:text-purple-600 transition-colors"
           aria-label="Scroll testimonials right"
         >
           <ChevronRight className="h-4 w-4" />
@@ -72,19 +72,21 @@ export function TestimonialsCarousel() {
           className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
         >
           {TESTIMONIALS.map((t) => (
-            <Card key={t.name} className="flex-shrink-0 w-[320px] md:w-[380px] snap-center border-stone-200 bg-stone-50 p-6 rounded-2xl hover:border-amber-200 hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full">
+            <Card key={t.name} className="flex-shrink-0 w-[320px] md:w-[380px] snap-center border-stone-200 bg-stone-50 p-6 rounded-2xl hover:border-purple-200 hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full">
               <div>
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: 5 }).map((_, j) => (
-                    <Star key={j} className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                    <Star key={j} className="h-3.5 w-3.5 text-purple-400 fill-purple-400" />
                   ))}
                 </div>
                 <p className="text-base leading-relaxed text-stone-700 font-medium">&ldquo;{t.quote}&rdquo;</p>
               </div>
               <div className="mt-6 flex items-center gap-3 pt-4 border-t border-stone-200/60">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
-                  {t.name.split(' ').map(n => n[0]).join('')}
-                </div>
+                <img
+                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(t.name)}`}
+                  alt={t.name}
+                  className="h-9 w-9 rounded-full bg-purple-100"
+                />
                 <div>
                   <p className="text-sm font-semibold text-stone-900">{t.name}</p>
                   <p className="text-xs text-stone-500">{t.role} &middot; {t.school}</p>

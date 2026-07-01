@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   FileText,
@@ -21,6 +22,7 @@ import {
   Brain,
   Loader2,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -306,6 +308,7 @@ function AIProfessorPanel({ documentId }: AIProfessorPanelProps) {
 
   const summaryGeneration = generations.find((g) => g.type === "summary")
   const flashcardsGeneration = generations.find((g) => g.type === "flashcards")
+  const examGeneration = generations.find((g) => g.type === "exam")
 
   return (
     <div className="flex h-full flex-col">
@@ -427,6 +430,16 @@ function AIProfessorPanel({ documentId }: AIProfessorPanelProps) {
                 Mind Map
               </Button>
             </div>
+            {examGeneration?.status === "completed" && (
+              <Link
+                href="/exam"
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+              >
+                <BookOpen className="size-3" />
+                View in Exams
+                <ArrowRight className="size-3" />
+              </Link>
+            )}
           </div>
         </TabsContent>
 
@@ -499,10 +512,11 @@ function AIProfessorPanel({ documentId }: AIProfessorPanelProps) {
                   <Loader2 className="size-5 animate-spin text-muted-foreground" />
                 </div>
               ) : flashcardsGeneration?.result ? (
-                <div className="space-y-3">
-                  <p className="mb-3 text-xs font-medium text-muted-foreground">
-                    Flashcards generated
-                  </p>
+                <>
+                  <div className="space-y-3">
+                    <p className="mb-3 text-xs font-medium text-muted-foreground">
+                      Flashcards generated
+                    </p>
                   {Array.isArray(flashcardsGeneration.result) ? (
                     (flashcardsGeneration.result as Array<{ front: string; back: string; difficulty?: string }>).map((card, i) => (
                       <motion.div
@@ -542,6 +556,15 @@ function AIProfessorPanel({ documentId }: AIProfessorPanelProps) {
                     </p>
                   )}
                 </div>
+                <Link
+                  href="/flashcards"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+                >
+                  <Layers className="size-3.5" />
+                  View in Flashcards
+                  <ArrowRight className="size-3.5" />
+                </Link>
+                </>
               ) : flashcardsGeneration?.status === "processing" ? (
                 <div className="flex flex-col items-center justify-center gap-2 py-8">
                   <Loader2 className="size-5 animate-spin text-indigo-500" />

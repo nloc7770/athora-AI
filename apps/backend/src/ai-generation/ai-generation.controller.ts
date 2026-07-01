@@ -20,7 +20,7 @@ export class AiGenerationController {
 
   @Post('generate')
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   generate(
     @CurrentUser('id') userId: string,
     @Body() dto: GenerateDto,
@@ -30,7 +30,7 @@ export class AiGenerationController {
 
   @Post('generate-session')
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   generateSession(
     @CurrentUser('id') userId: string,
     @Body() dto: GenerateSessionDto,

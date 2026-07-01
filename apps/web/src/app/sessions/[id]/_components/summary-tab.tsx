@@ -17,12 +17,13 @@ import { Badge } from '@/components/ui/badge'
 
 interface SummaryTabProps {
   hasReadyDocs: boolean
+  hasProcessingDocs?: boolean
   generations: any[]
   isLoading: boolean
   onGenerate: () => void
 }
 
-export function SummaryTab({ hasReadyDocs, generations, isLoading, onGenerate }: SummaryTabProps) {
+export function SummaryTab({ hasReadyDocs, hasProcessingDocs, generations, isLoading, onGenerate }: SummaryTabProps) {
   const filtered = generations.filter((g) => g.type === 'summary')
   const latest = filtered[0]
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set())
@@ -37,6 +38,18 @@ export function SummaryTab({ hasReadyDocs, generations, isLoading, onGenerate }:
       }
       return next
     })
+  }
+
+  if (!hasReadyDocs && hasProcessingDocs) {
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col items-center justify-center pt-20">
+        <div className="rounded-full bg-purple-50 p-4 mb-4">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        </div>
+        <p className="text-sm font-medium text-gray-700">Processing documents...</p>
+        <p className="text-xs text-gray-400 mt-1">You can generate a summary once processing is complete</p>
+      </div>
+    )
   }
 
   if (!hasReadyDocs) {
@@ -67,17 +80,15 @@ export function SummaryTab({ hasReadyDocs, generations, isLoading, onGenerate }:
   if (!latest || filtered.length === 0) {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex justify-center pt-4">
-          <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Generate Summary
-          </Button>
-        </div>
         <div className="flex flex-col items-center justify-center pt-12">
           <div className="rounded-full bg-gray-100 p-4 mb-4">
             <BookOpen className="h-8 w-8 text-gray-300" />
           </div>
-          <p className="text-sm text-gray-400">No summary generated yet</p>
+          <p className="text-sm text-gray-500 mb-4">Generate a summary from your session documents</p>
+          <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            {isLoading ? 'Generating...' : 'Generate Summary'}
+          </Button>
         </div>
       </div>
     )
@@ -185,16 +196,16 @@ export function SummaryTab({ hasReadyDocs, generations, isLoading, onGenerate }:
 
       {/* Key takeaways */}
       {result.takeaways && result.takeaways.length > 0 && (
-        <Card className="border-amber-100 bg-gradient-to-br from-amber-50/60 to-white">
+        <Card className="border-purple-100 bg-gradient-to-br from-purple-50/60 to-white">
           <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-purple-500" />
               Key Takeaways
             </h3>
             <ul className="space-y-2">
               {result.takeaways.map((t: string, i: number) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm text-amber-900">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                <li key={i} className="flex items-start gap-2.5 text-sm text-purple-900">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-purple-400" />
                   {t}
                 </li>
               ))}

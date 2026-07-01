@@ -37,6 +37,7 @@ export class FlashcardGenerator {
     datasetId: string,
     documentId: string | null,
     userId: string,
+    sessionId?: string | null,
   ): Promise<FlashcardOutput> {
     const chunks = await this.ragflowService.getDocumentChunks(
       datasetId,
@@ -64,31 +65,34 @@ export class FlashcardGenerator {
       FLASHCARD_SCHEMA,
     );
 
-    await this.persistFlashcards(userId, documentId, output);
+    const setId = await this.persistFlashcards(userId, documentId, sessionId, output);
 
-    return output;
+    return { ...output, setId };
   }
 
   private async persistFlashcards(
     userId: string,
     documentId: string | null,
+    sessionId: string | null | undefined,
     output: FlashcardOutput,
-  ): Promise<void> {
+  ): Promise<string | undefined> {
+    const insertData: Record<string, unknown> = {
+      user_id: userId,
+      name: 'AI Generated Flashcards',
+      document_id: documentId,
+    };
+    if (sessionId) insertData.session_id = sessionId;
+
     const { data: set, error: setError } = await this.supabaseService
       .getAdminClient()
       .from('flashcard_sets')
-      .insert({
-        user_id: userId,
-        title: 'AI Generated Flashcards',
-        document_id: documentId,
-        source: 'ai_generation',
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (setError || !set) {
       this.logger.error('Failed to create flashcard set', { setError });
-      return;
+      return undefined;
     }
 
     const flashcards = output.cards.map((card) => ({

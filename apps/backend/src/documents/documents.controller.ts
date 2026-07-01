@@ -83,7 +83,7 @@ export class DocumentsController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE }),
-          new FileTypeValidator({ fileType: 'application/pdf' }),
+          new FileTypeValidator({ fileType: /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/ }),
         ],
       }),
     )
@@ -92,22 +92,31 @@ export class DocumentsController {
     @Body('courseId') courseId?: string,
     @Body('sessionId') sessionId?: string,
   ) {
-    // Validate PDF magic bytes
-    if (!file.buffer || file.buffer.length < 5) {
-      throw new BadRequestException(
-        'Invalid PDF file: file is empty or too small',
-      );
+    // Determine document type from mimetype
+    const mimeToType: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'doc',
+    };
+    const docType = mimeToType[file.mimetype] ?? 'pdf';
+
+    // Validate file content
+    if (!file.buffer || file.buffer.length < 4) {
+      throw new BadRequestException('Invalid file: file is empty or too small');
     }
 
-    const header = file.buffer.subarray(0, 5).toString();
-    if (!header.startsWith('%PDF-')) {
-      throw new BadRequestException(
-        'Invalid PDF file: content does not match PDF format',
-      );
+    // PDF magic byte check (only for PDFs)
+    if (docType === 'pdf') {
+      const header = file.buffer.subarray(0, 5).toString();
+      if (!header.startsWith('%PDF-')) {
+        throw new BadRequestException('Invalid PDF file: content does not match PDF format');
+      }
     }
 
-    const documentName = name || file.originalname.replace(/\.pdf$/i, '');
+    const ext = file.originalname.match(/\.[^.]+$/)?.[0] ?? '';
+    const documentName = name || file.originalname.replace(ext, '');
 
+    // Store as 'pdf' type in DB (RAGFlow handles doc/docx the same way)
     const document = await this.documentsService.create(userId, {
       name: documentName,
       type: 'pdf',

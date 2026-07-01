@@ -11,5 +11,10 @@
     "build:backend": "pnpm --filter @athora/backend build",
     "lint": "pnpm -r run lint"
   },
-  "packageManager": "pnpm@11.4.0"
+  "packageManager": "pnpm@11.4.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js"
+    ]
+  }
 }

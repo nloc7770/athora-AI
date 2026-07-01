@@ -59,7 +59,7 @@ test.describe('Landing Page', () => {
 
     // Each feature card has an h3 inside the features section
     const featureHeadings = featuresSection.locator('h3');
-    await expect(featureHeadings).toHaveCount(5);
+    await expect(featureHeadings).toHaveCount(6);
   });
 
   test('pricing section is visible with Free and Pro plans', async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe('Landing Page', () => {
     await expect(pricingSection).toBeVisible();
 
     await expect(pricingSection.getByText('$0')).toBeVisible();
-    await expect(pricingSection.getByText('$12')).toBeVisible();
+    await expect(pricingSection.getByText('$7')).toBeVisible();
   });
 
   test('pricing CTA buttons link to /register', async ({ page }) => {

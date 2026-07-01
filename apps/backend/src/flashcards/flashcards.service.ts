@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateFlashcardSetDto } from './dto/create-flashcard-set.dto';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto';
@@ -8,7 +8,10 @@ import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
 export class FlashcardsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAllSets(userId: string, courseId?: string) {
+  async findAllSets(
+    userId: string,
+    filters?: { courseId?: string; documentId?: string; sessionId?: string },
+  ) {
     let query = this.supabaseService
       .getAdminClient()
       .from('flashcard_sets')
@@ -16,8 +19,14 @@ export class FlashcardsService {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (courseId) {
-      query = query.eq('course_id', courseId);
+    if (filters?.courseId) {
+      query = query.eq('course_id', filters.courseId);
+    }
+    if (filters?.documentId) {
+      query = query.eq('document_id', filters.documentId);
+    }
+    if (filters?.sessionId) {
+      query = query.eq('session_id', filters.sessionId);
     }
 
     const { data, error } = await query;
@@ -60,7 +69,23 @@ export class FlashcardsService {
     return data;
   }
 
-  async createCard(setId: string, dto: CreateFlashcardDto) {
+  private async verifySetOwnership(setId: string, userId: string): Promise<void> {
+    const { data, error } = await this.supabaseService
+      .getAdminClient()
+      .from('flashcard_sets')
+      .select('id')
+      .eq('id', setId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      throw new ForbiddenException('You do not have access to this flashcard set');
+    }
+  }
+
+  async createCard(userId: string, setId: string, dto: CreateFlashcardDto) {
+    await this.verifySetOwnership(setId, userId);
+
     const { data, error } = await this.supabaseService
       .getAdminClient()
       .from('flashcards')
@@ -75,7 +100,21 @@ export class FlashcardsService {
     return data;
   }
 
-  async updateCard(cardId: string, dto: UpdateFlashcardDto) {
+  async updateCard(userId: string, cardId: string, dto: UpdateFlashcardDto) {
+    // Fetch the card to get its set_id, then verify ownership
+    const { data: card, error: cardError } = await this.supabaseService
+      .getAdminClient()
+      .from('flashcards')
+      .select('set_id')
+      .eq('id', cardId)
+      .single();
+
+    if (cardError || !card) {
+      throw new NotFoundException('Flashcard not found');
+    }
+
+    await this.verifySetOwnership(card.set_id, userId);
+
     const { data, error } = await this.supabaseService
       .getAdminClient()
       .from('flashcards')

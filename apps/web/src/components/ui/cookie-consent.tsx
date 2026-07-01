@@ -32,12 +32,12 @@ export function CookieConsent() {
     <div
       role="dialog"
       aria-label="Cookie consent"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 bg-white p-4 shadow-lg md:bottom-4 md:left-4 md:right-auto md:max-w-sm md:rounded-xl md:border"
+      className="fixed bottom-4 right-4 left-4 z-50 border border-white/[0.15] bg-zinc-900/95 backdrop-blur-md p-4 shadow-2xl rounded-xl md:left-auto md:max-w-sm"
     >
-      <p className="text-sm text-stone-600 leading-relaxed">
+      <p className="text-sm text-white/70 leading-relaxed">
         We use essential cookies for authentication and optional analytics cookies to improve
         Athora. See our{' '}
-        <Link href="/privacy" className="text-amber-700 underline hover:text-amber-900">
+        <Link href="/privacy" className="text-[#8052ff] underline hover:text-[#9b72ff]">
           Privacy Policy
         </Link>{' '}
         for details.
@@ -46,7 +46,7 @@ export function CookieConsent() {
         <Button
           size="sm"
           onClick={accept}
-          className="bg-amber-600 text-white hover:bg-amber-700 rounded-lg"
+          className="bg-[#8052ff] text-white hover:bg-[#6b3fe6] rounded-lg"
         >
           Accept all
         </Button>
@@ -54,7 +54,7 @@ export function CookieConsent() {
           size="sm"
           variant="outline"
           onClick={decline}
-          className="rounded-lg"
+          className="rounded-lg border-white/[0.2] text-white/70 hover:bg-white/[0.06] hover:text-white bg-transparent"
         >
           Essential only
         </Button>

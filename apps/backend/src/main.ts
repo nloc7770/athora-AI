@@ -7,6 +7,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { CsrfGuard } from './common/guards/csrf.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -16,15 +17,27 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.use(helmet());
-  app.use(compression());
+  app.use(compression({
+    filter: (req, res) => {
+      // Don't compress SSE streams — kills chunked transfer
+      if (res.getHeader('Content-Type') === 'text/event-stream') {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  }));
   app.use(cookieParser());
 
   app.enableCors({
-    origin: configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
+    origin: [
+      configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
+      configService.get<string>('ADMIN_URL', 'http://localhost:3002'),
+    ],
     credentials: true,
   });
 
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalGuards(new CsrfGuard());
 
   app.useGlobalPipes(
     new ValidationPipe({

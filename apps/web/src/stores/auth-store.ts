@@ -76,7 +76,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true })
 
     try {
-      const user = await apiClient.get<User>('/auth/me')
+      const user = await apiClient.get<User>('/auth/me', {
+        _skipRefresh: true,
+      })
 
       set({
         user,
@@ -89,7 +91,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (refreshed) {
         try {
-          const user = await apiClient.get<User>('/auth/me')
+          const user = await apiClient.get<User>('/auth/me', {
+            _skipRefresh: true,
+          })
 
           set({
             user,

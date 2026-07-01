@@ -31,13 +31,14 @@ interface UseChatSessionsReturn {
   isLoading: boolean
   error: string | null
   createSession: (input: CreateSessionInput) => Promise<ChatSession>
+  deleteSession: (sessionId: string) => Promise<void>
 }
 
 interface UseChatMessagesReturn {
   messages: ChatMessage[]
   isLoading: boolean
   error: string | null
-  sendMessage: (content: string, courseContext?: string) => Promise<void>
+  sendMessage: (content: string, courseContext?: string, overrideSessionId?: string) => Promise<void>
   isStreaming: boolean
 }
 
@@ -88,7 +89,12 @@ export function useChatSessions(config?: string | ChatSessionsConfig): UseChatSe
     return session
   }, [])
 
-  return { sessions, isLoading, error, createSession }
+  const deleteSession = useCallback(async (sessionId: string): Promise<void> => {
+    await apiClient.delete(`/chat/sessions/${sessionId}`)
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+  }, [])
+
+  return { sessions, isLoading, error, createSession, deleteSession }
 }
 
 export function useChatMessages(sessionId: string | null): UseChatMessagesReturn {
@@ -103,6 +109,9 @@ export function useChatMessages(sessionId: string | null): UseChatMessagesReturn
       setIsLoading(false)
       return
     }
+
+    // Don't refetch while streaming — would overwrite optimistic messages
+    if (isStreaming) return
 
     let cancelled = false
 
@@ -134,15 +143,16 @@ export function useChatMessages(sessionId: string | null): UseChatMessagesReturn
     return () => {
       cancelled = true
     }
-  }, [sessionId])
+  }, [sessionId, isStreaming])
 
-  const sendMessage = useCallback(async (content: string, courseContext?: string): Promise<void> => {
-    if (!sessionId) return
+  const sendMessage = useCallback(async (content: string, courseContext?: string, overrideSessionId?: string): Promise<void> => {
+    const activeId = overrideSessionId || sessionId
+    if (!activeId) return
 
     // Optimistically add user message
     const optimisticUserMessage: ChatMessage = {
       id: `temp-${Date.now()}`,
-      sessionId,
+      sessionId: activeId,
       role: 'user',
       content,
       createdAt: new Date().toISOString(),
@@ -150,6 +160,7 @@ export function useChatMessages(sessionId: string | null): UseChatMessagesReturn
 
     setMessages((prev) => [...prev, optimisticUserMessage])
     setIsStreaming(true)
+    setError(null)
 
     try {
       const body: { content: string; courseContext?: string } = { content }
@@ -157,22 +168,98 @@ export function useChatMessages(sessionId: string | null): UseChatMessagesReturn
         body.courseContext = courseContext
       }
 
-      const response = await apiClient.post<ChatMessage>(
-        `/chat/sessions/${sessionId}/messages`,
-        body
-      )
+      const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-      // Confirm the optimistic user message and append assistant response
-      setMessages((prev) => {
-        return prev.map((m) =>
-          m.id === optimisticUserMessage.id
-            ? { ...m, id: `confirmed-${Date.now()}` }
-            : m
-        ).concat(response)
-      })
+      // Try streaming first
+      let streamWorked = false
+      try {
+        const response = await fetch(`${BASE_URL}/chat/sessions/${activeId}/messages/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        })
+
+        if (response.ok && response.body) {
+          streamWorked = true
+
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let fullContent = ''
+          let assistantMessageAdded = false
+
+          const assistantMessage: ChatMessage = {
+            id: `assistant-${Date.now()}`,
+            sessionId: activeId,
+            role: 'assistant',
+            content: '',
+            createdAt: new Date().toISOString(),
+          }
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const text = decoder.decode(value, { stream: true })
+            const lines = text.split('\n')
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue
+              const jsonStr = line.slice(6).trim()
+              if (!jsonStr) continue
+
+              try {
+                const parsed = JSON.parse(jsonStr)
+                if (parsed.done) continue
+                if (parsed.error) throw new Error(parsed.error)
+                if (parsed.content) {
+                  fullContent += parsed.content
+                  if (!assistantMessageAdded) {
+                    assistantMessageAdded = true
+                    setMessages((prev) => [...prev, { ...assistantMessage, content: fullContent }])
+                  } else {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessage.id ? { ...m, content: fullContent } : m
+                      )
+                    )
+                  }
+                }
+              } catch (parseErr) {
+                if (parseErr instanceof Error && parseErr.message !== 'Stream failed') {
+                  // Skip malformed lines silently
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Stream failed, fall through to non-stream
+      }
+
+      // Fallback: non-streaming
+      if (!streamWorked) {
+        const response = await apiClient.post<ChatMessage>(
+          `/chat/sessions/${activeId}/messages`,
+          body
+        )
+        setMessages((prev) => [...prev, response])
+      }
+
+      // Confirm optimistic user message
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === optimisticUserMessage.id ? { ...m, id: `confirmed-${Date.now()}` } : m
+        )
+      )
     } catch (err) {
-      // Remove optimistic message on failure
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMessage.id))
+      // Remove optimistic + partial assistant on failure
+      setMessages((prev) => prev.filter((m) =>
+        m.id !== optimisticUserMessage.id && !(m.role === 'assistant' && m.content === '')
+      ))
       const message = err instanceof Error ? err.message : 'Failed to send message'
       setError(message)
     } finally {

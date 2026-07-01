@@ -27,15 +27,35 @@ interface SessionWithDocs extends StudySession {
   }>
 }
 
-export function useSessions() {
+export interface UseSessionsParams {
+  limit?: number
+  offset?: number
+  sortBy?: string
+  order?: 'asc' | 'desc'
+}
+
+export function useSessions(params?: UseSessionsParams) {
   const [sessions, setSessions] = useState<StudySession[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const limit = params?.limit
+  const offset = params?.offset
+  const sortBy = params?.sortBy
+  const order = params?.order
+
   const fetchSessions = useCallback(async () => {
     try {
       setIsLoading(true)
-      const data = await apiClient.get<StudySession[]>('/sessions')
+      const searchParams = new URLSearchParams()
+      if (limit !== undefined) searchParams.set('limit', String(limit))
+      if (offset !== undefined) searchParams.set('offset', String(offset))
+      if (sortBy !== undefined) searchParams.set('sortBy', sortBy)
+      if (order !== undefined) searchParams.set('order', order)
+
+      const query = searchParams.toString()
+      const path = query ? `/sessions?${query}` : '/sessions'
+      const data = await apiClient.get<StudySession[]>(path)
       setSessions(data)
       setError(null)
     } catch (err: unknown) {
@@ -43,7 +63,7 @@ export function useSessions() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [limit, offset, sortBy, order])
 
   useEffect(() => {
     fetchSessions()

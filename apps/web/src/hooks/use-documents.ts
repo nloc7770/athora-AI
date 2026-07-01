@@ -4,6 +4,18 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiClient } from '@/lib/api'
 import { useToastStore } from '@/stores/toast-store'
 
+function usePageVisibility(): boolean {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const handler = () => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', handler)
+    return () => document.removeEventListener('visibilitychange', handler)
+  }, [])
+
+  return visible
+}
+
 interface Document {
   id: string
   name: string
@@ -33,6 +45,10 @@ interface UseDocumentsFilters {
   courseId?: string
   type?: string
   sessionId?: string
+  limit?: number
+  offset?: number
+  sortBy?: string
+  order?: 'asc' | 'desc'
 }
 
 export function useDocuments(filters?: UseDocumentsFilters) {
@@ -49,6 +65,10 @@ export function useDocuments(filters?: UseDocumentsFilters) {
       if (filters?.courseId) params.set('courseId', filters.courseId)
       if (filters?.type) params.set('type', filters.type)
       if (filters?.sessionId) params.set('sessionId', filters.sessionId)
+      if (filters?.limit !== undefined) params.set('limit', String(filters.limit))
+      if (filters?.offset !== undefined) params.set('offset', String(filters.offset))
+      if (filters?.sortBy) params.set('sortBy', filters.sortBy)
+      if (filters?.order) params.set('order', filters.order)
 
       const query = params.toString()
       const path = query ? `/documents?${query}` : '/documents'
@@ -60,7 +80,7 @@ export function useDocuments(filters?: UseDocumentsFilters) {
     } finally {
       setIsLoading(false)
     }
-  }, [filters?.courseId, filters?.type, filters?.sessionId])
+  }, [filters?.courseId, filters?.type, filters?.sessionId, filters?.limit, filters?.offset, filters?.sortBy, filters?.order])
 
   useEffect(() => {
     fetchDocuments()
@@ -95,6 +115,34 @@ export function useDocuments(filters?: UseDocumentsFilters) {
     }
   }, [fetchDocuments])
 
+  const renameDocument = useCallback(async (id: string, name: string): Promise<Document> => {
+    setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, name } : d)))
+
+    try {
+      const updated = await apiClient.patch<Document>(`/documents/${id}`, { name })
+      setDocuments((prev) => prev.map((d) => (d.id === id ? updated : d)))
+      return updated
+    } catch (err) {
+      await fetchDocuments()
+      throw err
+    }
+  }, [fetchDocuments])
+
+  const moveDocument = useCallback(async (id: string, courseId: string | null): Promise<Document> => {
+    setDocuments((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, courseId: courseId ?? undefined } : d))
+    )
+
+    try {
+      const updated = await apiClient.patch<Document>(`/documents/${id}`, { courseId })
+      setDocuments((prev) => prev.map((d) => (d.id === id ? updated : d)))
+      return updated
+    } catch (err) {
+      await fetchDocuments()
+      throw err
+    }
+  }, [fetchDocuments])
+
   return {
     documents,
     isLoading,
@@ -102,6 +150,8 @@ export function useDocuments(filters?: UseDocumentsFilters) {
     refresh: fetchDocuments,
     uploadDocument,
     deleteDocument,
+    renameDocument,
+    moveDocument,
   }
 }
 
@@ -110,12 +160,22 @@ export function useDocumentStatus(documentId: string | null) {
   const [progress, setProgress] = useState(0)
   const [isReady, setIsReady] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const visible = usePageVisibility()
 
   useEffect(() => {
     if (!documentId) {
       setStatus(null)
       setProgress(0)
       setIsReady(false)
+      return
+    }
+
+    if (!visible) {
+      // Tab hidden: clear polling
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
       return
     }
 
@@ -138,6 +198,7 @@ export function useDocumentStatus(documentId: string | null) {
       }
     }
 
+    // Resume: immediate fetch + restart interval
     poll()
     intervalRef.current = setInterval(poll, 3000)
 
@@ -147,7 +208,7 @@ export function useDocumentStatus(documentId: string | null) {
         intervalRef.current = null
       }
     }
-  }, [documentId])
+  }, [documentId, visible])
 
   return { status, progress, isReady }
 }

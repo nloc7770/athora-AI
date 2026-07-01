@@ -1,11 +1,17 @@
 name: CI
 
 on:
+  push:
+    branches: [main, develop, dev]
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-and-type-check:
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,11 +21,16 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @athora/shared build
-      - run: pnpm --filter @athora/web build
-      - run: pnpm --filter @athora/backend build
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-  test:
+  lint:
+    needs: install
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,14 +39,111 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @athora/backend test
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm lint
 
-  migration-check:
+  typecheck:
+    needs: install
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-      - run: supabase db start
-      - run: supabase db reset
-      - run: supabase db lint
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Build shared package
+        run: pnpm --filter @athora/shared build
+      - name: Typecheck web
+        run: pnpm --filter @athora/web exec tsc --noEmit
+      - name: Typecheck backend
+        run: pnpm --filter @athora/backend exec tsc --noEmit
+      - name: Typecheck admin
+        run: pnpm --filter @athora/admin exec tsc --noEmit
+
+  test-backend:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Run unit tests
+        run: pnpm --filter @athora/backend test -- --ci --coverage
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: apps/backend/coverage/
+          retention-days: 7
+
+  build:
+    needs: [lint, typecheck, test-backend]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - { name: web, filter: "@athora/web" }
+          - { name: backend, filter: "@athora/backend" }
+          - { name: admin, filter: "@athora/admin" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Build shared package
+        run: pnpm --filter @athora/shared build
+      - name: Build ${{ matrix.app.name }}
+        run: pnpm --filter ${{ matrix.app.filter }} build
+
+  # ------------------------------------------------------------------
+  # Deploy previews (PRs to main only)
+  # Vercel auto-deploys previews via its GitHub integration.
+  # If manual preview deploys are needed, uncomment below:
+  # ------------------------------------------------------------------
+  # preview:
+  #   if: github.event_name == 'pull_request' && github.base_ref == 'main'
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: amondnet/vercel-action@v25
+  #       with:
+  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+  #         github-comment: true

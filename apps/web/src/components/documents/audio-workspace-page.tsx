@@ -435,7 +435,7 @@ export default function AudioWorkspacePage() {
                   {/* Technical Terms */}
                   <div>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Tag className="h-3 w-3 text-amber-500" />
+                      <Tag className="h-3 w-3 text-purple-500" />
                       <span className="text-[11px] font-medium text-zinc-600">
                         Technical Terms ({entities.terms.length})
                       </span>
@@ -445,7 +445,7 @@ export default function AudioWorkspacePage() {
                         <Badge
                           key={e.name}
                           variant="secondary"
-                          className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 font-mono"
+                          className="text-[10px] bg-purple-50 text-purple-700 border-purple-200 font-mono"
                         >
                           {e.name}
                         </Badge>

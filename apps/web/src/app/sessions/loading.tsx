@@ -21,7 +21,7 @@ export default function SessionsLoading() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-gray-50 text-left text-sm font-medium text-gray-500">
-                <th className="px-4 py-3">Session name</th>
+                <th className="px-4 py-3">Study space name</th>
                 <th className="px-4 py-3">Files</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Created at</th>

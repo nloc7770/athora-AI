@@ -20,9 +20,9 @@ export function CtaForm() {
         value={ctaEmail}
         onChange={(e) => setCtaEmail(e.target.value)}
         aria-label="Email address"
-        className="h-12 flex-1 border-stone-700 bg-stone-800 text-white placeholder:text-stone-500 focus-visible:ring-amber-500 rounded-xl"
+        className="h-12 flex-1 border-stone-700 bg-stone-800 text-white placeholder:text-stone-500 focus-visible:ring-purple-500 rounded-xl"
       />
-      <Button type="submit" className="h-12 bg-amber-600 text-white px-6 font-semibold rounded-full whitespace-nowrap hover:bg-amber-700 hover:scale-105 transition-all shadow-lg shadow-amber-600/20">
+      <Button type="submit" className="h-12 bg-purple-600 text-white px-6 font-semibold rounded-full whitespace-nowrap hover:bg-purple-700 hover:scale-105 transition-all shadow-lg shadow-purple-600/20">
         Get started
       </Button>
     </form>

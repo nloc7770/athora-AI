@@ -25,8 +25,12 @@ class ApiRequestError extends Error {
   }
 }
 
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/terms', '/privacy']
+
 function redirectToLogin(): void {
   if (typeof window === 'undefined') return
+  const current = window.location.pathname
+  if (PUBLIC_PATHS.some((p) => current === p || current.startsWith(p + '/'))) return
   window.location.href = '/login'
 }
 
@@ -53,7 +57,10 @@ async function doRefresh(): Promise<boolean> {
   try {
     const response = await fetch(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
       credentials: 'include',
       body: JSON.stringify({}),
     })
@@ -92,6 +99,7 @@ async function request<T>(
   const timeoutMs = options?.timeoutMs ?? (isUpload ? UPLOAD_TIMEOUT_MS : DEFAULT_TIMEOUT_MS)
 
   const headers: Record<string, string> = {
+    'X-Requested-With': 'XMLHttpRequest',
     ...options?.headers,
   }
 
@@ -142,7 +150,9 @@ async function request<T>(
       }
 
       if (response.status === 401) {
-        redirectToLogin()
+        if (!options?._skipRefresh) {
+          redirectToLogin()
+        }
         throw new ApiRequestError('Unauthorized', 401)
       }
 

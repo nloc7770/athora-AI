@@ -84,7 +84,7 @@ export default function TermsPage() {
             We may terminate or suspend your account for violation of these terms. Upon
             termination, you may request export of your uploaded materials within 30 days.
             After 30 days, data is permanently deleted per our{' '}
-            <a href="/privacy" className="text-amber-700 underline hover:text-amber-900">
+            <a href="/privacy" className="text-purple-700 underline hover:text-purple-900">
               Privacy Policy
             </a>.
           </p>
@@ -111,7 +111,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-stone-900 mb-3">9. Contact</h2>
           <p>
             Questions about these terms? Email{' '}
-            <a href="mailto:legal@athora.app" className="text-amber-700 underline hover:text-amber-900">
+            <a href="mailto:legal@athora.app" className="text-purple-700 underline hover:text-purple-900">
               legal@athora.app
             </a>.
           </p>

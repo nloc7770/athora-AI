@@ -6,7 +6,7 @@ export class CreateDocumentDto {
   name: string;
 
   @IsString()
-  @IsIn(['pdf', 'audio', 'note', 'video'])
+  @IsIn(['pdf', 'doc', 'audio', 'note', 'video'])
   type: string;
 
   @IsString()

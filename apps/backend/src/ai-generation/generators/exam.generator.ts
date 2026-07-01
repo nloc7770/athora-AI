@@ -15,7 +15,7 @@ const EXAM_SCHEMA = {
           question: { type: 'string' },
           type: {
             type: 'string',
-            enum: ['multiple_choice', 'true_false', 'short_answer'],
+            enum: ['multiple_choice'],
           },
           options: { type: 'array', items: { type: 'string' } },
           correctAnswer: { type: 'string' },
@@ -52,6 +52,7 @@ export class ExamGenerator {
     datasetId: string,
     documentId: string | null,
     userId: string,
+    sessionId?: string | null,
   ): Promise<ExamOutput> {
     const chunks = await this.ragflowService.getDocumentChunks(
       datasetId,
@@ -66,10 +67,10 @@ export class ExamGenerator {
         {
           role: 'user',
           content: [
-            'Generate exam questions from this content.',
-            'Mix multiple choice, true/false, and short answer questions.',
+            'Generate multiple choice exam questions from this content.',
+            'All questions must be multiple_choice type with exactly 4 options.',
             'Mark predicted importance/likelihood of each question appearing in a real exam.',
-            'For multiple choice, provide 4 options. For true/false, options should be ["True", "False"].',
+            'For each question, provide 4 answer options where exactly one is correct.',
             'Provide a clear explanation for each correct answer.',
             '',
             'Document content:',
@@ -80,42 +81,45 @@ export class ExamGenerator {
       EXAM_SCHEMA,
     );
 
-    await this.persistExam(userId, documentId, output);
+    const examId = await this.persistExam(userId, documentId, sessionId, output);
 
-    return output;
+    return { ...output, examId };
   }
 
   private async persistExam(
     userId: string,
     documentId: string | null,
+    sessionId: string | null | undefined,
     output: ExamOutput,
-  ): Promise<void> {
+  ): Promise<string | undefined> {
+    const insertData: Record<string, unknown> = {
+      user_id: userId,
+      name: 'AI Generated Exam',
+      question_count: output.questions.length,
+    };
+    if (documentId) insertData.document_id = documentId;
+    if (sessionId) insertData.session_id = sessionId;
+
     const { data: exam, error: examError } = await this.supabaseService
       .getAdminClient()
       .from('exams')
-      .insert({
-        user_id: userId,
-        title: 'AI Generated Exam',
-        document_id: documentId,
-        source: 'ai_generation',
-        total_questions: output.questions.length,
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (examError || !exam) {
       this.logger.error('Failed to create exam', { examError });
-      return;
+      return undefined;
     }
 
-    const questions = output.questions.map((q) => ({
+    const questions = output.questions.map((q, index) => ({
       exam_id: exam.id,
       question: q.question,
       type: q.type,
       options: q.options ?? null,
       correct_answer: q.correctAnswer,
       explanation: q.explanation,
-      predicted_likelihood: q.predictedLikelihood,
+      order_index: index,
     }));
 
     const { error: questionsError } = await this.supabaseService

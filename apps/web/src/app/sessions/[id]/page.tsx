@@ -23,14 +23,16 @@ import { useToastStore } from '@/stores/toast-store'
 import { useSession } from '@/hooks/use-sessions'
 import { useDocuments, useDocumentStatus } from '@/hooks/use-documents'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
-import { useAiGeneration, useSessionGeneration } from '@/hooks/use-ai-generation'
+import { useSessionGeneration } from '@/hooks/use-ai-generation'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { markFirstStudyDone } from '@/hooks/use-first-study'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Markdown } from '@/components/ui/markdown'
 import { SummaryTab, FlashcardsTab, ExamTab, MindMapTab } from './_components'
+import { DocumentInsight } from './_components/document-insight'
 
 type TabValue = 'documents' | 'chat' | 'flashcards' | 'exam' | 'summary' | 'mindmap'
 
@@ -53,122 +55,7 @@ function DocumentStatusBadge({ docId }: { docId: string }) {
   )
 }
 
-function DocumentInsight({ documentId, document }: { documentId: string; document: any }) {
-  const { generations, generate, isLoading: genLoading } = useAiGeneration(documentId)
-  const summary = generations.find((g) => g.type === 'summary' && g.status === 'completed')
 
-  return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b px-4 py-3">
-        <FileText className="h-5 w-5 text-amber-500" />
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold truncate">{document?.name ?? 'Document'}</h3>
-          <p className="text-xs text-gray-400">
-            {document?.file_size ? `${(document.file_size / 1024 / 1024).toFixed(1)} MB` : ''} • {document?.type ?? 'pdf'}
-          </p>
-        </div>
-        {!summary && (
-          <Button size="sm" onClick={() => generate('summary')} disabled={genLoading} className="gap-1">
-            <Sparkles className="h-3 w-3" />
-            {genLoading ? 'Generating...' : 'Summarize'}
-          </Button>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
-        {/* Summary */}
-        {summary?.result ? (
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-amber-500" />
-              Summarization
-            </h4>
-            {summary.result.overview && (
-              <p className="text-sm text-gray-700 leading-relaxed">{summary.result.overview}</p>
-            )}
-            {summary.result.chapters?.map((ch: any, i: number) => (
-              <div key={i} className="rounded-lg bg-gray-50 p-3">
-                <p className="text-sm font-medium text-gray-800">{ch.title}</p>
-                <ul className="mt-1 space-y-1">
-                  {ch.keyPoints?.map((kp: string, j: number) => (
-                    <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
-                      <span className="text-amber-400 mt-1">•</span>
-                      {kp}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-            {summary.result.takeaways && (
-              <div className="rounded-lg bg-amber-50 p-3">
-                <p className="text-xs font-semibold text-amber-700 mb-1">Key Takeaways</p>
-                <ul className="space-y-1">
-                  {summary.result.takeaways.map((t: string, i: number) => (
-                    <li key={i} className="text-sm text-amber-800">• {t}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ) : genLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
-            <span className="ml-2 text-sm text-gray-500">Generating insights...</span>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <BookOpen className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-            <p className="text-sm text-gray-400">Click Summarize to generate document insights</p>
-          </div>
-        )}
-
-        {/* Quick actions */}
-        <div className="border-t pt-4">
-          <p className="text-xs font-medium text-gray-500 mb-2">Generate from this document</p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => generate('flashcards')} disabled={genLoading} className="gap-1">
-              <Brain className="h-3 w-3" /> Flashcards
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => generate('exam')} disabled={genLoading} className="gap-1">
-              <ClipboardList className="h-3 w-3" /> Exam
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => generate('mindmap')} disabled={genLoading} className="gap-1">
-              <Network className="h-3 w-3" /> Mind Map
-            </Button>
-          </div>
-        </div>
-
-        {/* Show other generations */}
-        {generations.filter((g) => g.type !== 'summary' && g.status === 'completed').map((gen) => (
-          <div key={gen.id} className="border-t pt-3">
-            <Badge className="mb-2 capitalize">{gen.type}</Badge>
-            {gen.type === 'flashcards' && gen.result?.cards && (
-              <div className="space-y-2">
-                {gen.result.cards.slice(0, 3).map((card: any, i: number) => (
-                  <div key={i} className="rounded-md border p-2">
-                    <p className="text-xs font-medium">{card.front}</p>
-                    <p className="text-xs text-gray-500 mt-1">{card.back}</p>
-                  </div>
-                ))}
-                {gen.result.cards.length > 3 && (
-                  <p className="text-xs text-gray-400">+{gen.result.cards.length - 3} more cards</p>
-                )}
-              </div>
-            )}
-            {gen.type === 'exam' && gen.result?.questions && (
-              <p className="text-xs text-gray-500">{gen.result.questions.length} questions generated</p>
-            )}
-            {gen.type === 'mindmap' && gen.result?.nodes && (
-              <p className="text-xs text-gray-500">{gen.result.nodes.length} nodes generated</p>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function getUploadErrorMessage(err: unknown): string {
   if (err instanceof Error) {
@@ -189,6 +76,12 @@ export default function SessionWorkspace() {
   const { session, documents, isLoading, error, refresh } = useSession(sessionId)
   const { uploadDocument } = useDocuments({ sessionId })
   const [activeTab, setActiveTab] = useState<TabValue>('documents')
+
+  // Refresh session data when switching tabs
+  const handleTabChange = (tab: TabValue) => {
+    setActiveTab(tab)
+    refresh()
+  }
   const [uploading, setUploading] = useState(false)
   const [uploadStatuses, setUploadStatuses] = useState<FileUploadStatus[]>([])
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
@@ -318,14 +211,24 @@ export default function SessionWorkspace() {
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return
-    if (!chatSessionId) {
-      const newSession = await createChatSession({ sessionId, type: 'document_chat' })
-      setChatSessionId(newSession.id)
-    }
     const msg = chatInput
     setChatInput('')
+
+    let activeSessionId = chatSessionId
+    if (!activeSessionId) {
+      try {
+        const newSession = await createChatSession({ sessionId, type: 'document_chat' })
+        setChatSessionId(newSession.id)
+        activeSessionId = newSession.id
+      } catch {
+        setChatInput(msg)
+        useToastStore.getState().addToast('Failed to create chat session.', 'error')
+        return
+      }
+    }
+
     try {
-      await sendMessage(msg)
+      await sendMessage(msg, undefined, activeSessionId)
     } catch {
       setChatInput(msg)
       useToastStore.getState().addToast('Message failed to send. Please try again.', 'error')
@@ -333,7 +236,14 @@ export default function SessionWorkspace() {
   }
 
   const handleSessionGenerate = async (type: 'summary' | 'flashcards' | 'exam' | 'mindmap') => {
-    await generateSession(type)
+    try {
+      await generateSession(type)
+      markFirstStudyDone()
+      useToastStore.getState().addToast(`Generating ${type}...`, 'info')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Generation failed'
+      useToastStore.getState().addToast(message, 'error')
+    }
   }
 
   if (isLoading) {
@@ -341,7 +251,7 @@ export default function SessionWorkspace() {
       <ProtectedRoute>
         <AppLayout>
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
           </div>
         </AppLayout>
       </ProtectedRoute>
@@ -355,12 +265,12 @@ export default function SessionWorkspace() {
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <AlertCircle className="h-12 w-12 text-red-500" />
             <p className="text-lg font-medium text-gray-900">
-              {error || 'Failed to load session'}
+              {error || 'Failed to load study space'}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => refresh()}
-                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
               >
                 Retry
               </button>
@@ -368,7 +278,7 @@ export default function SessionWorkspace() {
                 onClick={() => router.push('/sessions')}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Back to sessions
+                Back to study spaces
               </button>
             </div>
           </div>
@@ -379,6 +289,8 @@ export default function SessionWorkspace() {
 
   const readyDocs = documents.filter((d) => d.status === 'ready')
   const hasReadyDocs = readyDocs.length > 0
+  const hasAnyDocs = documents.length > 0
+  const hasProcessingDocs = hasAnyDocs && !hasReadyDocs
 
   const tabs = [
     { key: 'documents' as const, icon: FileText, label: 'Documents' },
@@ -409,14 +321,16 @@ export default function SessionWorkspace() {
 
           {/* Tabs */}
           <div className="border-b bg-white px-6 overflow-x-auto">
-            <div className="flex gap-1">
+            <div className="flex gap-1" role="tablist">
               {tabs.map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
-                  onClick={() => setActiveTab(key)}
+                  role="tab"
+                  aria-selected={activeTab === key}
+                  onClick={() => handleTabChange(key)}
                   className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition ${
                     activeTab === key
-                      ? 'border-amber-500 text-amber-600'
+                      ? 'border-purple-500 text-purple-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -458,6 +372,7 @@ export default function SessionWorkspace() {
             {activeTab === 'flashcards' && (
               <FlashcardsTab
                 hasReadyDocs={hasReadyDocs}
+                hasProcessingDocs={hasProcessingDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
                 onGenerate={() => handleSessionGenerate('flashcards')}
@@ -467,6 +382,7 @@ export default function SessionWorkspace() {
             {activeTab === 'exam' && (
               <ExamTab
                 hasReadyDocs={hasReadyDocs}
+                hasProcessingDocs={hasProcessingDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
                 onGenerate={() => handleSessionGenerate('exam')}
@@ -476,6 +392,7 @@ export default function SessionWorkspace() {
             {activeTab === 'summary' && (
               <SummaryTab
                 hasReadyDocs={hasReadyDocs}
+                hasProcessingDocs={hasProcessingDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
                 onGenerate={() => handleSessionGenerate('summary')}
@@ -485,6 +402,7 @@ export default function SessionWorkspace() {
             {activeTab === 'mindmap' && (
               <MindMapTab
                 hasReadyDocs={hasReadyDocs}
+                hasProcessingDocs={hasProcessingDocs}
                 generations={sessionGenerations}
                 isLoading={sessionGenLoading}
                 onGenerate={() => handleSessionGenerate('mindmap')}
@@ -533,7 +451,7 @@ function DocumentsTab({
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
-          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-amber-400 hover:bg-amber-50/50"
+          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-purple-400 hover:bg-purple-50/50"
         >
           <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
           <p className="text-sm font-medium text-gray-700">
@@ -543,7 +461,7 @@ function DocumentsTab({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
+            accept=".pdf,.doc,.docx"
             multiple
             className="hidden"
             onChange={(e) => handleUpload(e.target.files)}
@@ -566,7 +484,7 @@ function DocumentsTab({
               <div key={`${s.fileName}-${idx}`} className="flex items-center gap-2 text-sm">
                 {s.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
                 {s.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />}
-                {s.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-amber-500 shrink-0" />}
+                {s.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-purple-500 shrink-0" />}
                 {s.status === 'pending' && <div className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0" />}
                 <span className="truncate flex-1 text-gray-700">{s.fileName}</span>
                 {s.error && <span className="text-xs text-red-500 shrink-0">{s.error}</span>}
@@ -586,14 +504,14 @@ function DocumentsTab({
                 onClick={() => setSelectedDocId(doc.id === selectedDocId ? null : doc.id)}
                 className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${
                   selectedDocId === doc.id
-                    ? 'bg-amber-50 border border-amber-200'
+                    ? 'bg-purple-50 border border-purple-200'
                     : 'hover:bg-gray-50 border border-transparent'
                 }`}
               >
                 {doc.type === 'audio' ? (
-                  <Headphones className="h-4 w-4 text-orange-500 shrink-0" />
+                  <Headphones className="h-4 w-4 text-violet-500 shrink-0" />
                 ) : (
-                  <FileText className="h-4 w-4 text-amber-500 shrink-0" />
+                  <FileText className="h-4 w-4 text-purple-500 shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
@@ -656,23 +574,34 @@ function ChatTab({
       <div className="flex-1 space-y-4 overflow-auto pb-4">
         {messages.length === 0 && (
           <div className="text-center pt-12">
-            <Sparkles className="mx-auto mb-3 h-8 w-8 text-amber-400" />
+            <Sparkles className="mx-auto mb-3 h-8 w-8 text-purple-400" />
             <p className="text-sm text-gray-500">Ask anything about your documents</p>
           </div>
         )}
         {messages.map((msg, idx) => (
-          <div key={msg.id || `msg-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-              msg.role === 'user' ? 'bg-amber-600 text-white' : 'bg-white border text-gray-800'
-            }`}>
-              {msg.content}
+          msg.content ? (
+            <div key={msg.id || `msg-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+                msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-white border text-gray-800'
+              }`}>
+                {msg.role === 'assistant' ? (
+                  <Markdown content={msg.content} />
+                ) : (
+                  msg.content
+                )}
+              </div>
             </div>
-          </div>
+          ) : null
         ))}
-        {chatLoading && (
+        {chatLoading && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex justify-start">
-            <div className="rounded-xl bg-white border px-4 py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            <div className="rounded-xl bg-white border px-4 py-3 flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 animate-[bounce_1.4s_ease-in-out_infinite]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 animate-[bounce_1.4s_ease-in-out_0.2s_infinite]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 animate-[bounce_1.4s_ease-in-out_0.4s_infinite]" />
+              </div>
+              <span className="text-sm text-gray-400">Thinking...</span>
             </div>
           </div>
         )}

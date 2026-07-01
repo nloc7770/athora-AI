@@ -50,9 +50,17 @@ const TUTOR_SYSTEM_PROMPT = `You are an AI tutor helping students study and prep
 - Adapt your explanations to the student's level
 - Never give direct answers to exam questions; guide the student to discover the answer
 
-Always respond in the same language the student uses.`;
+Always respond in the same language the student uses.
+Keep responses concise. Use short paragraphs. Avoid large headings (h1, h2) — use bold text or small headers (h4) instead.`;
 
-const DOCUMENT_CHAT_SYSTEM_PROMPT = `You are a helpful study assistant. Answer the student's question using ONLY the provided document context below. If the answer is not found in the context, say so clearly. Cite specific parts of the context when possible.
+const DOCUMENT_CHAT_SYSTEM_PROMPT = `You are a study assistant for a specific set of documents. You must ONLY answer questions based on the provided document context below.
+
+STRICT RULES:
+- If the question is NOT related to the document content, reply: "This question is outside the scope of your uploaded documents. I can only help with topics covered in your study materials."
+- Do NOT answer general knowledge questions, career advice, salary info, or anything not in the documents.
+- If the context section is empty, say: "I don't have any document context to work with. Please make sure your documents are processed."
+- When answering, cite specific parts of the documents.
+- Keep responses concise and study-focused.
 
 Always respond in the same language the student uses.
 
@@ -140,7 +148,7 @@ export class ChatService {
       assistantContent = result.content;
       sources = result.sources;
     } else {
-      assistantContent = await this.handleTutorChat(message, history, courseContext);
+      assistantContent = await this.handleTutorChat(userId, message, history, courseContext);
     }
 
     const assistantMessage = await this.storeMessage(
@@ -180,12 +188,26 @@ export class ChatService {
         score: c.score,
       }));
 
+      const contextText = chunks.length > 0
+        ? chunks.map((c) => c.content).join('\n\n---\n\n')
+        : '[NO DOCUMENT CONTEXT AVAILABLE - The documents have not been processed yet or no relevant content was found. You MUST refuse to answer and tell the user to ensure documents are uploaded and processed.]';
+
       const systemPrompt = DOCUMENT_CHAT_SYSTEM_PROMPT.replace(
         '{context}',
-        chunks.map((c) => c.content).join('\n\n---\n\n'),
+        contextText,
       );
 
       llmMessages[0] = { role: 'system', content: systemPrompt };
+    } else {
+      // Tutor: retrieve from all user's datasets
+      const chunks = await this.retrieveAllUserChunks(userId, message);
+      if (chunks.length > 0) {
+        const context = chunks.map((c) => c.content).join('\n\n---\n\n');
+        llmMessages[0] = {
+          role: 'system',
+          content: `${llmMessages[0].content}\n\nRelevant context from the student's documents:\n${context}`,
+        };
+      }
     }
 
     let fullContent = '';
@@ -229,6 +251,7 @@ export class ChatService {
   async getSessions(
     userId: string,
     documentId?: string,
+    studySessionId?: string,
   ): Promise<ChatSession[]> {
     let query = this.supabaseService
       .getAdminClient()
@@ -239,6 +262,10 @@ export class ChatService {
 
     if (documentId) {
       query = query.eq('document_id', documentId);
+    }
+
+    if (studySessionId) {
+      query = query.eq('study_session_id', studySessionId);
     }
 
     const { data, error } = await query;
@@ -304,13 +331,22 @@ export class ChatService {
   }
 
   private async handleTutorChat(
+    userId: string,
     message: string,
     history: ChatMessageRecord[],
     courseContext?: string,
   ): Promise<string> {
-    const systemPrompt = courseContext
+    // Retrieve chunks from ALL user's datasets for global context
+    const chunks = await this.retrieveAllUserChunks(userId, message);
+
+    let systemPrompt = courseContext
       ? `${TUTOR_SYSTEM_PROMPT}\n\nThe student is currently studying: ${courseContext}. Tailor your responses to this course context.`
       : TUTOR_SYSTEM_PROMPT;
+
+    if (chunks.length > 0) {
+      const context = chunks.map((c) => c.content).join('\n\n---\n\n');
+      systemPrompt += `\n\nRelevant context from the student's documents:\n${context}`;
+    }
 
     const llmMessages: LlmChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -319,6 +355,41 @@ export class ChatService {
     ];
 
     return this.llmService.chat(llmMessages);
+  }
+
+  private async retrieveAllUserChunks(
+    userId: string,
+    query: string,
+  ): Promise<Chunk[]> {
+    // Get ALL user's study sessions with ragflow datasets
+    const { data: sessions } = await this.supabaseService
+      .getAdminClient()
+      .from('study_sessions')
+      .select('ragflow_dataset_id')
+      .eq('user_id', userId)
+      .not('ragflow_dataset_id', 'is', null);
+
+    if (!sessions || sessions.length === 0) return [];
+
+    const datasetIds = sessions
+      .map((s) => s.ragflow_dataset_id)
+      .filter(Boolean) as string[];
+
+    if (datasetIds.length === 0) return [];
+
+    try {
+      // Single RAGFlow call across ALL datasets — handles ranking internally
+      const chunks = await this.ragflowService.retrieveChunks(
+        datasetIds,
+        query,
+        15, // Retrieve more, then trim to top 10 for context
+      );
+
+      return chunks.slice(0, 10);
+    } catch (error) {
+      this.logger.error('Failed to retrieve chunks for tutor', { error });
+      return [];
+    }
   }
 
   private async buildLlmMessages(
@@ -353,22 +424,22 @@ export class ChatService {
     session: ChatSession,
     query: string,
   ): Promise<Chunk[]> {
-    let datasetId: string | null = null;
+    const datasetIds: string[] = [];
 
     // Try document-level first
     if (session.documentId) {
       const { data: doc } = await this.supabaseService
         .getAdminClient()
         .from('documents')
-        .select('ragflow_dataset_id, ragflow_document_id')
+        .select('ragflow_dataset_id')
         .eq('id', session.documentId)
         .single();
 
-      datasetId = doc?.ragflow_dataset_id ?? null;
+      if (doc?.ragflow_dataset_id) datasetIds.push(doc.ragflow_dataset_id);
     }
 
-    // Fallback: try study session level
-    if (!datasetId) {
+    // Try study session level — get ALL datasets from docs in this session
+    if (datasetIds.length === 0) {
       const { data: chatSession } = await this.supabaseService
         .getAdminClient()
         .from('chat_sessions')
@@ -377,6 +448,7 @@ export class ChatService {
         .single();
 
       if (chatSession?.study_session_id) {
+        // First try session's own dataset
         const { data: studySession } = await this.supabaseService
           .getAdminClient()
           .from('study_sessions')
@@ -384,21 +456,39 @@ export class ChatService {
           .eq('id', chatSession.study_session_id)
           .single();
 
-        datasetId = studySession?.ragflow_dataset_id ?? null;
+        if (studySession?.ragflow_dataset_id) {
+          datasetIds.push(studySession.ragflow_dataset_id);
+        }
+
+        // Also get all document datasets within this session
+        const { data: sessionDocs } = await this.supabaseService
+          .getAdminClient()
+          .from('documents')
+          .select('ragflow_dataset_id')
+          .eq('session_id', chatSession.study_session_id)
+          .not('ragflow_dataset_id', 'is', null);
+
+        if (sessionDocs) {
+          sessionDocs.forEach((d) => {
+            if (d.ragflow_dataset_id && !datasetIds.includes(d.ragflow_dataset_id)) {
+              datasetIds.push(d.ragflow_dataset_id);
+            }
+          });
+        }
       }
     }
 
-    if (!datasetId) {
+    if (datasetIds.length === 0) {
       this.logger.warn('No dataset found for chat session', { sessionId: session.id });
       return [];
     }
 
     try {
-      let chunks = await this.ragflowService.retrieveChunks(datasetId, query, 5);
+      const chunks = await this.ragflowService.retrieveChunks(datasetIds, query, 10);
 
       if (chunks.length === 0) {
         this.logger.warn('Semantic retrieval returned 0 chunks, falling back to direct chunk listing');
-        chunks = await this.ragflowService.getDocumentChunks(datasetId);
+        return await this.ragflowService.getDocumentChunks(datasetIds[0]);
       }
 
       return chunks;

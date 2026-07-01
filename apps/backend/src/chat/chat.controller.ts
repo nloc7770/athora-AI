@@ -6,11 +6,11 @@ import {
   Param,
   Query,
   UseGuards,
-  Sse,
   ParseUUIDPipe,
-  MessageEvent,
+  Res,
+  Header,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import * as express from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -35,8 +35,9 @@ export class ChatController {
   async getSessions(
     @CurrentUser('id') userId: string,
     @Query('documentId') documentId?: string,
+    @Query('sessionId') sessionId?: string,
   ) {
-    return this.chatService.getSessions(userId, documentId);
+    return this.chatService.getSessions(userId, documentId, sessionId);
   }
 
   @Get('sessions/:id/messages')
@@ -57,39 +58,37 @@ export class ChatController {
     return this.chatService.sendMessage(userId, sessionId, dto.content, dto.courseContext);
   }
 
-  @Sse('sessions/:id/messages/stream')
   @Post('sessions/:id/messages/stream')
-  streamMessage(
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  async streamMessage(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) sessionId: string,
     @Body() dto: SendMessageDto,
-  ): Observable<MessageEvent> {
-    return new Observable<MessageEvent>((subscriber) => {
-      const run = async () => {
-        try {
-          const generator = this.chatService.sendMessageStream(
-            userId,
-            sessionId,
-            dto.content,
-          );
+    @Res({ passthrough: false }) res: express.Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
 
-          for await (const chunk of generator) {
-            subscriber.next({ data: JSON.stringify({ content: chunk }) });
-          }
+    try {
+      const generator = this.chatService.sendMessageStream(
+        userId,
+        sessionId,
+        dto.content,
+      );
 
-          subscriber.next({ data: JSON.stringify({ done: true }) });
-          subscriber.complete();
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : 'Stream failed';
-          subscriber.next({
-            data: JSON.stringify({ error: message }),
-          });
-          subscriber.complete();
-        }
-      };
+      for await (const chunk of generator) {
+        res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+      }
 
-      run();
-    });
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Stream failed';
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    } finally {
+      res.end();
+    }
   }
 }

@@ -37,7 +37,22 @@ export class AuthService {
       throw new UnauthorizedException(error.message);
     }
 
-    return { user: data.user, session: data.session };
+    // Fetch profile to include role
+    const { data: profile } = await this.supabaseService
+      .getAdminClient()
+      .from('profiles')
+      .select('role, name, avatar_url')
+      .eq('id', data.user.id)
+      .single();
+
+    const user = {
+      ...data.user,
+      role: profile?.role ?? 'user',
+      name: profile?.name ?? data.user.user_metadata?.name,
+      avatar_url: profile?.avatar_url,
+    };
+
+    return { user, session: data.session };
   }
 
   async logout(token: string) {

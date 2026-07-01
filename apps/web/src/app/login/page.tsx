@@ -18,7 +18,9 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
-      router.push('/dashboard')
+      const params = new URLSearchParams(window.location.search)
+      const returnTo = params.get('returnTo')
+      router.push(returnTo ? decodeURIComponent(returnTo) : '/dashboard')
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message)

@@ -26,8 +26,10 @@ export class FlashcardsController {
   findAllSets(
     @CurrentUser('id') userId: string,
     @Query('courseId') courseId?: string,
+    @Query('documentId') documentId?: string,
+    @Query('sessionId') sessionId?: string,
   ) {
-    return this.flashcardsService.findAllSets(userId, courseId);
+    return this.flashcardsService.findAllSets(userId, { courseId, documentId, sessionId });
   }
 
   @Get('sets/:id')
@@ -49,17 +51,19 @@ export class FlashcardsController {
   @Post('sets/:id/cards')
   createCard(
     @Param('id', ParseUUIDPipe) setId: string,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateFlashcardDto,
   ) {
-    return this.flashcardsService.createCard(setId, dto);
+    return this.flashcardsService.createCard(userId, setId, dto);
   }
 
   @Patch('cards/:id')
   updateCard(
     @Param('id', ParseUUIDPipe) cardId: string,
+    @CurrentUser('id') userId: string,
     @Body() dto: UpdateFlashcardDto,
   ) {
-    return this.flashcardsService.updateCard(cardId, dto);
+    return this.flashcardsService.updateCard(userId, cardId, dto);
   }
 
   @Delete('sets/:id')

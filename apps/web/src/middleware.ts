@@ -3,13 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
 
+  const isDev = process.env.NODE_ENV === 'development'
+
   const cspHeader = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' data: https:`,
-    `connect-src 'self' https://*.supabase.co http://localhost:*`,
+    `connect-src 'self' https://*.supabase.co${isDev ? ' http://localhost:*' : ''}`,
     `frame-src 'none'`,
     `object-src 'none'`,
     `base-uri 'self'`,

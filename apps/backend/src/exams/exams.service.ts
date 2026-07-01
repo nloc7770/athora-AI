@@ -35,7 +35,21 @@ export class ExamsService {
       throw new NotFoundException('Exam not found');
     }
 
-    return data;
+    const rawQuestions = ((data as Record<string, unknown>).exam_questions ?? []) as Record<string, unknown>[];
+
+    return {
+      ...data,
+      exam_questions: undefined,
+      questions: rawQuestions.map((q) => ({
+        id: q.id,
+        text: q.question,
+        type: q.type,
+        options: (q.options as string[]) ?? [],
+        correctAnswer: q.correct_answer,
+        explanation: q.explanation ?? null,
+        predictedLikelihood: q.predicted_likelihood ?? null,
+      })),
+    };
   }
 
   async create(userId: string, dto: CreateExamDto) {

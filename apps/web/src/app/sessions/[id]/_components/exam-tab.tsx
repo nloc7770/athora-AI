@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   ClipboardList,
   Loader2,
@@ -14,14 +14,52 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
+// Task 41: Proper typed interfaces
+interface ExamOption {
+  text: string
+  index: number
+}
+
+interface ExamQuestion {
+  question: string
+  options: string[]
+  correctAnswer?: number
+  correct_answer?: number
+}
+
+interface ExamGeneration {
+  type: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  result?: {
+    questions: ExamQuestion[]
+  }
+}
+
 interface ExamTabProps {
   hasReadyDocs: boolean
-  generations: any[]
+  hasProcessingDocs?: boolean
+  generations: ExamGeneration[]
   isLoading: boolean
   onGenerate: () => void
 }
 
-export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: ExamTabProps) {
+// Task 42: Score-conditional celebration
+function getScoreCelebration(score: number, total: number): { emoji: string; message: string; colorClass: string } {
+  const percentage = total > 0 ? (score / total) * 100 : 0
+
+  if (percentage >= 90) {
+    return { emoji: '🎊', message: 'Outstanding!', colorClass: 'text-emerald-600' }
+  }
+  if (percentage >= 70) {
+    return { emoji: '🎉', message: 'Great job!', colorClass: 'text-purple-600' }
+  }
+  if (percentage >= 50) {
+    return { emoji: '👍', message: 'Good effort!', colorClass: 'text-amber-600' }
+  }
+  return { emoji: '', message: 'Keep practicing', colorClass: 'text-zinc-600' }
+}
+
+export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoading, onGenerate }: ExamTabProps) {
   const filtered = generations.filter((g) => g.type === 'exam')
   const latest = filtered.find((g) => g.status === 'completed')
   const pending = filtered.find((g) => g.status === 'pending' || g.status === 'processing')
@@ -30,8 +68,9 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({})
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set())
   const [showResults, setShowResults] = useState(false)
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
 
-  const questions = latest?.result?.questions ?? []
+  const questions: ExamQuestion[] = latest?.result?.questions ?? []
   const totalQuestions = questions.length
 
   const selectAnswer = (questionIdx: number, optionIdx: number) => {
@@ -53,7 +92,7 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
 
   const handleSubmitAll = () => {
     const allRevealed = new Set<number>()
-    questions.forEach((_: any, idx: number) => allRevealed.add(idx))
+    questions.forEach((_, idx) => allRevealed.add(idx))
     setRevealedAnswers(allRevealed)
     setShowResults(true)
   }
@@ -62,11 +101,12 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
     setSelectedAnswers({})
     setRevealedAnswers(new Set())
     setShowResults(false)
+    setCurrentQuestionIdx(0)
   }
 
   const getScore = () => {
     let correct = 0
-    questions.forEach((q: any, idx: number) => {
+    questions.forEach((q, idx) => {
       const userAnswer = selectedAnswers[idx]
       const correctIdx = typeof q.correctAnswer === 'number' ? q.correctAnswer : q.correct_answer
       if (userAnswer === correctIdx) correct++
@@ -74,9 +114,64 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
     return correct
   }
 
+  // Task 38: Keyboard shortcuts
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (showResults || totalQuestions === 0) return
+
+    // Ignore if user is typing in an input/textarea
+    const tag = (e.target as HTMLElement)?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault()
+        setCurrentQuestionIdx((prev) => Math.max(0, prev - 1))
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        setCurrentQuestionIdx((prev) => Math.min(totalQuestions - 1, prev + 1))
+        break
+      case '1':
+      case '2':
+      case '3':
+      case '4': {
+        const optionIdx = parseInt(e.key) - 1
+        const currentQ = questions[currentQuestionIdx]
+        if (currentQ?.options && optionIdx < currentQ.options.length) {
+          selectAnswer(currentQuestionIdx, optionIdx)
+        }
+        break
+      }
+      case 'Enter': {
+        const answeredCount = Object.keys(selectedAnswers).length
+        if (answeredCount === totalQuestions && !showResults) {
+          handleSubmitAll()
+        }
+        break
+      }
+    }
+  }, [showResults, totalQuestions, currentQuestionIdx, questions, selectedAnswers])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
+  if (!hasReadyDocs && hasProcessingDocs) {
+    return (
+      <div className="mx-auto flex w-full flex-col items-center justify-center px-3 pt-20 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
+        <div className="rounded-full bg-purple-50 p-4 mb-4">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        </div>
+        <p className="text-sm font-medium text-gray-700">Processing documents...</p>
+        <p className="text-xs text-gray-400 mt-1">You can generate an exam once processing is complete</p>
+      </div>
+    )
+  }
+
   if (!hasReadyDocs) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col items-center justify-center pt-20">
+      <div className="mx-auto flex w-full flex-col items-center justify-center px-3 pt-20 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
         <div className="rounded-full bg-gray-100 p-4 mb-4">
           <ClipboardList className="h-8 w-8 text-gray-400" />
         </div>
@@ -87,7 +182,7 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
 
   if ((isLoading || pending) && !latest) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col items-center justify-center pt-20">
+      <div className="mx-auto flex w-full flex-col items-center justify-center px-3 pt-20 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
         <div className="rounded-full bg-indigo-50 p-4 mb-4">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>
@@ -99,7 +194,7 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
 
   if (failed && !latest) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto w-full space-y-6 px-3 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
         <div className="flex flex-col items-center justify-center pt-12">
           <div className="rounded-full bg-red-50 p-4 mb-4">
             <AlertCircle className="h-8 w-8 text-red-400" />
@@ -117,18 +212,16 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
 
   if (!latest || totalQuestions === 0) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex justify-center pt-4">
-          <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Generate Exam
-          </Button>
-        </div>
+      <div className="mx-auto w-full space-y-6 px-3 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
         <div className="flex flex-col items-center justify-center pt-12">
           <div className="rounded-full bg-gray-100 p-4 mb-4">
             <ClipboardList className="h-8 w-8 text-gray-300" />
           </div>
-          <p className="text-sm text-gray-400">No exam generated yet</p>
+          <p className="text-sm text-gray-500 mb-4">Generate an exam from your session documents</p>
+          <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            {isLoading ? 'Generating...' : 'Generate Exam'}
+          </Button>
         </div>
       </div>
     )
@@ -136,9 +229,11 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
 
   const score = getScore()
   const answeredCount = Object.keys(selectedAnswers).length
+  const celebration = getScoreCelebration(score, totalQuestions)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    // Task 39: Responsive max-width layout
+    <div className="mx-auto w-full space-y-4 px-3 sm:max-w-2xl sm:space-y-6 sm:px-6 lg:max-w-3xl">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -160,54 +255,73 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
           )}
           <Button onClick={onGenerate} disabled={isLoading} variant="outline" size="sm" className="gap-2">
             <Sparkles className="h-3 w-3" />
-            Generate New Exam
+            <span className="hidden sm:inline">Generate New Exam</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
       </div>
 
-      {/* Score card */}
+      {/* Score card - Task 42: Score-conditional celebration */}
       {showResults && (
-        <Card className={`border-2 ${score === totalQuestions ? 'border-emerald-200 bg-emerald-50/50' : score >= totalQuestions * 0.7 ? 'border-amber-200 bg-amber-50/50' : 'border-red-200 bg-red-50/50'}`}>
-          <CardContent className="p-5 text-center">
+        <Card className={`border-2 ${score / totalQuestions >= 0.9 ? 'border-emerald-200 bg-emerald-50/50' : score / totalQuestions >= 0.7 ? 'border-purple-200 bg-purple-50/50' : score / totalQuestions >= 0.5 ? 'border-amber-200 bg-amber-50/50' : 'border-zinc-200 bg-zinc-50/50'}`}>
+          <CardContent className="p-4 text-center sm:p-5">
             <p className="text-2xl font-bold text-gray-900">{score} / {totalQuestions}</p>
-            <p className="text-sm text-gray-500 mt-1">
-              {score === totalQuestions
-                ? 'Perfect score!'
-                : score >= totalQuestions * 0.7
-                  ? 'Good job! Keep studying.'
-                  : 'Keep practicing, you\'ll get there!'}
+            <p className={`text-sm mt-1 font-medium ${celebration.colorClass}`}>
+              {celebration.emoji && <span className="mr-1">{celebration.emoji}</span>}
+              {celebration.message}
             </p>
           </CardContent>
         </Card>
       )}
 
+      {/* Task 38: Keyboard shortcut hints */}
+      {!showResults && totalQuestions > 0 && (
+        <p className="text-center text-xs text-zinc-400">
+          <span className="hidden sm:inline">
+            Use <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">&larr;</kbd>{' '}
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">&rarr;</kbd> to navigate,{' '}
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">1</kbd>-
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">4</kbd> to select,{' '}
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">Enter</kbd> to submit
+          </span>
+        </p>
+      )}
+
       {/* Questions */}
       <div className="space-y-4">
-        {questions.map((q: any, qIdx: number) => {
+        {questions.map((q, qIdx) => {
           const correctIdx = typeof q.correctAnswer === 'number' ? q.correctAnswer : q.correct_answer
           const isRevealed = revealedAnswers.has(qIdx)
           const userAnswer = selectedAnswers[qIdx]
-          const isCorrect = userAnswer === correctIdx
 
           return (
             <Card key={qIdx} className="overflow-hidden">
-              <CardContent className="p-5 space-y-3">
+              <CardContent className="p-4 space-y-3 sm:p-5">
                 {/* Question header */}
                 <div className="flex items-start gap-3">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
                     {qIdx + 1}
                   </span>
-                  <p className="text-sm font-medium text-gray-900 pt-0.5">{q.question}</p>
+                  <p
+                    id={`exam-tab-question-${qIdx}`}
+                    className="text-sm font-medium text-gray-900 pt-0.5 sm:text-base"
+                  >
+                    {q.question}
+                  </p>
                 </div>
 
-                {/* Options */}
+                {/* Options - Task 37: micro-animation on selection */}
                 {q.options && (
-                  <div className="space-y-2 pl-9">
-                    {q.options.map((opt: string, optIdx: number) => {
+                  <div
+                    className="space-y-2 pl-9"
+                    role="radiogroup"
+                    aria-labelledby={`exam-tab-question-${qIdx}`}
+                  >
+                    {q.options.map((opt, optIdx) => {
                       const isSelected = userAnswer === optIdx
                       const isCorrectOption = correctIdx === optIdx
 
-                      let optionClasses = 'border rounded-lg px-4 py-2.5 text-sm transition cursor-pointer flex items-center gap-3'
+                      let optionClasses = 'border rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-out cursor-pointer flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 sm:px-4 sm:py-2.5'
 
                       if (isRevealed) {
                         if (isCorrectOption) {
@@ -218,7 +332,7 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
                           optionClasses += ' border-gray-200 text-gray-400'
                         }
                       } else if (isSelected) {
-                        optionClasses += ' border-indigo-300 bg-indigo-50 text-indigo-800'
+                        optionClasses += ' border-indigo-400 bg-indigo-50 text-indigo-800 scale-[1.02] shadow-sm'
                       } else {
                         optionClasses += ' border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                       }
@@ -226,11 +340,19 @@ export function ExamTab({ hasReadyDocs, generations, isLoading, onGenerate }: Ex
                       return (
                         <button
                           key={optIdx}
+                          role="radio"
+                          aria-checked={isSelected}
                           onClick={() => selectAnswer(qIdx, optIdx)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              selectAnswer(qIdx, optIdx)
+                            }
+                          }}
                           className={optionClasses}
                           disabled={isRevealed}
                         >
-                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-medium ${
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors duration-200 ${
                             isSelected && !isRevealed ? 'border-indigo-400 bg-indigo-500 text-white' :
                             isRevealed && isCorrectOption ? 'border-emerald-400 bg-emerald-500 text-white' :
                             isRevealed && isSelected && !isCorrectOption ? 'border-red-400 bg-red-500 text-white' :

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RagflowService } from '../ragflow/ragflow.service';
 import { AiGenerationService } from '../ai-generation/ai-generation.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { GenerationType } from '../ai-generation/dto/generate.dto';
 
 interface ProcessingResult {
@@ -25,6 +26,7 @@ export class DocumentProcessorService {
     private readonly ragflowService: RagflowService,
     private readonly configService: ConfigService,
     private readonly aiGenerationService: AiGenerationService,
+    private readonly analyticsService: AnalyticsService,
   ) {
     this.storageBucket = this.configService.get<string>(
       'SUPABASE_STORAGE_BUCKET',
@@ -88,6 +90,11 @@ export class DocumentProcessorService {
       await this.updateDocumentStatus(userId, documentId, 'ready', 100);
 
       this.logger.log(`Document ${documentId} processed successfully`);
+
+      this.analyticsService.logActivity(userId, 'document_upload', 0, undefined, {
+        documentId,
+        documentName: file.originalname,
+      }).catch(() => {});
 
       // Auto-generate all AI content in background
       this.autoGenerate(userId, documentId).catch((err) => {
@@ -192,7 +199,7 @@ export class DocumentProcessorService {
       .getAdminClient()
       .storage.from(this.storageBucket)
       .upload(filePath, file.buffer, {
-        contentType: file.mimetype,
+        contentType: 'application/pdf',
         upsert: true,
       });
 
@@ -365,22 +372,7 @@ export class DocumentProcessorService {
   }
 
   private async autoGenerate(userId: string, documentId: string): Promise<void> {
-    const types = [
-      GenerationType.SUMMARY,
-      GenerationType.FLASHCARD,
-      GenerationType.EXAM,
-      GenerationType.MINDMAP,
-    ];
-
-    for (const type of types) {
-      try {
-        this.logger.log(`Auto-generating ${type} for document ${documentId}`);
-        await this.aiGenerationService.generate(userId, documentId, type);
-        this.logger.log(`Auto-generated ${type} for document ${documentId}`);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Auto-generation of ${type} failed for ${documentId}: ${message}`);
-      }
-    }
+    // All AI generation is now user-triggered to save costs
+    this.logger.log(`Document ${documentId} ready — user can generate content on demand`);
   }
 }

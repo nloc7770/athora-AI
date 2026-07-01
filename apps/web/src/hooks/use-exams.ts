@@ -133,6 +133,43 @@ export function useExam(examId: string | null): UseExamReturn {
   }
 }
 
+export function useAllExamAttempts(examIds: string[]): { attemptsByExam: Record<string, ExamAttempt[]>; isLoading: boolean } {
+  const [attemptsByExam, setAttemptsByExam] = useState<Record<string, ExamAttempt[]>>({})
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (examIds.length === 0) {
+      setAttemptsByExam({})
+      return
+    }
+
+    let cancelled = false
+
+    const fetchAll = async () => {
+      setIsLoading(true)
+      const results = await Promise.allSettled(
+        examIds.map((id) => apiClient.get<ExamAttempt[]>(`/exams/${id}/attempts`).then((data) => ({ id, data })))
+      )
+      if (cancelled) return
+
+      const map: Record<string, ExamAttempt[]> = {}
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          map[result.value.id] = result.value.data
+        }
+      }
+      setAttemptsByExam(map)
+      setIsLoading(false)
+    }
+
+    fetchAll()
+
+    return () => { cancelled = true }
+  }, [examIds.join(',')])
+
+  return { attemptsByExam, isLoading }
+}
+
 export function useExamAttempts(examId: string | null): UseExamAttemptsReturn {
   const [attempts, setAttempts] = useState<ExamAttempt[]>([])
   const [isLoading, setIsLoading] = useState(true)
