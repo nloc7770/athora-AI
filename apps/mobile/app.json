@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Athora",
+    "slug": "athora",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "athora",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F1A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.athora.app"
+    },
+    "android": {
+      "package": "com.athora.app",
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0F1A"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
