@@ -5,13 +5,24 @@ export function middleware(request: NextRequest) {
 
   const isDev = process.env.NODE_ENV === 'development'
 
+  // Allow the backend API origin (derived from NEXT_PUBLIC_API_URL) so the
+  // browser can call it under CSP when web/backend are on a remote host.
+  let apiOrigin = ''
+  try {
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      apiOrigin = new URL(process.env.NEXT_PUBLIC_API_URL).origin
+    }
+  } catch {
+    apiOrigin = ''
+  }
+
   const cspHeader = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' data: https:`,
-    `connect-src 'self' https://*.supabase.co${isDev ? ' http://localhost:*' : ''}`,
+    `connect-src 'self' https://*.supabase.co${apiOrigin ? ` ${apiOrigin}` : ''}${isDev ? ' http://localhost:*' : ''}`,
     `frame-src 'none'`,
     `object-src 'none'`,
     `base-uri 'self'`,
