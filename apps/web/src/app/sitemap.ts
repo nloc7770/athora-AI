@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const BASE_URL = 'https://athora.app'
+const BASE_URL = 'https://nrop-on.com'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

@@ -39,7 +39,21 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }))
 
-import TutorPage from '../tutor-page'
+import TutorPage, { queryTerms, splitHighlights } from '../tutor-page'
+
+describe('source highlighting', () => {
+  it('keeps meaningful terms, longest first, and drops stopwords', () => {
+    expect(queryTerms('What is the Krebs cycle about?')).toEqual(['krebs', 'cycle'])
+  })
+
+  it('splits text so odd parts are case-insensitive matches', () => {
+    expect(splitHighlights('The Krebs cycle. krebs!', ['krebs'])).toEqual([
+      'The ', 'Krebs', ' cycle. ', 'krebs', '!',
+    ])
+    expect(splitHighlights('a.b', ['a.'])).toEqual(['', 'a.', 'b'])
+    expect(splitHighlights('abc', [])).toEqual(['abc'])
+  })
+})
 
 const defaultChatMessages = {
   messages: [],

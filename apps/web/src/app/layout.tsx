@@ -24,37 +24,37 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Athora — AI Study Tool for Exam Prep & Flashcards",
-    template: "%s | Athora",
+    default: "Nrop-on — AI Study Tool for Exam Prep & Flashcards",
+    template: "%s | Nrop-on",
   },
   description:
     "AI-powered study assistant that helps students pass exams faster with smart flashcards, practice tests, mind maps, and AI tutoring from your own materials.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://athora.app"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://nrop-on.com"
   ),
   alternates: {
     canonical: "/",
   },
   manifest: "/manifest.json",
   openGraph: {
-    title: "Athora — AI Study Tool for Exam Prep & Flashcards",
+    title: "Nrop-on — AI Study Tool for Exam Prep & Flashcards",
     description:
       "Upload your lectures and textbooks. Get AI-generated flashcards, practice exams, and smart summaries in seconds.",
     type: "website",
     locale: "en_US",
-    siteName: "Athora",
+    siteName: "Nrop-on",
     images: [
       {
         url: "/images/og-default.png",
         width: 1200,
         height: 630,
-        alt: "Athora - AI-Powered Study Assistant",
+        alt: "Nrop-on - AI-Powered Study Assistant",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Athora — AI Study Tool for Exam Prep & Flashcards",
+    title: "Nrop-on — AI Study Tool for Exam Prep & Flashcards",
     description:
       "Upload your lectures and textbooks. Get AI-generated flashcards, practice exams, and smart summaries in seconds.",
     images: ["/images/og-default.png"],
@@ -82,9 +82,9 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Athora",
-  url: "https://athora.app",
-  logo: "https://athora.app/images/icon-192.png",
+  name: "Nrop-on",
+  url: "https://nrop-on.com",
+  logo: "https://nrop-on.com/images/icon-192.png",
   description:
     "AI-powered study platform helping students pass exams faster with smart flashcards, practice tests, and AI tutoring.",
   sameAs: [],

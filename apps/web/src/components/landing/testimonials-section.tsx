@@ -19,7 +19,7 @@ const TESTIMONIALS = [
     role: 'Pre-Law, Junior',
   },
   {
-    quote: 'Mind maps from Athora helped me see connections between topics I never noticed. My essay structure improved dramatically.',
+    quote: 'Mind maps from Nrop-on helped me see connections between topics I never noticed. My essay structure improved dramatically.',
     name: 'James Thompson',
     school: 'Oxford',
     role: 'Philosophy, Sophomore',
@@ -31,7 +31,7 @@ const TESTIMONIALS = [
     role: 'IT Major, Freshman',
   },
   {
-    quote: 'The practice exams predicted 6 out of 8 questions on my actual midterm. My study group all switched to Athora after that.',
+    quote: 'The practice exams predicted 6 out of 8 questions on my actual midterm. My study group all switched to Nrop-on after that.',
     name: 'Emily Rodriguez',
     school: 'Stanford',
     role: 'Biology, Junior',

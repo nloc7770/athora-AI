@@ -1,4 +1,4 @@
-// Athora Service Worker — Web Push Notifications
+// Nrop-on Service Worker — Web Push Notifications
 // Only handles push events and notification clicks
 
 self.addEventListener('push', (event) => {
@@ -20,7 +20,7 @@ self.addEventListener('push', (event) => {
     ],
   }
 
-  event.waitUntil(self.registration.showNotification(title || 'Athora', options))
+  event.waitUntil(self.registration.showNotification(title || 'Nrop-on', options))
 })
 
 self.addEventListener('notificationclick', (event) => {

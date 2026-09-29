@@ -46,7 +46,7 @@ export function HowItWorksSection() {
             </div>
             <h3 className="text-lg font-semibold text-[#f3f3fb] mb-2">AI reads & understands</h3>
             <p className="text-sm text-[#9a9ab6] leading-relaxed max-w-xs mx-auto">
-              Athora parses, chunks, and indexes your content. Creates a personal knowledge base in seconds.
+              Nrop-on parses, chunks, and indexes your content. Creates a personal knowledge base in seconds.
             </p>
             <div className="mt-4 rounded-2xl border border-[#36364c] bg-[#181822] p-4">
               <div className="space-y-2">

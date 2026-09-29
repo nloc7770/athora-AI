@@ -69,7 +69,7 @@ export function CookieConsent() {
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="text-sm text-white/70 leading-relaxed">
           We use essential cookies for authentication and optional analytics cookies to improve
-          Athora. See our{' '}
+          Nrop-on. See our{' '}
           <Link href="/privacy" className="text-[#ffab81] underline hover:text-[#ffc9ab]">
             Privacy Policy
           </Link>{' '}

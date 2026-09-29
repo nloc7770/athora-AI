@@ -387,7 +387,7 @@ export default function FlashcardsPage() {
           <EmptyState
             illustration="flashcards"
             title="No flashcards yet"
-            description="Create a set or upload a document and athora will build the deck for you."
+            description="Create a set or upload a document and Nrop-on will build the deck for you."
             action={
               <Button onClick={() => { window.location.href = '/sessions' }}>
                 <Plus /> Create flashcard set

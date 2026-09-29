@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 
 const TESTIMONIALS = [
   {
-    quote: 'Athora turned my 200-page biology textbook into something I could actually learn from. My GPA went from 3.1 to 3.7 in one semester.',
+    quote: 'Nrop-on turned my 200-page biology textbook into something I could actually learn from. My GPA went from 3.1 to 3.7 in one semester.',
     name: 'Sarah Chen',
     school: 'UC Berkeley',
     role: 'Pre-med, Junior',
@@ -24,7 +24,7 @@ const TESTIMONIALS = [
     role: 'Economics, Sophomore',
   },
   {
-    quote: "Athora helped me build a consistent review habit. Spreading my study sessions across the semester made exams feel manageable instead of stressful.",
+    quote: "Nrop-on helped me build a consistent review habit. Spreading my study sessions across the semester made exams feel manageable instead of stressful.",
     name: 'David Park',
     school: 'UCLA',
     role: 'CS Major, Freshman',

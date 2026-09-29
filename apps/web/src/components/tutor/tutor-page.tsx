@@ -8,7 +8,6 @@ import {
   Plus,
   Loader2,
   Trash2,
-  Sparkles,
   History,
   MessageSquare,
   FileText,
@@ -42,6 +41,7 @@ import {
   ListSkeleton,
 } from '@/components/page'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
+import type { ChunkSource } from '@/hooks/use-chat'
 import { useDocuments } from '@/hooks/use-documents'
 import { BrainShell } from '@/components/brain/brain-shell'
 
@@ -67,6 +67,51 @@ interface ChatSessionLike {
   createdAt: string
 }
 
+// Filler words that would light up half an excerpt without saying anything.
+const STOPWORDS = new Set([
+  'the', 'and', 'for', 'what', 'how', 'why', 'with', 'this', 'that', 'are', 'from', 'about', 'explain',
+  'của', 'các', 'những', 'một', 'này', 'không', 'trong', 'với', 'như', 'thế', 'nào', 'cho', 'được', 'hãy',
+])
+
+/** The question's meaningful words, longest first so a longer term wins the regex alternation. */
+export function queryTerms(question: string): string[] {
+  const words = question.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []
+  return [...new Set(words.filter((w) => w.length >= 3 && !STOPWORDS.has(w)))].sort(
+    (a, b) => b.length - a.length,
+  )
+}
+
+/** Split text around the terms; odd indexes are the matches. */
+export function splitHighlights(text: string, terms: string[]): string[] {
+  if (terms.length === 0) return [text]
+  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return text.split(new RegExp(`(${escaped.join('|')})`, 'giu'))
+}
+
+function Highlighted({ text, terms }: { text: string; terms: string[] }) {
+  // Bring the first hit into view — a long chunk can bury it below the fold.
+  const firstMark = useCallback((el: HTMLElement | null) => {
+    el?.scrollIntoView?.({ block: 'center' })
+  }, [])
+  return (
+    <>
+      {splitHighlights(text, terms).map((part, i) =>
+        i % 2 === 1 ? (
+          <mark
+            key={i}
+            ref={i === 1 ? firstMark : undefined}
+            className="rounded-sm bg-primary/30 px-0.5 text-inherit"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
+
 function getSessionTitle(session: ChatSessionLike) {
   if (session.title && session.title !== 'AI Tutor Session') return session.title
   const date = new Date(session.createdAt)
@@ -79,11 +124,10 @@ export default function TutorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<ChatSessionLike | null>(null)
   /**
-   * Which answer's retrieved chunks are on show. The backend has been storing
-   * these on every retrieved answer all along; nothing rendered them, so a
-   * grounded answer was indistinguishable from an invented one.
+   * The source excerpt open in the reader dialog, plus the question it answered
+   * so the terms the student asked about can be highlighted inside it.
    */
-  const [citationMsgId, setCitationMsgId] = useState<string | null>(null)
+  const [openSource, setOpenSource] = useState<{ src: ChunkSource; n: number; question: string } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -322,7 +366,7 @@ export default function TutorPage() {
             : 'Ask anything — the tutor can read every document you have uploaded.'
         }
         count={sessions.length > 0 ? `${sessions.length} ${sessions.length === 1 ? 'chat' : 'chats'}` : undefined}
-        icon={<Sparkles />}
+        icon={<img src="/images/logo.png" alt="" width={20} height={20} className="size-5 rounded-[6px]" />}
         actions={
           <>
             <Button onClick={handleNewChat}>
@@ -388,7 +432,11 @@ export default function TutorPage() {
 
       {/* Transcript. The scroll lives here, not on the page, so the composer
           below stays pinned while the messages move. */}
-      <div ref={scrollRef} onScroll={onTranscriptScroll} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        onScroll={onTranscriptScroll}
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto"
+      >
         {isBusy ? (
           <div role="status" className="flex h-full items-center justify-center py-12">
             <Loader2 aria-hidden className="size-5 animate-spin text-primary" />
@@ -418,7 +466,7 @@ export default function TutorPage() {
         ) : (
           <div className={`${MEASURE} space-y-6`}>
             <AnimatePresence initial={false}>
-              {messages.map((msg) => (
+              {messages.map((msg, idx) => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -427,12 +475,14 @@ export default function TutorPage() {
                   className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.role === 'assistant' && (
-                    <div
+                    <img
+                      src="/images/logo.png"
+                      alt=""
                       aria-hidden
-                      className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Sparkles className="size-3.5" />
-                    </div>
+                      width={28}
+                      height={28}
+                      className="mt-1 size-7 shrink-0 rounded-full"
+                    />
                   )}
 
                   <div
@@ -453,41 +503,33 @@ export default function TutorPage() {
                             documents should say so — otherwise it is
                             indistinguishable from one the model invented. */}
                         {(msg.sources?.length ?? 0) > 0 && (
-                          <div className="mt-2 border-t border-[var(--br-border)] pt-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCitationMsgId((prev) => (prev === msg.id ? null : msg.id))
-                              }
-                              aria-expanded={citationMsgId === msg.id}
-                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-xs font-medium text-primary hover:underline"
-                            >
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--br-border)] pt-2 text-xs">
+                            <span className="inline-flex items-center gap-1 text-[var(--br-text3)]">
                               <Quote className="size-3" aria-hidden />
-                              {msg.sources!.length} {msg.sources!.length === 1 ? 'source' : 'sources'}
-                            </button>
-
-                            {citationMsgId === msg.id && (
-                              <ol className="mt-2 flex list-none flex-col gap-2 p-0">
-                                {msg.sources!.map((src, i) => (
-                                  <li
-                                    key={src.chunkId || i}
-                                    className="rounded-lg bg-[var(--br-bg3,rgba(255,255,255,0.04))] px-3 py-2"
-                                  >
-                                    <div className="mb-1 flex items-center justify-between gap-2 text-[10px] tracking-wide text-[var(--br-text3)]">
-                                      <span>EXCERPT {i + 1}</span>
-                                      {Number.isFinite(src.score) && (
-                                        <span className="tabular-nums">
-                                          {(src.score * 100).toFixed(0)}% match
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="m-0 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-[var(--br-text2,inherit)]">
-                                      {src.content}
-                                    </p>
-                                  </li>
-                                ))}
-                              </ol>
-                            )}
+                              Sources:
+                            </span>
+                            {msg.sources!.map((src, i) => (
+                              <button
+                                key={src.chunkId || i}
+                                type="button"
+                                onClick={() =>
+                                  setOpenSource({
+                                    src,
+                                    n: i + 1,
+                                    // The question this answer replied to.
+                                    question: messages[idx - 1]?.role === 'user' ? messages[idx - 1].content : '',
+                                  })
+                                }
+                                className="cursor-pointer border-0 bg-transparent p-0 font-medium text-primary underline-offset-2 hover:underline"
+                              >
+                                [{i + 1}]
+                                {Number.isFinite(src.score) && (
+                                  <span className="ml-1 tabular-nums text-[var(--br-text3)]">
+                                    {(src.score * 100).toFixed(0)}%
+                                  </span>
+                                )}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -508,12 +550,14 @@ export default function TutorPage() {
                 role="status"
               >
                 <span className="sr-only">The tutor is replying…</span>
-                <div
+                <img
+                  src="/images/logo.png"
+                  alt=""
                   aria-hidden
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                >
-                  <Sparkles className="size-3.5" />
-                </div>
+                  width={28}
+                  height={28}
+                  className="size-7 shrink-0 rounded-full"
+                />
                 <div
                   aria-hidden
                   className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm bg-[var(--br-bg2)] px-4 py-3"
@@ -578,6 +622,31 @@ export default function TutorPage() {
         </Button>
       </div>
       </PageContainer>
+
+      {/* Source reader. The excerpt the answer was grounded in, with the
+          question's terms highlighted so the relevant passage is findable. */}
+      <Dialog
+        open={Boolean(openSource)}
+        onOpenChange={(open) => {
+          if (!open) setOpenSource(null)
+        }}
+      >
+        <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Source [{openSource?.n}]</DialogTitle>
+            <DialogDescription>
+              {openSource && Number.isFinite(openSource.src.score)
+                ? `${(openSource.src.score * 100).toFixed(0)}% match with your question`
+                : 'Excerpt from your documents'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap rounded-lg bg-[var(--br-bg2,rgba(255,255,255,0.04))] p-4 text-sm leading-relaxed">
+            {openSource && (
+              <Highlighted text={openSource.src.content} terms={queryTerms(openSource.question)} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Page level, not inside the sheet. The delete buttons now live in TWO
           places — the desktop column and the mobile sheet — and a Dialog nested

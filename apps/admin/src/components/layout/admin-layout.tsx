@@ -40,7 +40,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <aside className="flex w-64 flex-col bg-zinc-900">
           <div className="flex h-14 items-center px-5">
             <span className="text-base font-semibold text-white">
-              Athora Admin
+              Nrop-on Admin
             </span>
           </div>
 

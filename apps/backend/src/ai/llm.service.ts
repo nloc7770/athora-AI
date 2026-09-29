@@ -18,6 +18,35 @@ function isRetryableError(error: unknown): boolean {
   return false;
 }
 
+/**
+ * The AI gateway (chathunter via AI_BASE_URL) silently discards `system`
+ * messages — measured: a fact given as system is "not in your documents",
+ * the same fact given as user is answered. So every system message is folded
+ * into the first user turn, which is where the RAG context actually lands.
+ * ponytail: unconditional; gate on a provider flag if we move to an API that
+ * honours system roles.
+ */
+export function foldSystemIntoUser(
+  messages: ChatMessage[],
+): { role: 'user' | 'assistant'; content: string }[] {
+  const system = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => m.content);
+  const rest = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+  if (system.length === 0) return rest;
+
+  const preamble = `[INSTRUCTIONS]\n${system.join('\n\n')}\n[/INSTRUCTIONS]`;
+  const firstUser = rest.findIndex((m) => m.role === 'user');
+  if (firstUser === -1) return [{ role: 'user', content: preamble }, ...rest];
+  rest[firstUser] = {
+    role: 'user',
+    content: `${preamble}\n\n${rest[firstUser].content}`,
+  };
+  return rest;
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -59,23 +88,33 @@ export class LlmService {
 
   constructor(private readonly config: ConfigService) {
     const baseURL = this.config.getOrThrow<string>('AI_BASE_URL');
-    this.primaryModel = this.config.get<string>('AI_MODEL') ?? 'deepseek-v4-pro';
+    this.primaryModel =
+      this.config.get<string>('AI_MODEL') ?? 'deepseek-v4-pro';
 
     // Support multiple API keys (comma-separated) for rotation
-    const keysRaw = this.config.get<string>('AI_API_KEYS')
-      ?? this.config.get<string>('AI_API_KEY')
-      ?? '';
-    const keys = keysRaw.split(',').map((k) => k.trim()).filter(Boolean);
+    const keysRaw =
+      this.config.get<string>('AI_API_KEYS') ??
+      this.config.get<string>('AI_API_KEY') ??
+      '';
+    const keys = keysRaw
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean);
 
     if (keys.length === 0) {
       throw new Error('No AI API keys configured (AI_API_KEYS or AI_API_KEY)');
     }
 
-    this.clients = keys.map((apiKey) => new OpenAI({ baseURL, apiKey, timeout: 120_000 }));
+    this.clients = keys.map(
+      (apiKey) => new OpenAI({ baseURL, apiKey, timeout: 120_000 }),
+    );
 
     // Fallback models (comma-separated)
     const fallbackRaw = this.config.get<string>('AI_FALLBACK_MODELS') ?? '';
-    this.fallbackModels = fallbackRaw.split(',').map((m) => m.trim()).filter(Boolean);
+    this.fallbackModels = fallbackRaw
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean);
 
     this.logger.log(
       `LLM initialized: ${keys.length} key(s), primary=${this.primaryModel}, fallbacks=[${this.fallbackModels.join(', ')}]`,
@@ -88,7 +127,10 @@ export class LlmService {
     return client;
   }
 
-  private async withRetry<T>(fn: (client: OpenAI, model: string) => Promise<T>, context: string): Promise<T> {
+  private async withRetry<T>(
+    fn: (client: OpenAI, model: string) => Promise<T>,
+    context: string,
+  ): Promise<T> {
     let lastError: unknown;
 
     // Try primary model with all keys
@@ -104,7 +146,8 @@ export class LlmService {
         }
 
         const delayMs = RETRY_DELAY_MS * Math.pow(2, attempt);
-        const status = error instanceof OpenAI.APIError ? error.status : 'unknown';
+        const status =
+          error instanceof OpenAI.APIError ? error.status : 'unknown';
         this.logger.warn(
           `${context} failed (${status}) with ${this.primaryModel}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
         );
@@ -120,8 +163,11 @@ export class LlmService {
         return await fn(client, fallbackModel);
       } catch (error: unknown) {
         lastError = error;
-        const status = error instanceof OpenAI.APIError ? error.status : 'unknown';
-        this.logger.warn(`${context} fallback ${fallbackModel} also failed (${status})`);
+        const status =
+          error instanceof OpenAI.APIError ? error.status : 'unknown';
+        this.logger.warn(
+          `${context} fallback ${fallbackModel} also failed (${status})`,
+        );
       }
     }
 
@@ -134,7 +180,7 @@ export class LlmService {
       return await this.withRetry(async (client, model) => {
         const response = await client.chat.completions.create({
           model,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages: foldSystemIntoUser(messages),
           temperature: options?.temperature,
           max_tokens: options?.maxTokens,
           stream: false,
@@ -163,7 +209,7 @@ export class LlmService {
       const client = this.getClient();
       const stream = await client.chat.completions.create({
         model: this.primaryModel,
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: foldSystemIntoUser(messages),
         temperature: options?.temperature,
         max_tokens: options?.maxTokens,
         stream: true,
@@ -184,45 +230,54 @@ export class LlmService {
     await this.semaphore.acquire();
     try {
       return await this.withRetry(async (client, model) => {
-      const systemMessage: ChatMessage = {
-        role: 'system',
-        content: [
-          'You must respond with valid JSON only. No markdown, no code fences, no explanation.',
-          'The response must conform to this JSON schema:',
-          JSON.stringify(schema),
-        ].join('\n'),
-      };
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: [
+            'You must respond with valid JSON only. No markdown, no code fences, no explanation.',
+            'The response must conform to this JSON schema:',
+            JSON.stringify(schema),
+          ].join('\n'),
+        };
 
-      const allMessages: ChatMessage[] = [systemMessage, ...messages];
-      const mappedMessages = allMessages.map((m) => ({ role: m.role, content: m.content }));
+        const allMessages: ChatMessage[] = [systemMessage, ...messages];
+        const mappedMessages = foldSystemIntoUser(allMessages);
 
-      this.logger.log(`Calling LLM (${model}) with ${mappedMessages.length} messages`);
+        this.logger.log(
+          `Calling LLM (${model}) with ${mappedMessages.length} messages`,
+        );
 
-      const response = await client.chat.completions.create({
-        model,
-        messages: mappedMessages,
-        temperature: 0,
-        stream: false,
-      });
+        const response = await client.chat.completions.create({
+          model,
+          messages: mappedMessages,
+          temperature: 0,
+          stream: false,
+        });
 
-      const choice = response.choices?.[0];
-      const content = choice?.message?.content ?? null;
+        const choice = response.choices?.[0];
+        const content = choice?.message?.content ?? null;
 
-      if (!content) {
-        this.logger.error(`LLM empty content. finish=${choice?.finish_reason}`);
-        throw new Error('LLM returned empty response for JSON generation');
-      }
+        if (!content) {
+          this.logger.error(
+            `LLM empty content. finish=${choice?.finish_reason}`,
+          );
+          throw new Error('LLM returned empty response for JSON generation');
+        }
 
-      // Strip markdown code fences if present
-      const cleaned = content.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+        // Strip markdown code fences if present
+        const cleaned = content
+          .replace(/^```(?:json)?\n?/i, '')
+          .replace(/\n?```$/i, '')
+          .trim();
 
-      try {
-        return JSON.parse(cleaned) as T;
-      } catch {
-        this.logger.error('Failed to parse LLM JSON response', { content: cleaned.slice(0, 500) });
-        throw new Error('LLM returned invalid JSON');
-      }
-    }, 'LlmService.generateJson');
+        try {
+          return JSON.parse(cleaned) as T;
+        } catch {
+          this.logger.error('Failed to parse LLM JSON response', {
+            content: cleaned.slice(0, 500),
+          });
+          throw new Error('LLM returned invalid JSON');
+        }
+      }, 'LlmService.generateJson');
     } finally {
       this.semaphore.release();
     }

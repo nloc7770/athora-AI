@@ -124,7 +124,7 @@ export default function PaywallPage() {
               Unlock your full potential
             </h1>
             <p className="mt-2 text-stone-500">
-              Students who use Athora daily score 32% higher on exams.
+              Students who use Nrop-on daily score 32% higher on exams.
             </p>
           </div>
 

@@ -47,7 +47,7 @@ function LoginForm() {
     <div className="flex min-h-svh flex-col items-center justify-center bg-zinc-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-zinc-900">Athora Admin</h1>
+          <h1 className="text-2xl font-bold text-zinc-900">Nrop-on Admin</h1>
           <p className="mt-1 text-sm text-zinc-500">
             Sign in to access the admin panel
           </p>
@@ -78,7 +78,7 @@ function LoginForm() {
               required
               autoComplete="email"
               className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-              placeholder="admin@athora.app"
+              placeholder="admin@nrop-on.com"
             />
           </div>
 

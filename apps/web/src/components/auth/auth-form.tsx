@@ -1,8 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
+
+import { buildGraphData, type BrainApiResponse } from '@/lib/brain-graph'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+// Anonymised snapshot of a real power-user brain (16 subjects, ids remapped,
+// no names/emails). Static so the auth page makes no API call.
+import brainSeed from './brain-seed.json'
+
+const BrainGraph3D = dynamic(() => import('@/components/brain/brain-graph-3d'), {
+  ssr: false,
+  loading: () => null,
+})
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,13 +68,18 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const reducedMotion = useReducedMotion()
+  const brain = useMemo(
+    () => buildGraphData(brainSeed as BrainApiResponse, { maxNodes: 400, isDark: true }),
+    [],
+  )
 
   const isLogin = mode === 'login'
 
   const title = isLogin ? 'Welcome back' : 'Create an account'
   const description = isLogin
     ? 'Sign in to continue your learning journey'
-    : 'Start your exam prep with Athora'
+    : 'Start your exam prep with Nrop-on'
   const submitLabel = isLogin ? 'Sign in' : 'Create account'
   const switchText = isLogin
     ? "Don't have an account?"
@@ -77,21 +94,20 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
 
   return (
     <div className="auth-dark flex min-h-[calc(100svh_-_var(--consent-h))] w-full">
-      {/* Left panel — aurora gradient mesh (hidden on mobile). Replaces the
-          stock study-nook photo: on a #0e0e16 panel a photograph reads as a crop
-          no matter how it is graded, and cost 78KB to say nothing. Three blurred
-          blobs drifting on long offset cycles, so the field never repeats
-          visibly. Pure CSS — no canvas, no JS, composited on the GPU. */}
+      {/* Left panel — the product's own brain view, seeded from a sample
+          account (hidden on mobile, so WebGL never loads there). Decorative:
+          no node actions, and the copy layer above takes the pointer. */}
       <div className="auth-aurora relative hidden w-1/2 border-r border-[#36364c] lg:block">
-        <span className="auth-aurora-field" aria-hidden="true" />
-        <span className="auth-aurora-field-2" aria-hidden="true" />
+        <div className="absolute inset-0" aria-hidden="true">
+          <BrainGraph3D nodes={brain.nodes} links={brain.links} reducedMotion={reducedMotion} />
+        </div>
         <span className="auth-aurora-grain" aria-hidden="true" />
         <span className="auth-aurora-vignette" aria-hidden="true" />
 
         {/* Copy sits above every decorative layer. */}
         <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-12">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#9a9ab6]">
-            Athora · Study Intelligence
+            Nrop-on · Study Intelligence
           </p>
 
           <div>
@@ -99,10 +115,10 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
               Pass your exams faster
             </p>
             <p className="mt-5 max-w-md text-xl font-medium leading-relaxed text-[#f3f3fb]">
-              &ldquo;Athora helped me pass my exams in half the study time.&rdquo;
+              &ldquo;Nrop-on helped me pass my exams in half the study time.&rdquo;
             </p>
             <p className="mt-2.5 text-sm text-[#9a9ab6]">
-              — Mai Anh, final-year medical student
+              — Emily Carter, final-year medical student
             </p>
 
             <dl className="mt-9 grid max-w-md grid-cols-3 gap-3">
@@ -129,24 +145,9 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
         <Card className="w-full max-w-sm border-0 shadow-none lg:border lg:shadow-sm">
           <CardHeader className="text-center">
             <Link href="/" className="mb-2 inline-flex items-center justify-center gap-2 hover:opacity-80 transition-opacity">
-              {/* Inline mark rather than /images/logo.png: that file is violet,
-                  and a violet tile sitting directly above the orange submit
-                  button is the one tonal clash on an otherwise all-accent page.
-                  Drawn here so it follows the accent token and needs no asset. */}
-              <svg viewBox="0 0 32 32" className="size-8" role="img" aria-label="Athora">
-                <defs>
-                  <linearGradient id="athora-mark" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#ff7a3c" />
-                    <stop offset="100%" stopColor="#ff692d" />
-                  </linearGradient>
-                </defs>
-                <rect width="32" height="32" rx="9" fill="url(#athora-mark)" />
-                <path
-                  d="M16 7.5 23 24h-3.6l-1.3-3.3h-4.2L12.6 24H9l7-16.5Zm0 5.6-1.4 4.4h2.8L16 13.1Z"
-                  fill="#1a1400"
-                />
-              </svg>
-              <span className="text-2xl font-bold tracking-tight text-foreground">Athora</span>
+              {/* Same brand mark as the landing header. */}
+              <img src="/images/logo.png" alt="Nrop-on" width={32} height={32} className="size-8 rounded-lg" />
+              <span className="text-2xl font-bold tracking-tight text-foreground">Nrop-on</span>
             </Link>
             <CardTitle>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>

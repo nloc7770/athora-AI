@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
-  description: 'Terms and conditions for using Athora.',
+  description: 'Terms and conditions for using Nrop-on.',
 }
 
 export default function TermsPage() {
@@ -16,7 +16,7 @@ export default function TermsPage() {
       <div className="mt-10 space-y-10 text-stone-700 leading-relaxed text-[15px]">
         <section>
           <h2 className="text-lg font-semibold text-stone-900 mb-3">1. Acceptable Use</h2>
-          <p>By using Athora you agree to:</p>
+          <p>By using Nrop-on you agree to:</p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
             <li>Upload only materials you own or have permission to use.</li>
             <li>Not share AI-generated content in ways that violate academic integrity policies.</li>
@@ -43,7 +43,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-stone-900 mb-3">3. AI Content Disclaimer</h2>
           <p>
-            Athora uses AI to generate study materials including flashcards, quizzes, summaries,
+            Nrop-on uses AI to generate study materials including flashcards, quizzes, summaries,
             and chat responses. While we strive for accuracy:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
@@ -57,9 +57,9 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-stone-900 mb-3">4. Intellectual Property</h2>
           <p>
-            You retain ownership of all content you upload. By uploading, you grant Athora a
+            You retain ownership of all content you upload. By uploading, you grant Nrop-on a
             limited license to process your content solely for providing the service. AI-generated
-            outputs derived from your materials belong to you. Athora&apos;s branding, UI, and
+            outputs derived from your materials belong to you. Nrop-on&apos;s branding, UI, and
             proprietary technology remain our property.
           </p>
         </section>
@@ -67,7 +67,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-stone-900 mb-3">5. Limitation of Liability</h2>
           <p>
-            Athora is provided &quot;as is&quot; without warranty of any kind. To the maximum extent
+            Nrop-on is provided &quot;as is&quot; without warranty of any kind. To the maximum extent
             permitted by law:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 mt-2">
@@ -111,8 +111,8 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-stone-900 mb-3">9. Contact</h2>
           <p>
             Questions about these terms? Email{' '}
-            <a href="mailto:legal@athora.app" className="text-purple-700 underline hover:text-purple-900">
-              legal@athora.app
+            <a href="mailto:legal@nrop-on.com" className="text-purple-700 underline hover:text-purple-900">
+              legal@nrop-on.com
             </a>.
           </p>
         </section>

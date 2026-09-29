@@ -59,7 +59,7 @@ export function PricingSection() {
                 </div>
               </div>
 
-              <h3 className="text-base font-semibold text-[#f3f3fb]">Athora</h3>
+              <h3 className="text-base font-semibold text-[#f3f3fb]">Nrop-on</h3>
               <div className="mt-4 flex items-baseline gap-2">
                 <span className="text-5xl font-bold text-[#f3f3fb]">Free</span>
                 <span className="text-sm text-[#9a9ab6]">for now</span>

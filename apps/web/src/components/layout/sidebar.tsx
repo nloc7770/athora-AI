@@ -171,11 +171,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Link href="/" className="flex items-center gap-2.5" onClick={onNavigate}>
           <img
             src="/images/logo.png"
-            alt="Athora"
+            alt="Nrop-on"
             className="h-8 w-8 rounded-lg"
           />
           <span className="text-[15px] font-semibold tracking-tight text-stone-900 dark:text-stone-100">
-            Athora
+            Nrop-on
           </span>
         </Link>
       </div>
@@ -232,11 +232,11 @@ export function MobileHeader() {
           <Link href="/" className="flex items-center gap-2">
             <img
               src="/images/logo.png"
-              alt="Athora"
+              alt="Nrop-on"
               className="h-7 w-7 rounded-lg"
             />
             <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-              Athora
+              Nrop-on
             </span>
           </Link>
         </div>

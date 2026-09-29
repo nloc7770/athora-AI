@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'How Athora collects, uses, and protects your data.',
+  description: 'How Nrop-on collects, uses, and protects your data.',
 }
 
 export default function PrivacyPage() {
@@ -75,9 +75,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-stone-900 mb-3">6. FERPA Compliance</h2>
           <p>
-            Athora does not act as a school official or agent. We do not access institutional
-            education records. If your institution provides materials through Athora, data handling
-            is governed by the agreement between Athora and the institution. Students control their
+            Nrop-on does not act as a school official or agent. We do not access institutional
+            education records. If your institution provides materials through Nrop-on, data handling
+            is governed by the agreement between Nrop-on and the institution. Students control their
             own uploaded content at all times.
           </p>
         </section>
@@ -87,8 +87,8 @@ export default function PrivacyPage() {
           <p>
             You may delete your account and all associated data at any time from your account
             settings. Alternatively, email{' '}
-            <a href="mailto:privacy@athora.app" className="text-purple-700 underline hover:text-purple-900">
-              privacy@athora.app
+            <a href="mailto:privacy@nrop-on.com" className="text-purple-700 underline hover:text-purple-900">
+              privacy@nrop-on.com
             </a>{' '}
             and we will process your request within 30 days. Deletion is permanent and
             irreversible.
@@ -108,8 +108,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-stone-900 mb-3">9. Contact</h2>
           <p>
             For privacy questions or to exercise your rights, contact us at{' '}
-            <a href="mailto:privacy@athora.app" className="text-purple-700 underline hover:text-purple-900">
-              privacy@athora.app
+            <a href="mailto:privacy@nrop-on.com" className="text-purple-700 underline hover:text-purple-900">
+              privacy@nrop-on.com
             </a>.
           </p>
         </section>

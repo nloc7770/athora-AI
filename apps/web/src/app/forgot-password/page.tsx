@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-2 text-2xl font-bold tracking-tight text-foreground">
-            Athora
+            Nrop-on
           </div>
           <CardTitle>Reset your password</CardTitle>
           <CardDescription>

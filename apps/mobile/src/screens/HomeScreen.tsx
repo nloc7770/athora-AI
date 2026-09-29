@@ -14,7 +14,7 @@ export function HomeScreen() {
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
-      accessibilityLabel="Trang chủ Athora"
+      accessibilityLabel="Trang chủ Nrop-on"
     >
       <Text style={styles.greeting}>Chào bạn</Text>
       <Text style={styles.subtitle}>Hôm nay học gì nào?</Text>
