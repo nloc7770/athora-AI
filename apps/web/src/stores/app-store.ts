@@ -12,7 +12,11 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  sidebarOpen: true,
+  // Drives the mobile nav sheet only. The desktop sidebar is always visible
+  // (`hidden lg:flex`), so defaulting this to true left the sheet — and its
+  // full-viewport backdrop, which swallows every click — open on desktop on
+  // every load, with no visible control to close it.
+  sidebarOpen: false,
   activeCourse: null,
   activeDocument: null,
   searchQuery: '',

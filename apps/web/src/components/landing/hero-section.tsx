@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,31 +15,31 @@ export function HeroSection() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16 items-center">
           <div>
             <FadeUp>
-              <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#8052ff] mb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#ff7a3c] mb-5">
                 Pass exams faster with AI
               </p>
             </FadeUp>
             <FadeUp delay={0.05}>
               <h1
-                className="text-5xl font-extralight leading-[0.9] md:text-7xl lg:text-[clamp(5rem,8vw,7rem)] text-white"
+                className="text-5xl font-extralight leading-[0.9] md:text-7xl lg:text-[clamp(5rem,8vw,7rem)] text-[#f3f3fb]"
                 style={{ letterSpacing: '-0.04em' }}
               >
                 Study less.<br />
-                <span className="text-[#9a9a9a]">Remember</span>{' '}
-                <span className="text-[#8052ff]">
+                <span className="text-[#9a9ab6]">Remember</span>{' '}
+                <span className="text-[#ff7a3c]">
                   everything.
                 </span>
               </h1>
             </FadeUp>
             <FadeUp delay={0.1}>
-              <p className="mt-7 max-w-md text-[15px] text-[#bdbdbd] leading-relaxed tracking-[0.025em]">
-                Drop your lectures, textbooks, or notes. Get AI-generated flashcards, practice exams, and smart summaries in seconds — grounded in <span className="font-semibold text-white">your</span> materials.
+              <p className="mt-7 max-w-md text-[15px] text-[#c0c0da] leading-relaxed tracking-[0.025em]">
+                Drop your lectures, textbooks, or notes. Get AI-generated flashcards, practice exams, and smart summaries in seconds — grounded in <span className="font-semibold text-[#f3f3fb]">your</span> materials.
               </p>
             </FadeUp>
             <FadeUp delay={0.15}>
               <div className="mt-9 flex items-center gap-4">
                 <Link href="/register">
-                  <Button className="bg-[#8052ff] text-white h-12 px-7 text-xs font-semibold uppercase tracking-[0.05em] rounded-full hover:bg-[#6b3fe6] transition-all duration-300">
+                  <Button className="bg-[#ff7a3c] text-[#1a1400] h-12 px-7 text-xs font-semibold uppercase tracking-[0.05em] rounded-full hover:bg-[#ff9256] transition-all duration-300">
                     Start free — no card needed <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -49,19 +50,33 @@ export function HeroSection() {
           {/* Right — Product visual */}
           <FadeUp delay={0.2}>
             <div className="relative hidden lg:block">
-              <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-3 backdrop-blur-sm">
-                <img src="/images/hero-product.png" alt="Athora AI workspace" width={800} height={600} className="w-full rounded-2xl opacity-90" />
+              <div className="rounded-3xl border border-[#ffffff14] bg-[#181822] p-3 backdrop-blur-sm">
+                {/* next/image, not a raw <img>: this is the LCP element on the
+                    landing page and the source PNG is ~700KB straight off a
+                    retina screenshot. A raw tag ships that byte-for-byte to
+                    every phone; next/image serves a width-appropriate,
+                    re-encoded variant. `priority` because it is above the fold —
+                    lazy-loading the LCP image delays it. */}
+                <Image
+                  src="/images/hero-product.png"
+                  alt="Athora AI workspace"
+                  width={1440}
+                  height={900}
+                  sizes="(min-width: 1024px) 45vw, 100vw"
+                  priority
+                  className="h-auto w-full rounded-2xl opacity-90"
+                />
               </div>
               {/* Floating card */}
-              <div className="absolute -bottom-6 -left-6 rounded-2xl border border-white/[0.1] bg-black/80 backdrop-blur-md p-3.5 max-w-[200px]">
+              <div className="absolute -bottom-6 -left-6 rounded-2xl border border-[#ff7a3c]/50 bg-[#181822]/80 backdrop-blur-[10px] p-3.5 max-w-[200px]">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[#8052ff]" />
-                  <span className="text-xs font-semibold text-white tracking-[0.021em]">AI Generated</span>
+                  <span className="h-2 w-2 rounded-full bg-[#ff7a3c]" />
+                  <span className="text-xs font-semibold text-[#f3f3fb] tracking-[0.021em]">AI Generated</span>
                 </div>
-                <p className="text-[11px] text-[#9a9a9a] leading-snug">12 flashcards created from Chapter 4: Cell Biology</p>
+                <p className="text-[11px] text-[#9a9ab6] leading-snug">12 flashcards created from Chapter 4: Cell Biology</p>
               </div>
-              <div className="absolute -top-4 -right-4 rounded-full border border-[#8052ff]/30 bg-black/80 backdrop-blur-md px-4 py-2">
-                <p className="text-[11px] font-bold text-[#8052ff]">+23% <span className="font-normal text-[#bdbdbd]">this week</span></p>
+              <div className="absolute -top-4 -right-4 rounded-full border border-[#ff7a3c]/50 bg-[#181822]/80 backdrop-blur-[10px] px-4 py-2">
+                <p className="text-[11px] font-bold text-[#ffab81]">+23% <span className="font-normal text-[#c0c0da]">this week</span></p>
               </div>
             </div>
           </FadeUp>

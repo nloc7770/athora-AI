@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight, Brain, Loader2, AlertCircle, ArrowLeft,
-  Layers, Clock, Trophy, RotateCcw, Shuffle, CloudOff, FileUp, Plus, Sparkles,
+  ChevronLeft, ChevronRight, Brain, ArrowLeft, Layers, Clock, Trophy,
+  RotateCcw, Shuffle, CloudOff, FileUp, Plus,
 } from 'lucide-react'
 import { useFlashcardSets, useFlashcardSet, useDueCards } from '@/hooks/use-flashcards'
 import { useSwipe } from '@/hooks/use-swipe'
@@ -13,6 +13,14 @@ import { apiClient } from '@/lib/api'
 import { markFirstStudyDone } from '@/hooks/use-first-study'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import {
+  PageContainer,
+  PageHeader,
+  EmptyState,
+  ListCard,
+  ListSkeleton,
+} from '@/components/page'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 type ViewMode = 'list' | 'review' | 'due-review' | 'completed'
@@ -20,6 +28,18 @@ type ViewMode = 'list' | 'review' | 'due-review' | 'completed'
 interface DifficultyStats { easy: number; medium: number; hard: number }
 
 interface PendingRating { cardId: string; difficulty: Difficulty; lastReviewed: string }
+
+/**
+ * The list view is full-bleed (PageContainer owns the gutters). The two FOCUSED
+ * views — reviewing a card, and the session summary — keep a reading measure,
+ * because a flashcard stretched across 1400px is unreadable. `max-w-2xl` is the
+ * same measure /exam uses for its active-exam and results views, so the two
+ * focused flows line up.
+ */
+const FOCUS_MEASURE = 'mx-auto max-w-2xl'
+
+/** Track tint for ui/progress — the default `bg-muted` is a light-theme grey. */
+const PROGRESS_TRACK = '[&_[data-slot=progress-track]]:bg-[var(--br-bg3)]'
 
 function shuffleArray<T>(arr: readonly T[]): T[] {
   const result = [...arr]
@@ -42,58 +62,56 @@ function CardFace({ label, text, hint, variant }: {
   const isAnswer = variant === 'answer'
   return (
     <>
-      <p className={`mb-4 text-xs font-medium uppercase tracking-wider ${
-        isAnswer ? 'text-violet-500 dark:text-violet-400' : 'text-stone-400 dark:text-stone-500'
+      <p className={`mb-4 text-xs font-medium tracking-wider uppercase ${
+        isAnswer ? 'text-primary' : 'text-[var(--br-text3)]'
       }`}>{label}</p>
       <div className="max-h-[200px] w-full overflow-y-auto">
         <p className={`text-center ${textSize(text)} leading-relaxed ${
-          isAnswer
-            ? 'text-stone-800 dark:text-stone-200'
-            : 'font-medium text-stone-900 dark:text-stone-100'
+          isAnswer ? 'text-[var(--br-text2)]' : 'font-medium text-[var(--br-text)]'
         }`}>{text}</p>
       </div>
-      {hint && <p className="absolute bottom-4 text-xs text-stone-300 dark:text-stone-600">{hint}</p>}
+      {hint && <p className="absolute bottom-4 text-xs text-[var(--br-text3)]">{hint}</p>}
     </>
   )
 }
 
-function MasteryBar({ percent }: { percent: number }) {
+interface Segment { count: number; label: string; bar: string; text: string }
+
+/**
+ * The ONE hand-rolled bar left on this page. ui/progress has a single
+ * indicator, so it cannot show mastered / learning / again / new side by side —
+ * and that split IS the readout. Used by both the in-review tally and the
+ * session summary, which is why there are two bars here now instead of three.
+ */
+function StackedBar({ segments, total }: { segments: Segment[]; total: number }) {
+  const shown = segments.filter((s) => s.count > 0)
   return (
-    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"
-        style={{ width: `${percent}%` }}
-      />
+    <div>
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+        {shown.map((s, i) => (
+          <span key={s.label}>
+            {i > 0 && <span className="mr-2 text-[var(--br-text3)]" aria-hidden>·</span>}
+            <span className={s.text}>{s.count} {s.label}</span>
+          </span>
+        ))}
+      </div>
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--br-bg3)]">
+        {shown.map((s) => (
+          <div key={s.label} className={`h-full ${s.bar} transition-all duration-300`}
+            style={{ width: `${total > 0 ? (s.count / total) * 100 : 0}%` }} />
+        ))}
+      </div>
     </div>
   )
 }
 
-function ProgressBar({ stats, total }: { stats: DifficultyStats; total: number }) {
-  const unreviewed = Math.max(0, total - stats.easy - stats.medium - stats.hard)
-  const segments = [
-    { count: stats.easy, color: 'bg-emerald-400 dark:bg-emerald-500', label: 'mastered', textColor: 'text-emerald-600 dark:text-emerald-400' },
-    { count: stats.medium, color: 'bg-amber-400 dark:bg-amber-500', label: 'learning', textColor: 'text-amber-600 dark:text-amber-400' },
-    { count: stats.hard, color: 'bg-red-400 dark:bg-red-500', label: 'again', textColor: 'text-red-500 dark:text-red-400' },
-    { count: unreviewed, color: 'bg-stone-200 dark:bg-stone-700', label: 'new', textColor: 'text-stone-400' },
+/** Rating segments share one colour scale between review and summary. */
+function ratingSegments(stats: DifficultyStats): Segment[] {
+  return [
+    { count: stats.easy, label: 'mastered', bar: 'bg-emerald-500', text: 'text-emerald-400' },
+    { count: stats.medium, label: 'learning', bar: 'bg-amber-500', text: 'text-amber-400' },
+    { count: stats.hard, label: 'again', bar: 'bg-red-500', text: 'text-red-400' },
   ]
-  return (
-    <div className="mb-6">
-      <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-        {segments.filter((s) => s.count > 0).map((s, i) => (
-          <span key={s.label}>
-            {i > 0 && <span className="mr-2 text-stone-300 dark:text-stone-600">·</span>}
-            <span className={s.textColor}>{s.count} {s.label}</span>
-          </span>
-        ))}
-      </div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-        {segments.filter((s) => s.count > 0).map((s) => (
-          <div key={s.label} className={`h-full ${s.color} transition-all duration-300`}
-            style={{ width: `${(s.count / total) * 100}%` }} />
-        ))}
-      </div>
-    </div>
-  )
 }
 
 export default function FlashcardsPage() {
@@ -268,27 +286,7 @@ export default function FlashcardsPage() {
     onSwipeUp: () => { if (!isFlipped) handleFlip() },
   })
 
-  // Loading
-  if (setsLoading) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6">
-        <Loader2 className="h-8 w-8 animate-spin text-stone-400 dark:text-stone-500" />
-        <p className="text-sm text-stone-500 dark:text-stone-400">Loading flashcards...</p>
-      </div>
-    )
-  }
-
-  // Error
-  if (setsError) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6">
-        <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="text-sm text-stone-500 dark:text-stone-400">{setsError}</p>
-      </div>
-    )
-  }
-
-  // COMPLETION VIEW
+  // ── COMPLETION VIEW ──
   if (viewMode === 'completed') {
     const totalRated = stats.easy + stats.medium + stats.hard
     const easyPct = totalRated > 0 ? Math.round((stats.easy / totalRated) * 100) : 0
@@ -301,144 +299,108 @@ export default function FlashcardsPage() {
     const estimatedDueTomorrow = stats.hard + (stats.medium > 0 ? Math.ceil(stats.medium * 0.3) : 0)
 
     return (
-      <div className="mx-auto max-w-lg px-4 py-12">
-        <div className="flex flex-col items-center gap-6">
-          {/* Celebratory icon */}
-          <div className="relative">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30">
-              <Trophy className="h-10 w-10 text-violet-600 dark:text-violet-400" />
+      <PageContainer className={FOCUS_MEASURE}>
+        <PageHeader
+          title="Session Complete"
+          icon={<Trophy />}
+          count={`${easyPct}% easy`}
+          subtitle={
+            <>
+              You reviewed {totalRated} card{totalRated !== 1 ? 's' : ''} in {getSessionTime()}.{' '}
+              {performanceMessage} <span aria-hidden>{performanceEmoji}</span>
+            </>
+          }
+          // Two actions only: a third pushed the measure past max-w-2xl and the
+          // title wrapped. "Start Exam" lives with the nudge copy below instead.
+          actions={
+            <>
+              <Button size="lg"
+                onClick={() => { resetSession(); setViewMode(selectedSetId ? 'review' : 'due-review') }}>
+                <RotateCcw /> Review Again
+              </Button>
+              <Button variant="outline" size="lg" onClick={goBack}>
+                <Layers /> Back to Decks
+              </Button>
+            </>
+          }
+        />
+
+        <div className="grid grid-cols-3 gap-3">
+          {([
+            ['easy', stats.easy, 'Easy', 'text-emerald-400'],
+            ['medium', stats.medium, 'Good', 'text-amber-400'],
+            ['hard', stats.hard, 'Hard', 'text-red-400'],
+          ] as const).map(([key, count, label, textColor]) => (
+            <div key={key}
+              className="flex flex-col items-center rounded-xl border border-[var(--br-border)] bg-[var(--br-bg2)] p-4">
+              <span className={`text-2xl font-bold tabular-nums ${textColor}`}>{count}</span>
+              <span className="mt-1 text-xs text-[var(--br-text3)]">{label}</span>
             </div>
-            <span className="absolute -right-1 -top-1 text-2xl" aria-hidden="true">{performanceEmoji}</span>
-          </div>
-
-          {/* Session summary */}
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">Session Complete</h2>
-            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-              You reviewed {totalRated} card{totalRated !== 1 ? 's' : ''} in {getSessionTime()}
-            </p>
-            <p className="mt-1 text-sm font-medium text-stone-600 dark:text-stone-300">
-              {performanceMessage}
-            </p>
-          </div>
-
-          {/* Performance breakdown */}
-          <div className="grid w-full grid-cols-3 gap-3">
-            {([
-              ['easy', stats.easy, 'Easy', 'text-emerald-500 dark:text-emerald-400', 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800'],
-              ['medium', stats.medium, 'Good', 'text-amber-500 dark:text-amber-400', 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800'],
-              ['hard', stats.hard, 'Hard', 'text-red-500 dark:text-red-400', 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'],
-            ] as const).map(([key, count, label, textColor, bgColor]) => (
-              <div key={key} className={`flex flex-col items-center rounded-xl border p-4 ${bgColor}`}>
-                <span className={`text-2xl font-bold ${textColor}`}>{count}</span>
-                <span className="mt-1 text-xs text-stone-500 dark:text-stone-400">{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Mastery bar for session */}
-          <div className="w-full">
-            <div className="mb-1.5 flex justify-between text-xs text-stone-500 dark:text-stone-400">
-              <span>Session mastery</span>
-              <span>{easyPct}%</span>
-            </div>
-            <div className="flex h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-              {stats.easy > 0 && (
-                <div className="h-full bg-emerald-400 dark:bg-emerald-500 transition-all duration-300"
-                  style={{ width: `${(stats.easy / totalRated) * 100}%` }} />
-              )}
-              {stats.medium > 0 && (
-                <div className="h-full bg-amber-400 dark:bg-amber-500 transition-all duration-300"
-                  style={{ width: `${(stats.medium / totalRated) * 100}%` }} />
-              )}
-              {stats.hard > 0 && (
-                <div className="h-full bg-red-400 dark:bg-red-500 transition-all duration-300"
-                  style={{ width: `${(stats.hard / totalRated) * 100}%` }} />
-              )}
-            </div>
-          </div>
-
-          {/* Next action nudge */}
-          <div className="w-full rounded-xl border border-violet-200 bg-violet-50 p-4 text-center dark:border-violet-800 dark:bg-violet-950/20">
-            <p className="text-sm text-violet-700 dark:text-violet-300">
-              {estimatedDueTomorrow > 0
-                ? `Come back tomorrow for ~${estimatedDueTomorrow} due card${estimatedDueTomorrow !== 1 ? 's' : ''}`
-                : 'All caught up! Try an exam to test your knowledge.'}
-            </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button variant="outline" onClick={() => { resetSession(); setViewMode(selectedSetId ? 'review' : 'due-review') }}
-              className="gap-2 rounded-xl border-stone-200 dark:border-stone-700">
-              <RotateCcw className="h-4 w-4" /> Review Again
-            </Button>
-            <Button variant="outline" onClick={goBack}
-              className="gap-2 rounded-xl border-stone-200 dark:border-stone-700">
-              <Layers className="h-4 w-4" /> Back to Decks
-            </Button>
-            <Button onClick={() => { window.location.href = '/exam' }}
-              className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white">
-              <Brain className="h-4 w-4" /> Start Exam
-            </Button>
-          </div>
+          ))}
         </div>
-      </div>
+
+        <StackedBar segments={ratingSegments(stats)} total={totalRated} />
+
+        <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl border border-[var(--br-accent-line)] bg-[var(--br-accent-wash)] p-4 text-center">
+          <p className="text-sm text-[var(--br-accent-ink)]">
+            {estimatedDueTomorrow > 0
+              ? `Come back tomorrow for ~${estimatedDueTomorrow} due card${estimatedDueTomorrow !== 1 ? 's' : ''}`
+              : 'All caught up! Try an exam to test your knowledge.'}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => { window.location.href = '/exam' }}>
+            <Brain /> Start Exam
+          </Button>
+        </div>
+      </PageContainer>
     )
   }
 
-  // LIST VIEW
+  // ── LIST VIEW ──
   if (viewMode === 'list') {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-purple-600">
-            <Brain className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">Flashcards</h1>
-            <p className="text-sm text-stone-500 dark:text-stone-400">{sets.length} deck{sets.length !== 1 ? 's' : ''}</p>
-          </div>
-        </div>
-
-        {!dueLoading && dueCards.length > 0 && (
-          <button onClick={startDueReview}
-            className="mb-6 flex w-full items-center justify-between rounded-xl border border-violet-200 bg-violet-50 p-5 text-left transition-all hover:border-violet-300 hover:shadow-sm dark:border-violet-800 dark:bg-violet-950/30 dark:hover:border-violet-700">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/50">
-                <Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-violet-900 dark:text-violet-200">Due Today</h3>
-                <p className="text-xs text-violet-600 dark:text-violet-400">{dueCards.length} card{dueCards.length !== 1 ? 's' : ''} ready</p>
-              </div>
-            </div>
-            <Badge className="bg-violet-200 text-violet-800 dark:bg-violet-800 dark:text-violet-200">{dueCards.length}</Badge>
-          </button>
-        )}
-
-        {sets.length === 0 && dueCards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 p-12 text-center dark:border-stone-700">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-              <Layers className="h-8 w-8 text-stone-400 dark:text-stone-500" />
-            </div>
-            <h2 className="mt-6 text-lg font-medium text-stone-800 dark:text-stone-200">No flashcards yet</h2>
-            <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
-              Create a set or upload a document to get started.
-            </p>
-            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
-              <Button onClick={() => { window.location.href = '/sessions' }}
-                className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white">
-                <Plus className="h-4 w-4" /> Create flashcard set
+      <PageContainer>
+        <PageHeader
+          title="Flashcards"
+          subtitle="Spaced repetition decks built from your documents."
+          count={`${sets.length} deck${sets.length !== 1 ? 's' : ''}`}
+          icon={<Brain />}
+          actions={
+            !dueLoading && dueCards.length > 0 ? (
+              <Button onClick={startDueReview} size="lg">
+                <Clock />
+                Review {dueCards.length} due
               </Button>
-              <Button variant="outline" onClick={() => { window.location.href = '/sessions' }}
-                className="gap-2 rounded-xl border-stone-200 dark:border-stone-700">
-                <FileUp className="h-4 w-4" /> Upload a document
+            ) : undefined
+          }
+        />
+
+        {setsLoading ? (
+          <ListSkeleton count={6} variant="card" label="Loading flashcard decks" />
+        ) : setsError ? (
+          <EmptyState
+            illustration="offline"
+            title="Couldn't load your decks"
+            description={setsError}
+            action={<Button onClick={() => window.location.reload()}><RotateCcw />Try again</Button>}
+          />
+        ) : sets.length === 0 && dueCards.length === 0 ? (
+          <EmptyState
+            illustration="flashcards"
+            title="No flashcards yet"
+            description="Create a set or upload a document and athora will build the deck for you."
+            action={
+              <Button onClick={() => { window.location.href = '/sessions' }}>
+                <Plus /> Create flashcard set
               </Button>
-            </div>
-          </div>
+            }
+            secondaryAction={
+              <Button variant="outline" onClick={() => { window.location.href = '/sessions' }}>
+                <FileUp /> Upload a document
+              </Button>
+            }
+          />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sets.map((set) => {
               const setDueCount = dueCards.filter(
                 (c) => (c.set_id ?? c.setId) === set.id
@@ -467,167 +429,165 @@ export default function FlashcardsPage() {
               const lastStudied = days === null ? 'Not studied' : days === 0 ? 'Today' : days === 1 ? '1d ago' : `${days}d ago`
 
               return (
-                <div key={set.id}
-                  className="group flex flex-col rounded-xl border border-stone-200 bg-white p-5 transition-all hover:border-stone-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-700">
-                  <div className="flex items-start justify-between">
-                    <h3 className="text-sm font-medium text-stone-900 dark:text-stone-100 line-clamp-2">{set.name}</h3>
-                    {setDueCount > 0 ? (
-                      <Badge className="ml-2 shrink-0 bg-violet-100 text-violet-700 text-xs dark:bg-violet-900/40 dark:text-violet-300">{setDueCount} due</Badge>
+                <ListCard
+                  key={set.id}
+                  onClick={() => openSet(set.id)}
+                  icon={<Layers />}
+                  title={set.name}
+                  description={hasBeenStudied ? `${masteryPercent}% mastered` : 'Not started'}
+                  meta={
+                    <>
+                      <span>{set.cardCount ?? 0} cards</span>
+                      <span aria-hidden>·</span>
+                      <span>{lastStudied}</span>
+                    </>
+                  }
+                  badge={
+                    setDueCount > 0 ? (
+                      <Badge>{setDueCount} due</Badge>
                     ) : !hasBeenStudied && set.cardCount > 0 ? (
-                      <Badge className="ml-2 shrink-0 bg-stone-100 text-stone-500 text-xs dark:bg-stone-800 dark:text-stone-400">New</Badge>
-                    ) : null}
-                  </div>
-                  <div className="mt-2 flex items-center gap-3 text-xs text-stone-400 dark:text-stone-500">
-                    <span>{set.cardCount ?? 0} cards</span>
-                    <span className="text-stone-300 dark:text-stone-600">·</span>
-                    <span>{lastStudied}</span>
-                  </div>
-                  <MasteryBar percent={masteryPercent ?? 0} />
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-stone-400 dark:text-stone-500">
-                      {hasBeenStudied ? `${masteryPercent}% mastered` : 'Not started'}
-                    </span>
-                    <Button size="sm" onClick={() => openSet(set.id)}
-                      className="h-8 gap-1.5 rounded-lg bg-violet-600 px-3 text-xs text-white hover:bg-violet-700">
-                      <Sparkles className="h-3.5 w-3.5" /> Study Now
-                    </Button>
-                  </div>
-                </div>
+                      <Badge variant="secondary">New</Badge>
+                    ) : null
+                  }
+                />
               )
             })}
           </div>
         )}
-      </div>
+      </PageContainer>
     )
   }
 
-  // REVIEW VIEW
+  // ── REVIEW VIEW ──
   const reviewTitle = viewMode === 'due-review'
     ? 'Due Today' : sets.find((s) => s.id === selectedSetId)?.name ?? 'Flashcards'
   const slideClasses = isSliding
     ? (prefersReducedMotion ? 'opacity-0 transition-opacity duration-150' : 'translate-x-[120%] opacity-0 transition-all duration-300')
     : ''
+  const reviewSegments: Segment[] = [
+    ...ratingSegments(stats),
+    {
+      count: Math.max(0, totalCards - stats.easy - stats.medium - stats.hard),
+      label: 'new', bar: 'bg-[var(--br-border)]', text: 'text-[var(--br-text3)]',
+    },
+  ]
 
   return (
-    <div className="mx-auto flex min-h-[80vh] max-w-lg flex-col px-4 py-6">
+    <PageContainer className={FOCUS_MEASURE}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
 
-      {/* Top position bar */}
-      <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-        <div className="h-full rounded-full bg-violet-500 transition-all duration-300"
-          style={{ width: `${totalCards > 0 ? ((currentCardIndex + 1) / totalCards) * 100 : 0}%` }} />
-      </div>
+      <PageHeader
+        title={reviewTitle}
+        icon={<Layers />}
+        count={`${currentCardIndex + 1} / ${totalCards}${isShuffled ? ' shuffled' : ''}`}
+        actions={
+          <>
+            <Button variant="ghost" size="icon-lg" onClick={goBack} aria-label="Back to decks">
+              <ArrowLeft />
+            </Button>
+            <Button
+              variant={isShuffled ? 'default' : 'outline'}
+              size="icon-lg"
+              onClick={() => applyShuffle(!isShuffled)}
+              aria-pressed={isShuffled}
+              aria-label={isShuffled ? 'Disable shuffle' : 'Enable shuffle'}
+            >
+              <Shuffle />
+            </Button>
+          </>
+        }
+      />
 
-      {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={goBack}
-          className="h-8 w-8 rounded-lg p-0 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">{reviewTitle}</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            {currentCardIndex + 1} / {totalCards}
-            {isShuffled && <span className="ml-1.5 text-violet-500">(shuffled)</span>}
-          </p>
-        </div>
-        <Button variant={isShuffled ? 'default' : 'outline'} size="sm"
-          onClick={() => applyShuffle(!isShuffled)}
-          className={`h-8 gap-1.5 rounded-lg px-3 ${isShuffled ? 'bg-violet-600 text-white hover:bg-violet-700' : 'border-stone-200 dark:border-stone-700'}`}
-          aria-pressed={isShuffled} aria-label={isShuffled ? 'Disable shuffle' : 'Enable shuffle'}>
-          <Shuffle className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <Progress
+        value={totalCards > 0 ? ((currentCardIndex + 1) / totalCards) * 100 : 0}
+        aria-label="Position in deck"
+        className={`gap-0 ${PROGRESS_TRACK}`}
+      />
 
       {pendingRatings.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-          <CloudOff className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          <CloudOff className="size-3.5" />
           <span>{pendingRatings.length} rating{pendingRatings.length !== 1 ? 's' : ''} pending sync</span>
         </div>
       )}
 
       {cardsLoading || (viewMode === 'due-review' && dueLoading) ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-stone-400 dark:text-stone-500" />
-        </div>
+        <ListSkeleton count={3} label="Loading cards" />
       ) : totalCards === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <Brain className="h-10 w-10 text-stone-200 dark:text-stone-700" />
-          <p className="text-sm text-stone-500 dark:text-stone-400">
-            {viewMode === 'due-review' ? 'No cards due today' : 'This set has no cards'}
-          </p>
-        </div>
+        <EmptyState
+          illustration="flashcards"
+          title={viewMode === 'due-review' ? 'No cards due today' : 'This set has no cards'}
+          description="Nothing to review here right now."
+          secondaryAction={<Button variant="outline" onClick={goBack}><Layers />Back to decks</Button>}
+        />
       ) : (
-        <div className="flex flex-1 flex-col">
-          <ProgressBar stats={stats} total={totalCards} />
+        <div className="flex flex-col gap-6">
+          <StackedBar segments={reviewSegments} total={totalCards} />
 
-          <div className="flex flex-1 items-center justify-center">
-            <motion.div className={`w-full touch-pan-y ${slideClasses}`} key={currentCardIndex}
-              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              transition={{ duration: prefersReducedMotion ? 0.15 : 0.2 }}>
-              <div {...swipeHandlers} style={{
-                transform: swipeState.isSwiping ? `translateX(${swipeState.offsetX * 0.3}px) translateY(${swipeState.offsetY * 0.15}px)` : undefined,
-                transition: swipeState.isSwiping ? 'none' : 'transform 0.2s ease-out',
-              }}>
-                <button onClick={handleFlip}
-                  className="relative w-full cursor-pointer rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
-                  aria-label={isFlipped ? 'Show question' : 'Show answer'}>
-                  {prefersReducedMotion ? (
-                    <div className="relative min-h-[280px] w-full rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-700 dark:bg-stone-900">
-                      <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl p-8 transition-opacity duration-200 ${isFlipped ? 'opacity-0' : 'opacity-100'}`}>
-                        <CardFace label="Question" text={currentCard?.front} hint="Tap to reveal" variant="question" />
-                      </div>
-                      <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-violet-50 p-8 transition-opacity duration-200 dark:bg-violet-950/20 ${isFlipped ? 'opacity-100' : 'opacity-0'}`}>
-                        <CardFace label="Answer" text={currentCard?.back} variant="answer" />
-                      </div>
+          <motion.div className={`w-full touch-pan-y ${slideClasses}`} key={currentCardIndex}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.15 : 0.2 }}>
+            <div {...swipeHandlers} style={{
+              transform: swipeState.isSwiping ? `translateX(${swipeState.offsetX * 0.3}px) translateY(${swipeState.offsetY * 0.15}px)` : undefined,
+              transition: swipeState.isSwiping ? 'none' : 'transform 0.2s ease-out',
+            }}>
+              <button onClick={handleFlip}
+                className="relative w-full cursor-pointer rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2"
+                aria-label={isFlipped ? 'Show question' : 'Show answer'}>
+                {prefersReducedMotion ? (
+                  <div className="relative min-h-[280px] w-full rounded-2xl border border-[var(--br-border)] bg-[var(--br-bg2)]">
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl p-8 transition-opacity duration-200 ${isFlipped ? 'opacity-0' : 'opacity-100'}`}>
+                      <CardFace label="Question" text={currentCard?.front} hint="Tap to reveal" variant="question" />
                     </div>
-                  ) : (
-                    <div className={`perspective-1000 relative min-h-[280px] w-full rounded-2xl transition-all duration-500 transform-style-3d ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-stone-200 bg-white p-8 shadow-sm backface-hidden dark:border-stone-700 dark:bg-stone-900">
-                        <CardFace label="Question" text={currentCard?.front} hint="Tap to reveal" variant="question" />
-                      </div>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-violet-200 bg-violet-50 p-8 shadow-sm backface-hidden [transform:rotateY(180deg)] dark:border-violet-800 dark:bg-violet-950/20">
-                        <CardFace label="Answer" text={currentCard?.back} variant="answer" />
-                      </div>
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-[var(--br-accent-wash)] p-8 transition-opacity duration-200 ${isFlipped ? 'opacity-100' : 'opacity-0'}`}>
+                      <CardFace label="Answer" text={currentCard?.back} variant="answer" />
                     </div>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
+                  </div>
+                ) : (
+                  <div className={`perspective-1000 transform-style-3d relative min-h-[280px] w-full rounded-2xl transition-all duration-500 ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
+                    <div className="backface-hidden absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-[var(--br-border)] bg-[var(--br-bg2)] p-8">
+                      <CardFace label="Question" text={currentCard?.front} hint="Tap to reveal" variant="question" />
+                    </div>
+                    <div className="backface-hidden absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-[var(--br-accent-line)] bg-[var(--br-accent-wash)] p-8 [transform:rotateY(180deg)]">
+                      <CardFace label="Answer" text={currentCard?.back} variant="answer" />
+                    </div>
+                  </div>
+                )}
+              </button>
+            </div>
+          </motion.div>
 
-          {/* Difficulty pills */}
+          {/* Rating chips — SRS semantics unchanged: hard/medium/easy, keys 1/2/3 */}
           {isFlipped && (
-            <div className="mt-6 flex items-center justify-center gap-3">
-              {([['hard', 'Again', 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20'],
-                 ['medium', 'Good', 'border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/20'],
-                 ['easy', 'Easy', 'border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/20']] as const).map(([diff, label, cls]) => (
+            <div className="flex items-center justify-center gap-3">
+              {([['hard', 'Again', 'border-red-500/40 text-red-400 hover:bg-red-500/10'],
+                 ['medium', 'Good', 'border-amber-500/40 text-amber-400 hover:bg-amber-500/10'],
+                 ['easy', 'Easy', 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10']] as const).map(([diff, label, cls]) => (
                 <button key={diff} onClick={() => handleDifficulty(diff)}
-                  className={`rounded-full border bg-white px-5 py-2.5 text-sm font-medium transition-all dark:bg-stone-900 ${cls} ${ratedDifficulty === diff ? 'scale-110' : ''}`}>
+                  className={`rounded-full border bg-[var(--br-bg2)] px-5 py-2.5 text-sm font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/60 ${cls} ${ratedDifficulty === diff ? 'scale-110' : ''}`}>
                   {label}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Nav arrows */}
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <Button variant="ghost" size="sm" onClick={handlePrev} disabled={currentCardIndex === 0}
-              className="h-9 w-9 rounded-lg p-0 text-stone-500 disabled:opacity-30 dark:text-stone-400">
-              <ChevronLeft className="h-5 w-5" />
+          <div className="flex items-center justify-center gap-4">
+            <Button variant="ghost" size="icon-lg" onClick={handlePrev}
+              disabled={currentCardIndex === 0} aria-label="Previous card">
+              <ChevronLeft />
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleNext} disabled={currentCardIndex === totalCards - 1}
-              className="h-9 w-9 rounded-lg p-0 text-stone-500 disabled:opacity-30 dark:text-stone-400">
-              <ChevronRight className="h-5 w-5" />
+            <Button variant="ghost" size="icon-lg" onClick={handleNext}
+              disabled={currentCardIndex === totalCards - 1} aria-label="Next card">
+              <ChevronRight />
             </Button>
           </div>
 
-          <p className="mt-4 text-center text-xs text-stone-400 dark:text-stone-500">
+          <p className="text-center text-xs text-[var(--br-text3)]">
             Space to flip · arrows to navigate · 1 2 3 to rate
           </p>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }

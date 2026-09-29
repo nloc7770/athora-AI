@@ -14,13 +14,13 @@ export function Markdown({ content }: MarkdownProps) {
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <p className="text-base font-bold text-zinc-900 my-2">{children}</p>
+            <p className="text-base font-bold text-zinc-900 my-2 dark:text-zinc-100">{children}</p>
           ),
           h2: ({ children }) => (
-            <p className="text-sm font-bold text-zinc-900 my-1.5">{children}</p>
+            <p className="text-sm font-bold text-zinc-900 my-1.5 dark:text-zinc-100">{children}</p>
           ),
           h3: ({ children }) => (
-            <p className="text-sm font-semibold text-zinc-800 my-1.5">{children}</p>
+            <p className="text-sm font-semibold text-zinc-800 my-1.5 dark:text-zinc-200">{children}</p>
           ),
           table: ({ children }) => (
             <div className="overflow-x-auto my-2">
@@ -28,10 +28,10 @@ export function Markdown({ content }: MarkdownProps) {
             </div>
           ),
           th: ({ children }) => (
-            <th className="border border-zinc-200 bg-zinc-50 px-2 py-1 text-left text-xs font-semibold">{children}</th>
+            <th className="border border-zinc-200 bg-zinc-50 px-2 py-1 text-left text-xs font-semibold dark:border-zinc-700 dark:bg-zinc-800">{children}</th>
           ),
           td: ({ children }) => (
-            <td className="border border-zinc-200 px-2 py-1 text-xs">{children}</td>
+            <td className="border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700">{children}</td>
           ),
           pre: ({ children }) => (
             <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-3 text-xs text-zinc-100">
@@ -44,13 +44,13 @@ export function Markdown({ content }: MarkdownProps) {
               return <code className={codeClassName}>{children}</code>
             }
             return (
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs font-mono text-zinc-800">
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs font-mono text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
                 {children}
               </code>
             )
           },
           a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="text-purple-600 underline hover:text-purple-700">
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-purple-600 underline hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">
               {children}
             </a>
           ),

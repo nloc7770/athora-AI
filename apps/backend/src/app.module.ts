@@ -18,6 +18,8 @@ import { SessionsModule } from './sessions/sessions.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { BillingModule } from './billing/billing.module';
+import { BrainModule } from './brain/brain.module';
 
 @Module({
   imports: [
@@ -53,6 +55,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AdminModule,
     HealthModule,
     AnalyticsModule,
+    BillingModule,
+    BrainModule,
   ],
   providers: [
     {

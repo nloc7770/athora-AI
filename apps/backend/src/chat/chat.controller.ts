@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   Query,
@@ -38,6 +39,14 @@ export class ChatController {
     @Query('sessionId') sessionId?: string,
   ) {
     return this.chatService.getSessions(userId, documentId, sessionId);
+  }
+
+  @Delete('sessions/:id')
+  async deleteSession(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.chatService.deleteSession(userId, sessionId);
   }
 
   @Get('sessions/:id/messages')

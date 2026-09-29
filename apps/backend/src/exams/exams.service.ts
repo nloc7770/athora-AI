@@ -98,8 +98,15 @@ export class ExamsService {
       questions.map((q) => [q.id, q.correct_answer]),
     );
 
+    // Normalize to snake_case so stored answers stay consistent regardless of
+    // which naming the client used.
+    const normalizedAnswers = dto.answers.map((entry) => ({
+      question_id: entry.question_id ?? entry.questionId,
+      answer: entry.answer,
+    }));
+
     let correctCount = 0;
-    for (const answer of dto.answers) {
+    for (const answer of normalizedAnswers) {
       if (correctMap.get(answer.question_id) === answer.answer) {
         correctCount++;
       }
@@ -117,9 +124,9 @@ export class ExamsService {
       .insert({
         exam_id: examId,
         user_id: userId,
-        answers: dto.answers,
+        answers: normalizedAnswers,
         score,
-        time_spent: dto.time_spent ?? null,
+        time_spent: dto.time_spent ?? dto.timeTaken ?? null,
       })
       .select()
       .single();

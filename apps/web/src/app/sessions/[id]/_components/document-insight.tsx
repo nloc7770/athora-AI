@@ -100,15 +100,15 @@ export function DocumentInsight({ documentId, document }: DocumentInsightProps) 
   return (
     <div className="flex h-full flex-col">
       {/* Header: file name + size */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50">
-          <FileText className="h-4 w-4 text-purple-600" />
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-stone-800">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950/40">
+          <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-gray-900 truncate">
+          <h3 className="text-sm font-semibold text-gray-900 truncate dark:text-stone-100">
             {document?.name ?? 'Document'}
           </h3>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 dark:text-stone-500">
             {document?.file_size
               ? `${(document.file_size / 1024 / 1024).toFixed(1)} MB`
               : ''}
@@ -121,20 +121,20 @@ export function DocumentInsight({ documentId, document }: DocumentInsightProps) 
       {!isDocReady ? (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
           <div className="relative mb-4">
-            <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+            <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center dark:bg-purple-950/40">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-500 dark:text-purple-400" />
             </div>
           </div>
-          <p className="text-sm font-medium text-gray-700">Processing document</p>
-          <p className="mt-1 text-xs text-gray-400 text-center max-w-[200px]">
+          <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Processing document</p>
+          <p className="mt-1 text-xs text-gray-400 text-center max-w-[200px] dark:text-stone-500">
             Insights will be available once processing completes
           </p>
         </div>
       ) : (
         <>
           {/* Pill Tabs */}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex gap-1 rounded-xl bg-gray-100/80 p-1">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-stone-800">
+            <div className="flex gap-1 rounded-xl bg-gray-100/80 p-1 dark:bg-stone-800/80">
               {TAB_CONFIG.map(({ key, label, icon: Icon }) => {
                 const count = getCount(key)
                 const isActive = activeTab === key
@@ -144,8 +144,8 @@ export function DocumentInsight({ documentId, document }: DocumentInsightProps) 
                     onClick={() => setActiveTab(key)}
                     className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 flex-1 justify-center ${
                       isActive
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white text-gray-900 shadow-sm dark:bg-stone-700 dark:text-stone-100'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-200'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -154,8 +154,8 @@ export function DocumentInsight({ documentId, document }: DocumentInsightProps) 
                       <span
                         className={`ml-0.5 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
                           isActive
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-gray-200 text-gray-500'
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
+                            : 'bg-gray-200 text-gray-500 dark:bg-stone-700 dark:text-stone-400'
                         }`}
                       >
                         {count}
@@ -240,10 +240,10 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100">
-        <Icon className="h-7 w-7 text-gray-300" />
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100 dark:bg-stone-800/50 dark:border-stone-800">
+        <Icon className="h-7 w-7 text-gray-300 dark:text-stone-600" />
       </div>
-      <p className="text-sm text-gray-500 mb-4 text-center max-w-[220px]">{title}</p>
+      <p className="text-sm text-gray-500 mb-4 text-center max-w-[220px] dark:text-stone-400">{title}</p>
       <Button
         onClick={onGenerate}
         disabled={disabled}
@@ -264,16 +264,16 @@ function ErrorState({
   disabled: boolean
 }) {
   return (
-    <div className="mx-auto max-w-sm rounded-xl border border-red-100 bg-red-50/50 p-6 text-center">
-      <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-300" />
-      <p className="text-sm font-medium text-red-700 mb-1">Generation failed</p>
-      <p className="text-xs text-red-400 mb-4">Something went wrong. Please try again.</p>
+    <div className="mx-auto max-w-sm rounded-xl border border-red-100 bg-red-50/50 p-6 text-center dark:border-red-900/60 dark:bg-red-950/30">
+      <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-300 dark:text-red-500" />
+      <p className="text-sm font-medium text-red-700 mb-1 dark:text-red-300">Generation failed</p>
+      <p className="text-xs text-red-400 mb-4 dark:text-red-400/80">Something went wrong. Please try again.</p>
       <Button
         size="sm"
         variant="outline"
         onClick={onRetry}
         disabled={disabled}
-        className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
+        className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
       >
         <RotateCcw className="h-3.5 w-3.5" />
         Retry
@@ -288,12 +288,12 @@ function LoadingSkeleton({ lines = 4 }: { lines?: number }) {
       {Array.from({ length: lines }).map((_, i) => (
         <div key={i} className="space-y-2.5 animate-pulse">
           <div
-            className="h-4 rounded-lg bg-gradient-to-r from-purple-100 via-purple-50 to-purple-100 bg-[length:200%_100%] animate-[shimmer_1.5s_infinite]"
+            className="h-4 rounded-lg bg-gradient-to-r from-purple-100 via-purple-50 to-purple-100 bg-[length:200%_100%] animate-[shimmer_1.5s_infinite] dark:from-purple-900/40 dark:via-purple-800/30 dark:to-purple-900/40"
             style={{ width: `${90 - i * 10}%` }}
           />
           {i < lines - 1 && (
             <div
-              className="h-3 rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%] animate-[shimmer_1.5s_infinite_0.2s]"
+              className="h-3 rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%] animate-[shimmer_1.5s_infinite_0.2s] dark:from-stone-800 dark:via-stone-700 dark:to-stone-800"
               style={{ width: `${75 - i * 8}%` }}
             />
           )}
@@ -306,13 +306,13 @@ function LoadingSkeleton({ lines = 4 }: { lines?: number }) {
 function CardSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">
-      <div className="rounded-xl border border-purple-100 bg-purple-50/30 p-5 space-y-3">
-        <div className="h-4 rounded-lg bg-purple-100 w-3/4" />
-        <div className="h-3 rounded-lg bg-purple-50 w-1/2" />
+      <div className="rounded-xl border border-purple-100 bg-purple-50/30 p-5 space-y-3 dark:border-purple-900/60 dark:bg-purple-950/20">
+        <div className="h-4 rounded-lg bg-purple-100 w-3/4 dark:bg-purple-900/50" />
+        <div className="h-3 rounded-lg bg-purple-50 w-1/2 dark:bg-purple-900/30" />
       </div>
-      <div className="rounded-xl border border-purple-100 bg-purple-50/30 p-5 space-y-3">
-        <div className="h-4 rounded-lg bg-purple-100 w-2/3" />
-        <div className="h-3 rounded bg-gray-50 w-1/3" />
+      <div className="rounded-xl border border-purple-100 bg-purple-50/30 p-5 space-y-3 dark:border-purple-900/60 dark:bg-purple-950/20">
+        <div className="h-4 rounded-lg bg-purple-100 w-2/3 dark:bg-purple-900/50" />
+        <div className="h-3 rounded bg-gray-50 w-1/3 dark:bg-stone-800" />
       </div>
     </div>
   )
@@ -353,24 +353,24 @@ function SummaryContent({
     <div className="space-y-4">
       {/* Overview */}
       {overview && (
-        <p className="text-sm text-gray-700 leading-relaxed">{overview}</p>
+        <p className="text-sm text-gray-700 leading-relaxed dark:text-stone-300">{overview}</p>
       )}
 
       {/* Chapters */}
       {chapters?.map((ch: any, i: number) => {
         const isExpanded = expandedChapters.has(i)
         return (
-          <div key={i} className="rounded-xl border border-gray-100 overflow-hidden">
+          <div key={i} className="rounded-xl border border-gray-100 overflow-hidden dark:border-stone-800">
             <button
               onClick={() => toggleChapter(i)}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-gray-50/50 transition"
+              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-gray-50/50 transition dark:hover:bg-stone-800/40"
             >
               {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+                <ChevronDown className="h-4 w-4 text-gray-400 shrink-0 dark:text-stone-500" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 dark:text-stone-500" />
               )}
-              <span className="text-sm font-medium text-gray-800">{ch.title}</span>
+              <span className="text-sm font-medium text-gray-800 dark:text-stone-200">{ch.title}</span>
             </button>
             <AnimatePresence>
               {isExpanded && (
@@ -383,8 +383,8 @@ function SummaryContent({
                 >
                   <ul className="px-4 pb-3 space-y-1.5">
                     {ch.keyPoints?.map((kp: string, j: number) => (
-                      <li key={j} className="text-sm text-gray-600 flex items-start gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0" />
+                      <li key={j} className="text-sm text-gray-600 flex items-start gap-2 dark:text-stone-400">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0 dark:bg-purple-500" />
                         {kp}
                       </li>
                     ))}
@@ -398,13 +398,13 @@ function SummaryContent({
 
       {/* Takeaways */}
       {takeaways && takeaways.length > 0 && (
-        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100 p-4">
-          <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2">
+        <div className="rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100 p-4 dark:from-purple-950/40 dark:to-violet-950/30 dark:border-purple-900/60">
+          <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2 dark:text-purple-300">
             Key Takeaways
           </p>
           <ul className="space-y-1.5">
             {takeaways.map((t: string, i: number) => (
-              <li key={i} className="text-sm text-purple-900 flex items-start gap-2">
+              <li key={i} className="text-sm text-purple-900 flex items-start gap-2 dark:text-purple-100">
                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
                 {t}
               </li>
@@ -457,7 +457,7 @@ function FlashcardsContent({
   return (
     <div className="flex flex-col items-center">
       {/* Counter */}
-      <p className="text-xs text-gray-400 font-medium mb-3">
+      <p className="text-xs text-gray-400 font-medium mb-3 dark:text-stone-500">
         Card {currentCardIndex + 1} of {total}
       </p>
 
@@ -474,22 +474,22 @@ function FlashcardsContent({
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-gray-100 bg-white p-6 shadow-sm backface-hidden"
+            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-gray-100 bg-white p-6 shadow-sm backface-hidden dark:border-stone-800 dark:bg-stone-900"
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Question</p>
-            <p className="text-sm font-medium text-gray-800 text-center leading-relaxed">
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2 dark:text-stone-500">Question</p>
+            <p className="text-sm font-medium text-gray-800 text-center leading-relaxed dark:text-stone-200">
               {card.front}
             </p>
-            <p className="mt-4 text-[10px] text-gray-300">Tap to reveal</p>
+            <p className="mt-4 text-[10px] text-gray-300 dark:text-stone-600">Tap to reveal</p>
           </div>
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-purple-100 bg-purple-50/50 p-6 shadow-sm backface-hidden"
+            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-purple-100 bg-purple-50/50 p-6 shadow-sm backface-hidden dark:border-purple-900/60 dark:bg-purple-950/30"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <p className="text-xs text-purple-600 uppercase tracking-wide mb-2">Answer</p>
-            <p className="text-sm text-gray-700 text-center leading-relaxed">
+            <p className="text-xs text-purple-600 uppercase tracking-wide mb-2 dark:text-purple-300">Answer</p>
+            <p className="text-sm text-gray-700 text-center leading-relaxed dark:text-stone-300">
               {card.back}
             </p>
           </div>
@@ -515,11 +515,11 @@ function FlashcardsContent({
             <div
               key={i}
               className={`h-1.5 w-1.5 rounded-full transition ${
-                i === currentCardIndex ? 'bg-purple-500' : 'bg-gray-200'
+                i === currentCardIndex ? 'bg-purple-500' : 'bg-gray-200 dark:bg-stone-700'
               }`}
             />
           ))}
-          {total > 8 && <span className="text-[10px] text-gray-300 ml-1">...</span>}
+          {total > 8 && <span className="text-[10px] text-gray-300 ml-1 dark:text-stone-600">...</span>}
         </div>
         <Button
           size="sm"
@@ -574,9 +574,9 @@ function ExamContent({
       {questions.map((q: any, i: number) => {
         const isRevealed = revealedAnswers.has(i)
         return (
-          <div key={i} className="rounded-xl border border-gray-100 p-4">
-            <p className="text-sm font-medium text-gray-800 mb-2">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-[11px] font-semibold text-purple-700 mr-2">
+          <div key={i} className="rounded-xl border border-gray-100 p-4 dark:border-stone-800">
+            <p className="text-sm font-medium text-gray-800 mb-2 dark:text-stone-200">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-[11px] font-semibold text-purple-700 mr-2 dark:bg-purple-900/60 dark:text-purple-300">
                 {i + 1}
               </span>
               {q.question ?? q.text}
@@ -584,8 +584,8 @@ function ExamContent({
             {q.options && (
               <ul className="space-y-1.5 ml-7 mb-2">
                 {q.options.map((opt: string, j: number) => (
-                  <li key={j} className="text-sm text-gray-600 flex items-center gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-gray-100 text-[11px] font-medium text-gray-500">
+                  <li key={j} className="text-sm text-gray-600 flex items-center gap-2 dark:text-stone-400">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-gray-100 text-[11px] font-medium text-gray-500 dark:bg-stone-800 dark:text-stone-400">
                       {String.fromCharCode(65 + j)}
                     </span>
                     {opt}
@@ -597,7 +597,7 @@ function ExamContent({
               <div className="ml-7">
                 <button
                   onClick={() => toggleAnswer(i)}
-                  className="text-xs text-purple-600 hover:text-purple-700 font-medium transition"
+                  className="text-xs text-purple-600 hover:text-purple-700 font-medium transition dark:text-purple-400 dark:hover:text-purple-300"
                 >
                   {isRevealed ? 'Hide answer' : 'Reveal answer'}
                 </button>
@@ -610,14 +610,14 @@ function ExamContent({
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-2 rounded-lg bg-green-50 border border-green-100 px-3 py-2">
+                      <div className="mt-2 rounded-lg bg-green-50 border border-green-100 px-3 py-2 dark:bg-green-950/40 dark:border-green-900/60">
                         {q.answer && (
-                          <p className="text-xs font-medium text-green-700">
+                          <p className="text-xs font-medium text-green-700 dark:text-green-300">
                             Answer: {q.answer}
                           </p>
                         )}
                         {q.explanation && (
-                          <p className="text-xs text-green-600 mt-1">{q.explanation}</p>
+                          <p className="text-xs text-green-600 mt-1 dark:text-green-400">{q.explanation}</p>
                         )}
                       </div>
                     </motion.div>
@@ -666,7 +666,7 @@ function MindMapContent({
 
   return (
     <div className="space-y-2">
-      <span className="text-xs text-gray-400">{nodes.length} nodes · {edges?.length ?? 0} connections</span>
+      <span className="text-xs text-gray-400 dark:text-stone-500">{nodes.length} nodes · {edges?.length ?? 0} connections</span>
       <MindMapFlow rawNodes={nodes} edges={edges} height="450px" />
     </div>
   )

@@ -32,9 +32,9 @@ interface FlashcardsTabProps {
 }
 
 const difficultyConfig = {
-  easy: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Easy' },
-  medium: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Medium' },
-  hard: { bg: 'bg-red-100', text: 'text-red-700', label: 'Hard' },
+  easy: { bg: 'bg-emerald-100 dark:bg-emerald-950', text: 'text-emerald-700 dark:text-emerald-300', label: 'Easy' },
+  medium: { bg: 'bg-amber-100 dark:bg-amber-950', text: 'text-amber-700 dark:text-amber-300', label: 'Medium' },
+  hard: { bg: 'bg-red-100 dark:bg-red-950', text: 'text-red-700 dark:text-red-300', label: 'Hard' },
 } as const
 
 function getTextSizeClass(text: string | undefined): string {
@@ -181,11 +181,11 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
   if (!hasReadyDocs && hasProcessingDocs) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center justify-center pt-20">
-        <div className="rounded-full bg-purple-50 p-4 mb-4">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        <div className="rounded-full bg-purple-50 p-4 mb-4 dark:bg-purple-950/40">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500 dark:text-purple-400" />
         </div>
-        <p className="text-sm font-medium text-gray-700">Processing documents...</p>
-        <p className="text-xs text-gray-400 mt-1">You can generate flashcards once processing is complete</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Processing documents...</p>
+        <p className="text-xs text-gray-400 mt-1 dark:text-stone-500">You can generate flashcards once processing is complete</p>
       </div>
     )
   }
@@ -193,10 +193,10 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
   if (!hasReadyDocs) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center justify-center pt-20">
-        <div className="rounded-full bg-gray-100 p-4 mb-4">
-          <Brain className="h-8 w-8 text-gray-400" />
+        <div className="rounded-full bg-gray-100 p-4 mb-4 dark:bg-stone-800">
+          <Brain className="h-8 w-8 text-gray-400 dark:text-stone-500" />
         </div>
-        <p className="text-gray-500 text-center">Upload documents first to generate flashcards</p>
+        <p className="text-gray-500 text-center dark:text-stone-400">Upload documents first to generate flashcards</p>
       </div>
     )
   }
@@ -204,11 +204,11 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
   if ((isLoading || pending) && !latest) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center justify-center pt-20">
-        <div className="rounded-full bg-indigo-50 p-4 mb-4">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <div className="rounded-full bg-indigo-50 p-4 mb-4 dark:bg-indigo-950/40">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500 dark:text-indigo-400" />
         </div>
-        <p className="text-sm font-medium text-gray-700">Generating flashcards...</p>
-        <p className="text-xs text-gray-400 mt-1">Creating cards from your documents</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Generating flashcards...</p>
+        <p className="text-xs text-gray-400 mt-1 dark:text-stone-500">Creating cards from your documents</p>
       </div>
     )
   }
@@ -217,11 +217,11 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex flex-col items-center justify-center pt-12">
-          <div className="rounded-full bg-red-50 p-4 mb-4">
+          <div className="rounded-full bg-red-50 p-4 mb-4 dark:bg-red-950/40">
             <AlertCircle className="h-8 w-8 text-red-400" />
           </div>
-          <p className="text-sm font-medium text-gray-700">Flashcard generation failed</p>
-          <p className="text-xs text-gray-400 mt-1">Something went wrong. Please try again.</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Flashcard generation failed</p>
+          <p className="text-xs text-gray-400 mt-1 dark:text-stone-500">Something went wrong. Please try again.</p>
           <Button onClick={onGenerate} disabled={isLoading} variant="outline" className="mt-4 gap-2">
             <RotateCcw className="h-4 w-4" />
             Retry
@@ -235,10 +235,10 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex flex-col items-center justify-center pt-12">
-          <div className="rounded-full bg-gray-100 p-4 mb-4">
-            <Brain className="h-8 w-8 text-gray-300" />
+          <div className="rounded-full bg-gray-100 p-4 mb-4 dark:bg-stone-800">
+            <Brain className="h-8 w-8 text-gray-300 dark:text-stone-600" />
           </div>
-          <p className="text-sm text-gray-500 mb-4">Generate flashcards from your session documents</p>
+          <p className="text-sm text-gray-500 mb-4 dark:text-stone-400">Generate flashcards from your session documents</p>
           <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
             <Sparkles className="h-4 w-4" />
             {isLoading ? 'Generating...' : 'Generate Flashcards'}
@@ -270,7 +270,7 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
 
       {/* Top bar: counter + stats + generate more */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-600">
+        <span className="text-sm font-medium text-gray-600 dark:text-stone-300">
           Card {currentIndex + 1} of {totalCards}
         </span>
         <Button onClick={onGenerate} disabled={isLoading} variant="outline" size="sm" className="gap-2">
@@ -282,14 +282,14 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
       {/* Mini stats bar */}
       {(stats.easy > 0 || stats.medium > 0 || stats.hard > 0) && (
         <div className="flex items-center gap-3 text-xs">
-          <span className="text-emerald-600">Easy: {stats.easy}</span>
-          <span className="text-amber-600">Medium: {stats.medium}</span>
-          <span className="text-red-600">Hard: {stats.hard}</span>
+          <span className="text-emerald-600 dark:text-emerald-400">Easy: {stats.easy}</span>
+          <span className="text-amber-600 dark:text-amber-400">Medium: {stats.medium}</span>
+          <span className="text-red-600 dark:text-red-400">Hard: {stats.hard}</span>
         </div>
       )}
 
       {/* Progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+      <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden dark:bg-stone-800">
         <div
           className="h-full rounded-full bg-indigo-500 transition-all duration-300"
           style={{ width: `${((currentIndex + 1) / totalCards) * 100}%` }}
@@ -314,9 +314,9 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
           >
             {prefersReducedMotion ? (
               /* Reduced motion: opacity crossfade */
-              <div className="relative min-h-[280px] w-full rounded-2xl border-2 border-gray-200 shadow-sm">
+              <div className="relative min-h-[280px] w-full rounded-2xl border-2 border-gray-200 shadow-sm dark:border-stone-800">
                 <div
-                  className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white p-8 transition-opacity duration-200 ${
+                  className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white p-8 transition-opacity duration-200 dark:bg-stone-900 ${
                     isFlipped ? 'opacity-0' : 'opacity-100'
                   }`}
                 >
@@ -325,16 +325,16 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
                       {diffStyle.label}
                     </Badge>
                   )}
-                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-4">Question</p>
+                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-4 dark:text-stone-500">Question</p>
                   <div className="max-h-[250px] overflow-y-auto scrollbar-thin w-full flex justify-center">
-                    <p className={`text-center ${getTextSizeClass(currentCard?.front)} font-medium text-gray-900 leading-relaxed`}>
+                    <p className={`text-center ${getTextSizeClass(currentCard?.front)} font-medium text-gray-900 leading-relaxed dark:text-stone-100`}>
                       {currentCard?.front}
                     </p>
                   </div>
-                  <p className="absolute bottom-4 text-xs text-gray-300">Tap to flip</p>
+                  <p className="absolute bottom-4 text-xs text-gray-300 dark:text-stone-600">Tap to flip</p>
                 </div>
                 <div
-                  className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-indigo-50 p-8 transition-opacity duration-200 border border-indigo-200 ${
+                  className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-indigo-50 p-8 transition-opacity duration-200 border border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-900 ${
                     isFlipped ? 'opacity-100' : 'opacity-0'
                   }`}
                 >
@@ -343,13 +343,13 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
                       {diffStyle.label}
                     </Badge>
                   )}
-                  <p className="text-xs uppercase tracking-wider text-indigo-400 mb-4">Answer</p>
+                  <p className="text-xs uppercase tracking-wider text-indigo-400 mb-4 dark:text-indigo-300">Answer</p>
                   <div className="max-h-[250px] overflow-y-auto scrollbar-thin w-full flex justify-center">
-                    <p className={`text-center ${getTextSizeClass(currentCard?.back)} text-gray-800 leading-relaxed`}>
+                    <p className={`text-center ${getTextSizeClass(currentCard?.back)} text-gray-800 leading-relaxed dark:text-stone-200`}>
                       {currentCard?.back}
                     </p>
                   </div>
-                  <p className="absolute bottom-4 text-xs text-indigo-300">Tap to flip back</p>
+                  <p className="absolute bottom-4 text-xs text-indigo-300 dark:text-indigo-400">Tap to flip back</p>
                 </div>
               </div>
             ) : (
@@ -360,35 +360,35 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
                 }`}
               >
                 {/* Front */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white p-8 backface-hidden border border-gray-200 shadow-sm">
+                <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white p-8 backface-hidden border border-gray-200 shadow-sm dark:bg-stone-900 dark:border-stone-800">
                   {diffStyle && (
                     <Badge className={`${diffStyle.bg} ${diffStyle.text} absolute top-4 right-4`}>
                       {diffStyle.label}
                     </Badge>
                   )}
-                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-4">Question</p>
+                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-4 dark:text-stone-500">Question</p>
                   <div className="max-h-[250px] overflow-y-auto scrollbar-thin w-full flex justify-center">
-                    <p className={`text-center ${getTextSizeClass(currentCard?.front)} font-medium text-gray-900 leading-relaxed`}>
+                    <p className={`text-center ${getTextSizeClass(currentCard?.front)} font-medium text-gray-900 leading-relaxed dark:text-stone-100`}>
                       {currentCard?.front}
                     </p>
                   </div>
-                  <p className="absolute bottom-4 text-xs text-gray-300">Tap to flip</p>
+                  <p className="absolute bottom-4 text-xs text-gray-300 dark:text-stone-600">Tap to flip</p>
                 </div>
 
                 {/* Back */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-indigo-50 p-8 backface-hidden [transform:rotateY(180deg)] border border-indigo-200 shadow-sm">
+                <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-indigo-50 p-8 backface-hidden [transform:rotateY(180deg)] border border-indigo-200 shadow-sm dark:bg-indigo-950/40 dark:border-indigo-900">
                   {diffStyle && (
                     <Badge className={`${diffStyle.bg} ${diffStyle.text} absolute top-4 right-4`}>
                       {diffStyle.label}
                     </Badge>
                   )}
-                  <p className="text-xs uppercase tracking-wider text-indigo-400 mb-4">Answer</p>
+                  <p className="text-xs uppercase tracking-wider text-indigo-400 mb-4 dark:text-indigo-300">Answer</p>
                   <div className="max-h-[250px] overflow-y-auto scrollbar-thin w-full flex justify-center">
-                    <p className={`text-center ${getTextSizeClass(currentCard?.back)} text-gray-800 leading-relaxed`}>
+                    <p className={`text-center ${getTextSizeClass(currentCard?.back)} text-gray-800 leading-relaxed dark:text-stone-200`}>
                       {currentCard?.back}
                     </p>
                   </div>
-                  <p className="absolute bottom-4 text-xs text-indigo-300">Tap to flip back</p>
+                  <p className="absolute bottom-4 text-xs text-indigo-300 dark:text-indigo-400">Tap to flip back</p>
                 </div>
               </div>
             )}
@@ -402,7 +402,7 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
           <Button
             size="sm"
             variant="outline"
-            className={`border-red-200 text-red-600 hover:bg-red-50 transition-transform duration-150 ${
+            className={`border-red-200 text-red-600 hover:bg-red-50 transition-transform duration-150 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30 ${
               ratedDifficulty === 'hard' ? 'scale-115' : ''
             }`}
             onClick={() => handleDifficulty('hard')}
@@ -412,7 +412,7 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
           <Button
             size="sm"
             variant="outline"
-            className={`border-amber-200 text-amber-600 hover:bg-amber-50 transition-transform duration-150 ${
+            className={`border-amber-200 text-amber-600 hover:bg-amber-50 transition-transform duration-150 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-950/30 ${
               ratedDifficulty === 'medium' ? 'scale-115' : ''
             }`}
             onClick={() => handleDifficulty('medium')}
@@ -422,7 +422,7 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
           <Button
             size="sm"
             variant="outline"
-            className={`border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-transform duration-150 ${
+            className={`border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-transform duration-150 dark:border-emerald-900 dark:text-emerald-400 dark:hover:bg-emerald-950/30 ${
               ratedDifficulty === 'easy' ? 'scale-115' : ''
             }`}
             onClick={() => handleDifficulty('easy')}
@@ -444,7 +444,7 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
           <ChevronLeft className="h-4 w-4" />
           Previous
         </Button>
-        <span className="text-sm text-gray-500 tabular-nums min-w-[4rem] text-center">
+        <span className="text-sm text-gray-500 tabular-nums min-w-[4rem] text-center dark:text-stone-400">
           {currentIndex + 1} / {totalCards}
         </span>
         <Button
@@ -460,7 +460,7 @@ export function FlashcardsTab({ hasReadyDocs, hasProcessingDocs, generations, is
       </div>
 
       {/* Keyboard shortcut hint (Task 17) */}
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-gray-400 dark:text-stone-500">
         Space to flip · ← → navigate · 1 2 3 rate
       </p>
     </div>

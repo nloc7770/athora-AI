@@ -30,11 +30,20 @@ function hasActiveGenerations(generations: Array<{ status: string }>): boolean {
   return generations.some((g) => ACTIVE_STATUSES.includes(g.status))
 }
 
+/**
+ * `status` is the closed set the backend's generation state machine emits, not
+ * an open string. Typing it as the union is what lets a generation be handed
+ * straight to ExamTab/SummaryTab, whose props narrow on these four — a bare
+ * `string` fails that assignment. hasActiveGenerations still accepts it: it
+ * takes `Array<{status: string}>`, which the union widens into.
+ */
+export type GenerationStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
 interface SessionGeneration {
   id: string
   sessionId: string
   type: GenerationType
-  status: string
+  status: GenerationStatus
   result?: Record<string, any>
   createdAt: string
   updatedAt: string

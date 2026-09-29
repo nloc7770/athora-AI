@@ -1,24 +1,23 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
+/**
+ * The page's Quick Actions row is gone: /dashboard is the full-screen brain
+ * HUD, and its rail carries the same destinations (Sessions, Flashcards,
+ * Exams, AI Tutor) permanently instead of behind a row that scrolled away.
+ *
+ * The row's old assertion was "these buttons carry an interaction class".
+ * The rail's transitions live in brain-theme.css, not in utility classes, so
+ * the equivalent guarantee is asserted behaviourally: each destination is a
+ * real labelled button on the rail, and each one navigates to its route.
+ */
+
+const mockPush = vi.fn()
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-}))
-
-vi.mock("next/image", () => ({
-  default: (props: Record<string, unknown>) => <img {...props} />,
-}))
-
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...props }: Record<string, unknown>) => (
-      <div {...props}>{children as React.ReactNode}</div>
-    ),
-  },
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), prefetch: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/dashboard",
 }))
 
 vi.mock("@/hooks/use-courses", () => ({
@@ -47,42 +46,58 @@ vi.mock("@/hooks/use-documents", () => ({
 }))
 
 vi.mock("@/hooks/use-sessions", () => ({
-  useSessions: () => ({
-    createSession: vi.fn(),
-  }),
+  useSessions: () => ({ sessions: [], isLoading: false, createSession: vi.fn() }),
+}))
+
+vi.mock("@/hooks/use-streak", () => ({
+  useStreak: () => ({ streak: 0, recordStreak: vi.fn() }),
 }))
 
 vi.mock("@/stores/auth-store", () => ({
   useAuthStore: () => ({
     user: { name: "Test User", email: "test@example.com" },
+    logout: vi.fn(),
   }),
 }))
 
-describe("DashboardPage interactions", () => {
-  it("quick action buttons have class containing 'active:scale' or 'transition'", async () => {
-    const { default: DashboardPage } = await import(
-      "../dashboard-page"
-    )
+vi.mock("@/hooks/use-notifications", () => ({
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    isLoading: false,
+    markAllRead: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}))
 
-    render(<DashboardPage />)
+vi.mock("@/components/brain/brain-hero", () => ({
+  BrainHero: () => <div data-testid="brain-hero-mock" />,
+}))
 
-    const sessionsButton = screen.getByRole("button", { name: /sessions/i })
-    const flashcardsButton = screen.getByRole("button", { name: /flashcards/i })
-    const examsButton = screen.getByRole("button", { name: /exams/i })
-    const aiTutorButton = screen.getByRole("button", { name: /ai tutor/i })
+import { BrainHud } from "@/components/brain/brain-hud"
 
-    const quickActionButtons = [
-      sessionsButton,
-      flashcardsButton,
-      examsButton,
-      aiTutorButton,
-    ]
+const DESTINATIONS: Array<[string, string]> = [
+  ["Study Spaces", "/sessions"],
+  ["Flashcards", "/flashcards"],
+  ["Exam Mode", "/exam"],
+  ["AI Tutor", "/tutor"],
+]
 
-    for (const button of quickActionButtons) {
-      const className = button.className
-      const hasInteractionClass =
-        className.includes("active:scale") || className.includes("transition")
-      expect(hasInteractionClass).toBe(true)
+describe("BrainHud interactions", () => {
+  it("rail destinations are buttons that navigate to their route", async () => {
+    const user = userEvent.setup()
+    mockPush.mockClear()
+
+    render(<BrainHud onUpload={vi.fn().mockResolvedValue(undefined)} />)
+
+    for (const [label, href] of DESTINATIONS) {
+      const button = screen.getByRole("button", { name: label })
+      // Rail rows are `.br-rail-link` (icon + label); `.br-rail-item` is the
+      // square icon-only button the top bar uses for the bell and toggles.
+      expect(button).toHaveClass("br-rail-link")
+
+      await user.click(button)
+      expect(mockPush).toHaveBeenCalledWith(href)
     }
   })
 })

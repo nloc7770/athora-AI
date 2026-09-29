@@ -26,6 +26,21 @@ import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+// STT (whisper) works on 25 MB inputs; larger audio is rejected before the
+// document row is created so the client gets a clean 400.
+const MAX_AUDIO_SIZE = 25 * 1024 * 1024;
+
+const AUDIO_MIME =
+  /(audio\/(mpeg|mp4|x-m4a|wav|x-wav|wave|vnd\.wave|ogg|webm)|video\/(mp4|webm))/;
+
+// Documents go to RAGFlow parsing, audio/video go through STT first.
+// video/mp4|webm accepted because phones label voice memos m4a as audio/mp4
+// and MediaRecorder emits webm.
+const ACCEPTED_MIME = new RegExp(
+  /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/.source +
+    '|' +
+    AUDIO_MIME.source,
+);
 
 @Controller('documents')
 @UseGuards(SupabaseAuthGuard)
@@ -83,7 +98,7 @@ export class DocumentsController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE }),
-          new FileTypeValidator({ fileType: /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/ }),
+          new FileTypeValidator({ fileType: ACCEPTED_MIME }),
         ],
       }),
     )
@@ -98,11 +113,20 @@ export class DocumentsController {
       'application/msword': 'doc',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'doc',
     };
-    const docType = mimeToType[file.mimetype] ?? 'pdf';
+    let docType = mimeToType[file.mimetype];
+    if (!docType && AUDIO_MIME.test(file.mimetype)) {
+      docType = 'audio';
+    }
+    if (!docType) docType = 'pdf';
 
     // Validate file content
     if (!file.buffer || file.buffer.length < 4) {
       throw new BadRequestException('Invalid file: file is empty or too small');
+    }
+
+    // Audio goes through whisper (25 MB limit), reject before creating a row.
+    if (docType === 'audio' && file.size > MAX_AUDIO_SIZE) {
+      throw new BadRequestException('Audio file exceeds the 25 MB transcription limit');
     }
 
     // PDF magic byte check (only for PDFs)
@@ -116,10 +140,11 @@ export class DocumentsController {
     const ext = file.originalname.match(/\.[^.]+$/)?.[0] ?? '';
     const documentName = name || file.originalname.replace(ext, '');
 
-    // Store as 'pdf' type in DB (RAGFlow handles doc/docx the same way)
+    // pdf/doc still store as 'pdf' (RAGFlow handles both the same way);
+    // audio/video store as 'audio' and take the STT branch in the processor.
     const document = await this.documentsService.create(userId, {
       name: documentName,
-      type: 'pdf',
+      type: docType === 'audio' ? 'audio' : 'pdf',
       course_id: courseId,
       session_id: sessionId,
       file_size: file.size,

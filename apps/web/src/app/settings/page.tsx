@@ -1,36 +1,51 @@
 "use client"
 
-import { type ReactElement, useCallback, useEffect, useMemo, useState } from "react"
-import { AppLayout } from "@/components/layout/app-layout"
+import { type ReactElement, useCallback, useMemo, useState } from "react"
+import { BrainShell } from "@/components/brain/brain-shell"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { PageContainer, PageHeader } from "@/components/page"
 import {
   Settings,
-  Sun,
-  Moon,
-  Monitor,
   Bell,
   BellOff,
+  Loader2,
   LogOut,
   Trash2,
   Camera,
   Lock,
 } from "lucide-react"
 
-type Theme = "light" | "dark" | "system"
-
 export default function SettingsPage() {
   return (
     <ProtectedRoute>
-      <AppLayout>
+      <BrainShell>
         <SettingsContent />
-      </AppLayout>
+      </BrainShell>
     </ProtectedRoute>
   )
 }
+
+/**
+ * READING MEASURE. PageContainer is full-bleed, but a settings form is a stack
+ * of single-column fields — stretched to 1400px the label/control pairing falls
+ * apart and the save button ends up a screen away from the field it saves. So
+ * the shell and the header are full-bleed and only the form column is capped at
+ * `max-w-2xl`. It is LEFT-aligned rather than centred so the first card's edge
+ * lines up with the H1 above it; a centred column under a full-bleed header
+ * reads as a mis-alignment, not as a decision.
+ */
+const FORM_MEASURE = "flex w-full max-w-2xl flex-col gap-5 sm:gap-6"
 
 function SettingsContent() {
   const { user, logout } = useAuthStore()
@@ -39,31 +54,13 @@ function SettingsContent() {
   const [dailyGoal, setDailyGoal] = useState(30)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [reminderEnabled, setReminderEnabled] = useState(true)
-  const [theme, setTheme] = useState<Theme>("system")
   const [isSaving, setIsSaving] = useState(false)
 
-  useEffect(() => {
-    const stored = localStorage.getItem("athora-theme") as Theme | null
-    if (stored) {
-      setTheme(stored)
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem("athora-theme", theme)
-    const root = document.documentElement
-
-    if (theme === "dark") {
-      root.classList.add("dark")
-    } else if (theme === "light") {
-      root.classList.remove("dark")
-    } else {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches
-      root.classList.toggle("dark", prefersDark)
-    }
-  }, [theme])
+  // No Appearance control here: the app is dark-only. BrainShell — the shell
+  // this page renders inside — forces `dark` on documentElement for the whole
+  // session, so a Light option could only fight it (removing the class until
+  // the next mount). `athora-theme` is left untouched in localStorage; nothing
+  // reads it now, so there is no migration to do.
 
   const hasChanges = useMemo(() => {
     return name !== (user?.name ?? "")
@@ -86,254 +83,199 @@ function SettingsContent() {
   const avatarInitial = user?.email?.charAt(0).toUpperCase() ?? "U"
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      {/* Header */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800">
-          <Settings className="h-5 w-5 text-stone-600 dark:text-stone-400" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            Settings
-          </h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">
-            Manage your account and preferences
-          </p>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your account and preferences"
+        icon={<Settings />}
+      />
 
-      <div className="space-y-6">
-        {/* Profile Section */}
-        <section className="rounded-xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
-          <h2 className="mb-5 text-sm font-medium text-stone-900 dark:text-stone-100">
-            Profile
-          </h2>
-          <div className="space-y-5">
-            {/* Avatar */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#6C47FF] to-violet-500 text-lg font-medium text-white">
-                  {avatarInitial}
+      {!user ? (
+        // There was no loading state at all: the fields rendered blank while the
+        // auth store hydrated, and nothing was announced.
+        <div role="status" className="flex items-center justify-center py-20">
+          <Loader2 aria-hidden className="size-6 animate-spin text-primary" />
+          <span className="sr-only">Loading your settings…</span>
+        </div>
+      ) : (
+        <div className={FORM_MEASURE}>
+          {/* Profile */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Avatar */}
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Avatar className="size-14">
+                    <AvatarFallback className="bg-[var(--br-accent-wash)] text-lg font-medium text-primary">
+                      {avatarInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    variant="outline"
+                    size="icon-xs"
+                    className="absolute -bottom-0.5 -right-0.5 rounded-full"
+                    aria-label="Change avatar"
+                  >
+                    <Camera />
+                  </Button>
                 </div>
-                <button
-                  type="button"
-                  className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-stone-100 text-stone-600 transition-colors duration-150 hover:bg-stone-200 dark:border-stone-900 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600"
-                  aria-label="Change avatar"
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[var(--br-text)]">
+                    Profile photo
+                  </p>
+                  <p className="text-xs text-[var(--br-text3)]">
+                    JPG, PNG or GIF. 1MB max.
+                  </p>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="settings-name"
+                  className="text-sm font-medium text-[var(--br-text2)]"
                 >
-                  <Camera className="h-3 w-3" />
-                </button>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                  Profile photo
-                </p>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  JPG, PNG or GIF. 1MB max.
-                </p>
-              </div>
-            </div>
-
-            {/* Name */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="settings-name"
-                className="text-sm font-medium text-stone-700 dark:text-stone-300"
-              >
-                Display name
-              </label>
-              <Input
-                id="settings-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                className="h-9"
-              />
-            </div>
-
-            {/* Email (read-only) */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="settings-email"
-                className="text-sm font-medium text-stone-700 dark:text-stone-300"
-              >
-                Email
-              </label>
-              <Input
-                id="settings-email"
-                value={user?.email ?? ""}
-                disabled
-                className="h-9"
-              />
-              <p className="text-xs text-stone-400 dark:text-stone-500">
-                Contact support to change your email address.
-              </p>
-            </div>
-
-            {/* Save */}
-            <div className="flex justify-end pt-1">
-              <Button
-                disabled={!hasChanges || isSaving}
-                onClick={handleSaveProfile}
-              >
-                {isSaving ? "Saving..." : "Save changes"}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Appearance Section */}
-        <section className="rounded-xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
-          <h2 className="mb-5 text-sm font-medium text-stone-900 dark:text-stone-100">
-            Appearance
-          </h2>
-          <div className="space-y-2">
-            <p className="text-sm text-stone-600 dark:text-stone-400">
-              Choose your preferred theme
-            </p>
-            <div className="inline-flex rounded-lg border border-stone-200 p-0.5 dark:border-stone-700">
-              <ThemeButton
-                active={theme === "light"}
-                onClick={() => setTheme("light")}
-                icon={<Sun className="h-4 w-4" />}
-                label="Light"
-              />
-              <ThemeButton
-                active={theme === "dark"}
-                onClick={() => setTheme("dark")}
-                icon={<Moon className="h-4 w-4" />}
-                label="Dark"
-              />
-              <ThemeButton
-                active={theme === "system"}
-                onClick={() => setTheme("system")}
-                icon={<Monitor className="h-4 w-4" />}
-                label="System"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Study Preferences Section */}
-        <section className="rounded-xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
-          <h2 className="mb-5 text-sm font-medium text-stone-900 dark:text-stone-100">
-            Study Preferences
-          </h2>
-          <div className="space-y-6">
-            {/* Daily goal */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Daily study goal
+                  Display name
                 </label>
-                <span className="text-sm font-medium text-[#6C47FF]">
-                  {dailyGoal} min
-                </span>
+                <Input
+                  id="settings-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  className="h-9"
+                />
               </div>
-              <Slider
-                value={[dailyGoal]}
-                onValueChange={(val) => {
-                  const v = Array.isArray(val) ? val[0] : val
-                  setDailyGoal(v)
-                }}
-                min={5}
-                max={120}
-                step={5}
-              />
-              <div className="flex justify-between text-xs text-stone-400 dark:text-stone-500">
-                <span>5 min</span>
-                <span>120 min</span>
+
+              {/* Email (read-only) */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="settings-email"
+                  className="text-sm font-medium text-[var(--br-text2)]"
+                >
+                  Email
+                </label>
+                <Input
+                  id="settings-email"
+                  value={user?.email ?? ""}
+                  disabled
+                  className="h-9"
+                />
+                <p className="text-xs text-[var(--br-text3)]">
+                  Contact support to change your email address.
+                </p>
               </div>
-            </div>
 
-            {/* Notifications */}
-            <div className="space-y-3">
-              <ToggleRow
-                label="Push notifications"
-                description="Get notified about study reminders and progress"
-                enabled={notificationsEnabled}
-                onToggle={() => setNotificationsEnabled(!notificationsEnabled)}
-                icon={
-                  notificationsEnabled ? (
-                    <Bell className="h-4 w-4" />
-                  ) : (
-                    <BellOff className="h-4 w-4" />
-                  )
-                }
-              />
-              <ToggleRow
-                label="Daily reminder"
-                description="Remind me to study at my scheduled time"
-                enabled={reminderEnabled}
-                onToggle={() => setReminderEnabled(!reminderEnabled)}
-                icon={<Bell className="h-4 w-4" />}
-              />
-            </div>
-          </div>
-        </section>
+              {/* Save */}
+              <div className="flex justify-end pt-1">
+                <Button
+                  disabled={!hasChanges || isSaving}
+                  onClick={handleSaveProfile}
+                >
+                  {isSaving ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Account Section */}
-        <section className="rounded-xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
-          <h2 className="mb-5 text-sm font-medium text-stone-900 dark:text-stone-100">
-            Account
-          </h2>
-          <div className="space-y-3">
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-stone-700 transition-colors duration-150 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
-            >
-              <Lock className="h-4 w-4 text-stone-400 dark:text-stone-500" />
-              Change password
-            </button>
+          {/* Study Preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Study Preferences</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Daily goal */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--br-text2)]">
+                    Daily study goal
+                  </label>
+                  <span className="text-sm font-medium text-primary tabular-nums">
+                    {dailyGoal} min
+                  </span>
+                </div>
+                <Slider
+                  id="settings-daily-goal"
+                  value={[dailyGoal]}
+                  onValueChange={(val) => {
+                    const v = Array.isArray(val) ? val[0] : val
+                    setDailyGoal(v)
+                  }}
+                  min={5}
+                  max={120}
+                  step={5}
+                />
+                <div className="flex justify-between text-xs text-[var(--br-text3)]">
+                  <span>5 min</span>
+                  <span>120 min</span>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-stone-700 transition-colors duration-150 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
-            >
-              <LogOut className="h-4 w-4 text-stone-400 dark:text-stone-500" />
-              Sign out
-            </button>
+              {/* Notifications */}
+              <div className="space-y-3">
+                <ToggleRow
+                  label="Push notifications"
+                  description="Get notified about study reminders and progress"
+                  enabled={notificationsEnabled}
+                  onToggle={() => setNotificationsEnabled(!notificationsEnabled)}
+                  icon={notificationsEnabled ? <Bell /> : <BellOff />}
+                />
+                <ToggleRow
+                  label="Daily reminder"
+                  description="Remind me to study at my scheduled time"
+                  enabled={reminderEnabled}
+                  onToggle={() => setReminderEnabled(!reminderEnabled)}
+                  icon={<Bell />}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="border-t border-stone-200 pt-3 dark:border-stone-800">
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+          {/* Account */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Account</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                variant="ghost"
+                size="lg"
+                className="w-full justify-start font-normal"
               >
-                <Trash2 className="h-4 w-4" />
-                Delete account
-              </button>
-              <p className="mt-1 px-3 text-xs text-stone-400 dark:text-stone-500">
-                Permanently delete your account and all associated data.
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  )
-}
+                <Lock />
+                Change password
+              </Button>
 
-interface ThemeButtonProps {
-  active: boolean
-  onClick: () => void
-  icon: ReactElement
-  label: string
-}
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={handleSignOut}
+                className="w-full justify-start font-normal"
+              >
+                <LogOut />
+                Sign out
+              </Button>
 
-function ThemeButton({ active, onClick, icon, label }: ThemeButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 ${
-        active
-          ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
-          : "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
+              <div className="border-t border-[var(--br-border)] pt-3">
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  className="w-full justify-start font-normal"
+                >
+                  <Trash2 />
+                  Delete account
+                </Button>
+                <p className="mt-1.5 px-2.5 text-xs text-[var(--br-text3)]">
+                  Permanently delete your account and all associated data.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </PageContainer>
   )
 }
 
@@ -352,34 +294,41 @@ function ToggleRow({
   onToggle,
   icon,
 }: ToggleRowProps) {
+  const labelId = `toggle-${label.replace(/\s+/g, "-").toLowerCase()}`
+
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400">
+        <div
+          aria-hidden
+          className="flex size-8 items-center justify-center rounded-lg border border-[var(--br-accent-line)] bg-[var(--br-accent-wash)] text-primary [&_svg]:size-4"
+        >
           {icon}
         </div>
         <div>
-          <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
+          <p id={labelId} className="text-sm font-medium text-[var(--br-text2)]">
             {label}
           </p>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            {description}
-          </p>
+          <p className="text-xs text-[var(--br-text3)]">{description}</p>
         </div>
       </div>
+      {/* Still hand-rolled: there is no ui/switch in this codebase and adding one
+          is outside this refactor's scope. Semantics are unchanged
+          (role="switch" + aria-checked); only the accent moved to --primary and
+          it now labels itself and shows a focus ring. */}
       <button
         type="button"
         role="switch"
         aria-checked={enabled}
+        aria-labelledby={labelId}
         onClick={onToggle}
-        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150 ${
-          enabled
-            ? "bg-[#6C47FF]"
-            : "bg-stone-300 dark:bg-stone-600"
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 ${
+          enabled ? "bg-primary" : "bg-[var(--br-bg3)]"
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${
+          aria-hidden
+          className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${
             enabled ? "translate-x-4" : "translate-x-0"
           }`}
         />

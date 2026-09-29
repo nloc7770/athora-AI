@@ -18,6 +18,15 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    // Provider webhooks (Lemon Squeezy, Apple) cannot send a custom header.
+    // They authenticate with a cryptographic signature over the raw body,
+    // which each handler verifies before touching the payload. The header
+    // heuristic exists to stop browsers replaying a session cookie; these
+    // routes have no session to replay, so it buys nothing here.
+    if (request.path?.startsWith('/billing/webhooks/')) {
+      return true;
+    }
+
     // Require custom header on state-changing requests
     const xRequestedWith = request.headers['x-requested-with'];
     return xRequestedWith === 'XMLHttpRequest';

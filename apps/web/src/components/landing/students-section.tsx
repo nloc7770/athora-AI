@@ -13,14 +13,14 @@ export function StudentsSection() {
     <section className="px-6 py-20 md:py-32">
       <div className="mx-auto max-w-[1200px]">
         <FadeUp>
-          <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#8052ff] mb-3">Real students. Real results.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#ff7a3c] mb-3">Real students. Real results.</p>
           <h2
-            className="text-3xl font-extralight tracking-tight md:text-5xl lg:text-6xl text-balance text-white"
+            className="text-3xl font-extralight tracking-tight md:text-5xl lg:text-6xl text-balance text-[#f3f3fb]"
             style={{ letterSpacing: '-0.04em' }}
           >
-            Built for how you <span className="text-[#9a9a9a]">actually study</span>
+            Built for how you <span className="text-[#9a9ab6]">actually study</span>
           </h2>
-          <p className="mt-4 text-white/60 max-w-lg text-[15px] leading-relaxed tracking-[0.025em]">
+          <p className="mt-4 text-[#9a9ab6] max-w-lg text-[15px] leading-relaxed tracking-[0.025em]">
             Late nights, group sessions, messy desks, and breakthroughs. Athora fits the way you already work.
           </p>
         </FadeUp>
@@ -29,7 +29,7 @@ export function StudentsSection() {
           {IMAGES.map((image, i) => (
             <FadeUp key={image.src} delay={0.08 + i * 0.06}>
               <div
-                className={`group relative overflow-hidden rounded-3xl border border-white/[0.18] ${i === 1 ? 'sm:-translate-y-4' : ''} ${i === 2 ? 'sm:translate-y-4' : ''}`}
+                className={`group relative overflow-hidden rounded-3xl border border-[#36364c] ${i === 1 ? 'sm:-translate-y-4' : ''} ${i === 2 ? 'sm:translate-y-4' : ''}`}
               >
                 <div className="aspect-[9/16] overflow-hidden relative">
                   <Image
@@ -40,7 +40,7 @@ export function StudentsSection() {
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-40 group-hover:opacity-60 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e16] via-transparent to-transparent opacity-40 group-hover:opacity-60 transition-opacity duration-300" />
               </div>
             </FadeUp>
           ))}

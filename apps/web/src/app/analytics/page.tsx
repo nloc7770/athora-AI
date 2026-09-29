@@ -1,15 +1,15 @@
 "use client"
 
-import { AppLayout } from "@/components/layout/app-layout"
+import { BrainShell } from "@/components/brain/brain-shell"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { AnalyticsPage } from "@/components/analytics/analytics-page"
 
 export default function Analytics() {
   return (
     <ProtectedRoute>
-      <AppLayout>
+      <BrainShell>
         <AnalyticsPage />
-      </AppLayout>
+      </BrainShell>
     </ProtectedRoute>
   )
 }

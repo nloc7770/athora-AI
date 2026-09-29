@@ -161,6 +161,15 @@ async function request<T>(
           message: response.statusText,
         }))
 
+        // NestJS's throttler answers with the literal class name, so the login
+        // form showed "ThrottlerException: Too Many Requests".
+        if (response.status === 429) {
+          throw new ApiRequestError(
+            'Too many attempts. Please wait a minute and try again.',
+            429
+          )
+        }
+
         throw new ApiRequestError(
           errorBody.message ?? response.statusText,
           response.status

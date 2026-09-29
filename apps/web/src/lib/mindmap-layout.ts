@@ -20,6 +20,9 @@ export function buildFlowData(
 
   if (!rawNodes || rawNodes.length === 0) return { nodes: [] as Node[], edges: [] as Edge[] }
 
+  // LLM output is untrusted: ids may be missing, duplicated, or cyclic.
+  const nodeById = new Map<string, any>(rawNodes.map((n) => [n.id, n]))
+
   const childrenMap = new Map<string, any[]>()
   let rootNode: any
 
@@ -31,7 +34,7 @@ export function buildFlowData(
       if (parent && child) {
         childSet.add(child)
         const list = childrenMap.get(parent) || []
-        list.push(rawNodes.find((n) => n.id === child) || { id: child })
+        list.push(nodeById.get(child) || { id: child, label: child })
         childrenMap.set(parent, list)
       }
     })
@@ -49,11 +52,16 @@ export function buildFlowData(
 
   if (!rootNode) rootNode = rawNodes[0]
 
-  // Walk tree to assign depth + color
+  // Walk tree to assign depth + color. The visited set is the cycle guard:
+  // an LLM that emits A→B→A must degrade to a partial tree, never a
+  // stack overflow (unguarded recursion here used to white-screen the tab).
   const nodeDepth = new Map<string, number>()
   const nodeColor = new Map<string, string>()
+  const visited = new Set<string>()
 
   function walk(nodeId: string, depth: number, color: string) {
+    if (visited.has(nodeId)) return
+    visited.add(nodeId)
     nodeDepth.set(nodeId, depth)
     nodeColor.set(nodeId, color)
     const kids = childrenMap.get(nodeId) || []
@@ -64,15 +72,30 @@ export function buildFlowData(
   }
   walk(rootNode.id, 0, '#6366f1')
 
+  // Components disconnected from the root are attached to it instead of
+  // being silently dropped — a generated node must never vanish.
+  rawNodes.forEach((n) => {
+    if (visited.has(n.id)) return
+    walk(n.id, 1, '#6366f1')
+    const list = childrenMap.get(rootNode.id) || []
+    list.push(n)
+    childrenMap.set(rootNode.id, list)
+  })
+
   // Build nodes + edges (up to depth 3)
   const flowNodes: Node[] = []
   const flowEdges: Edge[] = []
   const isDark = theme === 'dark'
+  // Depth alone cannot stop a cycle (depths don't grow along one), so a
+  // rendered set is required here too — walk()'s visited set is not enough.
+  const rendered = new Set<string>()
 
   function addNodes(nodeId: string, label: string) {
     const depth = nodeDepth.get(nodeId) ?? 0
     const color = nodeColor.get(nodeId) ?? '#6366f1'
     if (depth > 3) return
+    if (rendered.has(nodeId)) return
+    rendered.add(nodeId)
 
     const isRoot = depth === 0
     const isBranch = depth === 1
@@ -168,9 +191,13 @@ export function buildFlowData(
   const cx = 0
   const cy = 0
 
+  // id → index: the placement loop looks every node up several times;
+  // findIndex here is O(n²) across the whole layout.
+  const flowNodeIdx = new Map<string, number>(flowNodes.map((n, i) => [n.id, i]))
+
   // Place root
-  const rootIdx = flowNodes.findIndex((n) => n.id === rootNode.id)
-  if (rootIdx >= 0) {
+  const rootIdx = flowNodeIdx.get(rootNode.id)
+  if (rootIdx !== undefined) {
     const w = parseInt(flowNodes[rootIdx].style?.width as string) || 180
     flowNodes[rootIdx].position = { x: cx - w / 2, y: cy - 22 }
   }
@@ -187,8 +214,8 @@ export function buildFlowData(
     const bx = cx + Math.cos(branchAngle) * r1
     const by = cy + Math.sin(branchAngle) * r1
 
-    const branchIdx = flowNodes.findIndex((n) => n.id === kid.id)
-    if (branchIdx >= 0) {
+    const branchIdx = flowNodeIdx.get(kid.id)
+    if (branchIdx !== undefined) {
       const w = parseInt(flowNodes[branchIdx].style?.width as string) || 150
       flowNodes[branchIdx].position = { x: bx - w / 2, y: by - 22 }
       const isRight = Math.cos(branchAngle) >= 0
@@ -209,8 +236,8 @@ export function buildFlowData(
       const gx = cx + Math.cos(gcAngle) * r2
       const gy = cy + Math.sin(gcAngle) * r2
 
-      const gcIdx = flowNodes.findIndex((n) => n.id === gc.id)
-      if (gcIdx >= 0) {
+      const gcIdx = flowNodeIdx.get(gc.id)
+      if (gcIdx !== undefined) {
         const w = parseInt(flowNodes[gcIdx].style?.width as string) || 130
         flowNodes[gcIdx].position = { x: gx - w / 2, y: gy - 22 }
         const isRight = Math.cos(gcAngle) >= 0
@@ -231,8 +258,8 @@ export function buildFlowData(
         const lx = cx + Math.cos(leafAngle) * r3
         const ly = cy + Math.sin(leafAngle) * r3
 
-        const leafIdx = flowNodes.findIndex((n) => n.id === leaf.id)
-        if (leafIdx >= 0) {
+        const leafIdx = flowNodeIdx.get(leaf.id)
+        if (leafIdx !== undefined) {
           const w = parseInt(flowNodes[leafIdx].style?.width as string) || 120
           flowNodes[leafIdx].position = { x: lx - w / 2, y: ly - 22 }
           const isRight = Math.cos(leafAngle) >= 0

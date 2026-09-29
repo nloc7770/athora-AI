@@ -6,18 +6,43 @@ import { apiClient } from '@/lib/api'
 interface ChatSession {
   id: string
   documentId?: string
+  /** Set when the chat is scoped to a whole study space rather than one document. */
+  studySessionId?: string | null
   type: 'document_chat' | 'tutor'
   title?: string
   createdAt: string
   updatedAt: string
+  /**
+   * How many documents this conversation can draw on. Lets the history list say
+   * what each chat is grounded in instead of showing rows that all look alike.
+   */
+  docCount?: number
 }
 
-interface ChatMessage {
+/**
+ * One retrieved chunk the tutor grounded an answer in. The backend already
+ * persists these on `chat_messages.sources` and returns them from the history
+ * endpoint — they were simply never typed or rendered here, so every answer
+ * looked unsourced even when it was retrieved from the student's own documents.
+ */
+export interface ChunkSource {
+  chunkId: string
+  content: string
+  score: number
+}
+
+export interface ChatMessage {
   id: string
   sessionId: string
   role: 'user' | 'assistant'
   content: string
   createdAt: string
+  /**
+   * Present on stored assistant messages only. A streaming turn has none until
+   * the stream ends and the refetch below replaces the optimistic message with
+   * the persisted one — the stream carries text, not citations.
+   */
+  sources?: ChunkSource[] | null
 }
 
 interface CreateSessionInput {

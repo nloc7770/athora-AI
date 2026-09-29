@@ -25,7 +25,7 @@ import { useDocuments, useDocumentStatus } from '@/hooks/use-documents'
 import { useChatSessions, useChatMessages } from '@/hooks/use-chat'
 import { useSessionGeneration } from '@/hooks/use-ai-generation'
 import { ProtectedRoute } from '@/components/auth/protected-route'
-import { AppLayout } from '@/components/layout/app-layout'
+import { BrainShell } from '@/components/brain/brain-shell'
 import { Button } from '@/components/ui/button'
 import { markFirstStudyDone } from '@/hooks/use-first-study'
 import { Input } from '@/components/ui/input'
@@ -45,10 +45,10 @@ interface FileUploadStatus {
 
 function DocumentStatusBadge({ docId }: { docId: string }) {
   const { status, progress } = useDocumentStatus(docId)
-  if (status === 'ready') return <Badge className="bg-green-100 text-green-700">Ready</Badge>
-  if (status === 'failed') return <Badge className="bg-red-100 text-red-700">Failed</Badge>
+  if (status === 'ready') return <Badge className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400">Ready</Badge>
+  if (status === 'failed') return <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400">Failed</Badge>
   return (
-    <Badge className="bg-yellow-100 text-yellow-700 gap-1">
+    <Badge className="bg-yellow-100 text-yellow-700 gap-1 dark:bg-yellow-950 dark:text-yellow-400">
       <Loader2 className="h-3 w-3 animate-spin" />
       {progress}%
     </Badge>
@@ -249,11 +249,11 @@ export default function SessionWorkspace() {
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <AppLayout>
+        <BrainShell>
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#ff7a3c]" />
           </div>
-        </AppLayout>
+        </BrainShell>
       </ProtectedRoute>
     )
   }
@@ -261,28 +261,28 @@ export default function SessionWorkspace() {
   if (error) {
     return (
       <ProtectedRoute>
-        <AppLayout>
+        <BrainShell>
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <AlertCircle className="h-12 w-12 text-red-500" />
-            <p className="text-lg font-medium text-gray-900">
+            <p className="text-lg font-medium text-gray-900 dark:text-stone-100">
               {error || 'Failed to load study space'}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => refresh()}
-                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
+                className="rounded-lg bg-[#ff7a3c] px-4 py-2 text-sm font-medium text-[#1a1400] hover:bg-[#ff9256] transition-colors"
               >
                 Retry
               </button>
               <button
                 onClick={() => router.push('/sessions')}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
               >
                 Back to study spaces
               </button>
             </div>
           </div>
-        </AppLayout>
+        </BrainShell>
       </ProtectedRoute>
     )
   }
@@ -303,24 +303,24 @@ export default function SessionWorkspace() {
 
   return (
     <ProtectedRoute>
-      <AppLayout>
+      <BrainShell>
         <div className="flex h-full flex-col">
           {/* Header */}
-          <header className="border-b bg-white px-6 py-3">
+          <header className="border-b bg-white px-6 py-3 dark:border-stone-800 dark:bg-stone-900">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={() => router.push('/sessions')}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">{session?.name}</h1>
-                {session?.description && <p className="text-sm text-gray-500">{session.description}</p>}
+                <h1 className="text-lg font-bold text-gray-900 dark:text-stone-100">{session?.name}</h1>
+                {session?.description && <p className="text-sm text-gray-500 dark:text-stone-400">{session.description}</p>}
               </div>
               <Badge variant="secondary" className="ml-auto">{documents.length} documents</Badge>
             </div>
           </header>
 
           {/* Tabs */}
-          <div className="border-b bg-white px-6 overflow-x-auto">
+          <div className="border-b bg-white px-6 overflow-x-auto dark:border-stone-800 dark:bg-stone-900">
             <div className="flex gap-1" role="tablist">
               {tabs.map(({ key, icon: Icon, label }) => (
                 <button
@@ -330,8 +330,8 @@ export default function SessionWorkspace() {
                   onClick={() => handleTabChange(key)}
                   className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition ${
                     activeTab === key
-                      ? 'border-purple-500 text-purple-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-[#ff7a3c] text-[#ff7a3c] dark:border-[#ff7a3c] dark:text-[#ffab81]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-stone-400 dark:hover:text-stone-200'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -410,7 +410,7 @@ export default function SessionWorkspace() {
             )}
           </div>
         </div>
-      </AppLayout>
+      </BrainShell>
     </ProtectedRoute>
   )
 }
@@ -451,13 +451,13 @@ function DocumentsTab({
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
-          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-purple-400 hover:bg-purple-50/50"
+          className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 p-6 text-center transition hover:border-[#ff7a3c] hover:bg-[#ff692d1f] dark:border-[#36364c] dark:hover:border-[#ff7a3c] dark:hover:bg-[#ff692d1f]"
         >
-          <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400" />
-          <p className="text-sm font-medium text-gray-700">
+          <Upload className="mx-auto mb-2 h-6 w-6 text-gray-400 dark:text-stone-500" />
+          <p className="text-sm font-medium text-gray-700 dark:text-stone-300">
             {uploading ? 'Uploading...' : 'Drop files or click to upload'}
           </p>
-          <p className="mt-1 text-xs text-gray-400">PDF up to 50MB</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-stone-500">PDF up to 50MB</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -472,7 +472,7 @@ function DocumentsTab({
         {uploadStatuses.length > 0 && (
           <div className="space-y-2 rounded-lg border p-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-600">Upload Progress</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-stone-400">Upload Progress</p>
               {hasFailedUploads && !uploading && (
                 <Button size="sm" variant="outline" onClick={onRetryFailed} className="gap-1 h-7 text-xs">
                   <RotateCcw className="h-3 w-3" />
@@ -484,9 +484,9 @@ function DocumentsTab({
               <div key={`${s.fileName}-${idx}`} className="flex items-center gap-2 text-sm">
                 {s.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
                 {s.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />}
-                {s.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-purple-500 shrink-0" />}
-                {s.status === 'pending' && <div className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0" />}
-                <span className="truncate flex-1 text-gray-700">{s.fileName}</span>
+                {s.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-[#ff7a3c] shrink-0" />}
+                {s.status === 'pending' && <div className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0 dark:border-stone-700" />}
+                <span className="truncate flex-1 text-gray-700 dark:text-stone-300">{s.fileName}</span>
                 {s.error && <span className="text-xs text-red-500 shrink-0">{s.error}</span>}
               </div>
             ))}
@@ -495,7 +495,7 @@ function DocumentsTab({
 
         {/* Document list */}
         {documents.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 pt-4">No documents yet.</p>
+          <p className="text-center text-sm text-gray-400 pt-4 dark:text-stone-500">No documents yet.</p>
         ) : (
           <div className="space-y-1">
             {documents.map((doc) => (
@@ -504,18 +504,18 @@ function DocumentsTab({
                 onClick={() => setSelectedDocId(doc.id === selectedDocId ? null : doc.id)}
                 className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${
                   selectedDocId === doc.id
-                    ? 'bg-purple-50 border border-purple-200'
-                    : 'hover:bg-gray-50 border border-transparent'
+                    ? 'bg-[#ff692d1f] border border-[#ff82434d] dark:bg-[#ff692d1f] dark:border-[#ff82434d]'
+                    : 'hover:bg-gray-50 border border-transparent dark:hover:bg-stone-800/60'
                 }`}
               >
                 {doc.type === 'audio' ? (
-                  <Headphones className="h-4 w-4 text-violet-500 shrink-0" />
+                  <Headphones className="h-4 w-4 text-[#d5b5ff] shrink-0" />
                 ) : (
-                  <FileText className="h-4 w-4 text-purple-500 shrink-0" />
+                  <FileText className="h-4 w-4 text-[#ffab81] shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm font-medium text-gray-900 truncate dark:text-stone-100">{doc.name}</p>
+                  <p className="text-xs text-gray-400 dark:text-stone-500">
                     {doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
                   </p>
                 </div>
@@ -528,7 +528,7 @@ function DocumentsTab({
 
       {/* Right: Document Insight */}
       {selectedDocId && (
-        <div className="flex-1 overflow-auto rounded-lg border bg-white">
+        <div className="flex-1 overflow-auto rounded-lg border bg-white dark:border-stone-800 dark:bg-stone-900">
           <DocumentInsight
             documentId={selectedDocId}
             document={documents.find((d) => d.id === selectedDocId) ?? null}
@@ -563,8 +563,8 @@ function ChatTab({
   if (!hasReadyDocs) {
     return (
       <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center">
-        <MessageSquare className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-        <p className="text-gray-500">Upload and process documents first to start chatting</p>
+        <MessageSquare className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-stone-600" />
+        <p className="text-gray-500 dark:text-stone-400">Upload and process documents first to start chatting</p>
       </div>
     )
   }
@@ -574,15 +574,15 @@ function ChatTab({
       <div className="flex-1 space-y-4 overflow-auto pb-4">
         {messages.length === 0 && (
           <div className="text-center pt-12">
-            <Sparkles className="mx-auto mb-3 h-8 w-8 text-purple-400" />
-            <p className="text-sm text-gray-500">Ask anything about your documents</p>
+            <Sparkles className="mx-auto mb-3 h-8 w-8 text-[#ff7a3c]" />
+            <p className="text-sm text-gray-500 dark:text-stone-400">Ask anything about your documents</p>
           </div>
         )}
         {messages.map((msg, idx) => (
           msg.content ? (
             <div key={msg.id || `msg-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-                msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-white border text-gray-800'
+                msg.role === 'user' ? 'bg-[#ff7a3c] text-[#1a1400]' : 'bg-white border text-gray-800 dark:bg-[#22222e] dark:border-[#36364c] dark:text-[#f3f3fb]'
               }`}>
                 {msg.role === 'assistant' ? (
                   <Markdown content={msg.content} />
@@ -595,13 +595,13 @@ function ChatTab({
         ))}
         {chatLoading && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex justify-start">
-            <div className="rounded-xl bg-white border px-4 py-3 flex items-center gap-2">
+            <div className="rounded-xl bg-white border px-4 py-3 flex items-center gap-2 dark:bg-stone-800 dark:border-stone-700">
               <div className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 animate-[bounce_1.4s_ease-in-out_infinite]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 animate-[bounce_1.4s_ease-in-out_0.2s_infinite]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 animate-[bounce_1.4s_ease-in-out_0.4s_infinite]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ff7a3c] animate-[bounce_1.4s_ease-in-out_infinite]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ff7a3c] animate-[bounce_1.4s_ease-in-out_0.2s_infinite]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ff7a3c] animate-[bounce_1.4s_ease-in-out_0.4s_infinite]" />
               </div>
-              <span className="text-sm text-gray-400">Thinking...</span>
+              <span className="text-sm text-gray-400 dark:text-stone-400">Thinking...</span>
             </div>
           </div>
         )}

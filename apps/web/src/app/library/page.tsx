@@ -1,15 +1,15 @@
 "use client"
 
-import { AppLayout } from "@/components/layout/app-layout"
+import { BrainShell } from "@/components/brain/brain-shell"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import LibraryPage from "@/components/documents/library-page"
 
 export default function Library() {
   return (
     <ProtectedRoute>
-      <AppLayout>
+      <BrainShell>
         <LibraryPage />
-      </AppLayout>
+      </BrainShell>
     </ProtectedRoute>
   )
 }

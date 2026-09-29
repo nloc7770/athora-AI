@@ -21,8 +21,10 @@ interface MindMapFlowProps {
 }
 
 export function MindMapFlow({ rawNodes, edges: rawEdges, height = '500px' }: MindMapFlowProps) {
+  // Both call sites (the session detail Mind Map tab and DocumentInsight) render
+  // inside BrainShell, which forces .dark, so the canvas is dark outright.
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildFlowData(rawNodes, rawEdges),
+    () => buildFlowData(rawNodes, rawEdges, { theme: 'dark' }),
     [rawNodes, rawEdges]
   )
 
@@ -30,7 +32,7 @@ export function MindMapFlow({ rawNodes, edges: rawEdges, height = '500px' }: Min
   const [edges, , onEdgesChange] = useEdgesState(initialEdges)
 
   return (
-    <div style={{ height }} className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50/30">
+    <div style={{ height }} className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50/30 dark:border-stone-800 dark:bg-stone-900">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -41,15 +43,16 @@ export function MindMapFlow({ rawNodes, edges: rawEdges, height = '500px' }: Min
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}
         maxZoom={3}
+        colorMode="dark"
         proOptions={{ hideAttribution: true }}
       >
         <Controls position="top-right" />
         <MiniMap
           style={{ height: 80, width: 120 }}
           nodeColor={(node) => (node.style?.background as string) ?? '#e5e7eb'}
-          maskColor="rgba(255,255,255,0.7)"
+          maskColor="rgba(0,0,0,0.6)"
         />
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#44403c" />
       </ReactFlow>
     </div>
   )

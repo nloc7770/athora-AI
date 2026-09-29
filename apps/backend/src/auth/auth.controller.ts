@@ -77,6 +77,25 @@ export class AuthController {
     return this.authService.forgotPassword(dto.email);
   }
 
+  /**
+   * Starts Supabase's Google OAuth flow. Supabase redirects back to
+   * FRONTEND_URL/auth/callback with the tokens in the URL fragment; that page
+   * posts the refresh token to /auth/refresh to get the httpOnly cookies set.
+   *
+   * redirect_to is built from env, never from the request, so this cannot be
+   * turned into an open redirect.
+   */
+  @Get('google')
+  googleLogin(@Res() res: Response) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    const redirectTo = encodeURIComponent(`${frontendUrl}/auth/callback`);
+
+    res.redirect(
+      `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`,
+    );
+  }
+
   @Post('logout')
   @UseGuards(SupabaseAuthGuard)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {

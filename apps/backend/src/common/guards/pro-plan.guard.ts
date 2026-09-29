@@ -1,11 +1,21 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../../supabase/supabase.service';
 
 @Injectable()
 export class ProPlanGuard implements CanActivate {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly config: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // While the product is free there is nothing to sell, so plan gating only
+    // locks users out of their own data. Set BILLING_ENABLED=true to restore.
+    if (this.config.get<string>('BILLING_ENABLED', 'true') === 'false') {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 

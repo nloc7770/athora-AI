@@ -19,7 +19,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#7c3aed",
+  themeColor: "#0e0e16",
 };
 
 export const metadata: Metadata = {
@@ -114,7 +114,11 @@ export default async function RootLayout({
           <PostHogProvider>
             <TooltipProvider>
               <AuthProvider>
-                {children}
+                {/* Reserves the consent bar's height at the bottom of scrolling
+                    documents — see --consent-h in globals.css. */}
+                <div className="min-h-full pb-[var(--consent-h)]">
+                  {children}
+                </div>
                 <ToastContainer />
                 <CookieConsent />
               </AuthProvider>

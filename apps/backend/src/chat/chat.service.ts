@@ -15,10 +15,24 @@ export interface ChatSession {
   readonly id: string;
   readonly userId: string;
   readonly documentId: string | null;
+  /**
+   * The study session this chat is scoped to, when it was opened against a whole
+   * space rather than one document. The column has existed since migration
+   * 00005 and `getSessions` already filters on it, but it was never mapped out —
+   * so no client could tell a space-wide chat from a loose one.
+   */
+  readonly studySessionId: string | null;
   readonly type: ChatSessionType;
   readonly title: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /**
+   * How many documents this chat can draw on: 1 for a single-document chat, the
+   * study session's document count for a space-wide one, 0 for an unscoped
+   * tutor chat. Lets the history list say what each conversation is grounded in
+   * instead of showing a wall of identical rows.
+   */
+  readonly docCount?: number;
 }
 
 export interface ChatMessageRecord {
@@ -275,7 +289,76 @@ export class ChatService {
       return [];
     }
 
-    return (data ?? []).map(this.mapSession);
+    const sessions = (data ?? []).map(this.mapSession);
+    return this.attachDocCounts(userId, sessions);
+  }
+
+  /**
+   * Annotate each chat session with how many documents it can draw on, so a
+   * history list can say what a conversation is grounded in.
+   *
+   * ONE query for every study session involved, not one per chat — a student
+   * with 60 chats would otherwise cost 60 round trips to render a sidebar.
+   */
+  private async attachDocCounts(
+    userId: string,
+    sessions: ChatSession[],
+  ): Promise<ChatSession[]> {
+    const studyIds = [
+      ...new Set(
+        sessions
+          .map((s) => s.studySessionId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const countByStudySession = new Map<string, number>();
+    if (studyIds.length > 0) {
+      const { data, error } = await this.supabaseService
+        .getAdminClient()
+        .from('documents')
+        .select('session_id')
+        .eq('user_id', userId)
+        .in('session_id', studyIds);
+
+      if (error) {
+        // A missing count must not cost the user their history list.
+        this.logger.warn('Failed to count session documents', { error });
+      } else {
+        for (const row of data ?? []) {
+          const key = (row as { session_id: string | null }).session_id;
+          if (!key) continue;
+          countByStudySession.set(key, (countByStudySession.get(key) ?? 0) + 1);
+        }
+      }
+    }
+
+    return sessions.map((s) => ({
+      ...s,
+      docCount: s.documentId
+        ? 1
+        : s.studySessionId
+          ? (countByStudySession.get(s.studySessionId) ?? 0)
+          : 0,
+    }));
+  }
+
+  async deleteSession(userId: string, sessionId: string): Promise<{ deleted: true }> {
+    await this.getSessionOrThrow(userId, sessionId);
+
+    const { error } = await this.supabaseService
+      .getAdminClient()
+      .from('chat_sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('user_id', userId);
+
+    if (error) {
+      this.logger.error('Failed to delete chat session', { error, sessionId });
+      throw new NotFoundException('Chat session not found');
+    }
+
+    return { deleted: true };
   }
 
   private async getSessionOrThrow(
@@ -537,6 +620,7 @@ export class ChatService {
       id: data.id,
       userId: data.user_id,
       documentId: data.document_id ?? null,
+      studySessionId: data.study_session_id ?? null,
       type: data.type,
       title: data.title ?? null,
       createdAt: data.created_at,

@@ -8,6 +8,7 @@ import {
   Clock,
   Flame,
   GraduationCap,
+  Loader2,
   Lock,
   TrendingUp,
   ArrowUpRight,
@@ -17,6 +18,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { apiClient } from "@/lib/api"
+import {
+  PageContainer,
+  PageHeader,
+  EmptyState,
+  SegmentedControl,
+} from "@/components/page"
+
+const SUBTITLE = "Your study progress at a glance"
+
+const RANGE_OPTIONS = [
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "all", label: "All Time" },
+]
 
 type TimeRange = "week" | "month" | "all"
 
@@ -88,14 +103,14 @@ function ActivityChart({ data }: { data: { date: string; count: number }[] }) {
           <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5 group">
             <div className="relative w-full flex items-end justify-center h-full">
               <div
-                className="w-full max-w-[32px] rounded-md bg-purple-500/80 dark:bg-purple-400/70 group-hover:bg-purple-600 dark:group-hover:bg-purple-300 transition-colors duration-150"
+                className="w-full max-w-[32px] rounded-md bg-primary/70 transition-colors duration-150 group-hover:bg-primary"
                 style={{ height: `${height}%` }}
               />
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium text-stone-700 dark:text-stone-300 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded px-1.5 py-0.5 shadow-sm pointer-events-none whitespace-nowrap">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium text-[var(--br-text)] bg-[var(--br-bg3)] border border-[var(--br-border)] rounded px-1.5 py-0.5 shadow-sm pointer-events-none whitespace-nowrap">
                 {day.count} activities
               </div>
             </div>
-            <span className="text-[10px] sm:text-xs text-stone-400 dark:text-stone-500">
+            <span className="text-[10px] sm:text-xs text-[var(--br-text3)]">
               {dayLabel.charAt(0)}
               <span className="hidden sm:inline">{dayLabel.slice(1, 3)}</span>
             </span>
@@ -109,7 +124,7 @@ function ActivityChart({ data }: { data: { date: string; count: number }[] }) {
 function ExamScoreChart({ data }: { data: { date: string; score: number; exam_name: string }[] }) {
   if (data.length === 0) {
     return (
-      <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-10">
+      <p className="py-10 text-center text-sm text-[var(--br-text3)]">
         Take some practice exams to see your improvement over time.
       </p>
     )
@@ -140,8 +155,7 @@ function ExamScoreChart({ data }: { data: { date: string; score: number; exam_na
             y1={y}
             x2="100"
             y2={y}
-            stroke="currentColor"
-            className="text-stone-100 dark:text-stone-800"
+            stroke="var(--br-border)"
             strokeWidth="0.5"
           />
         ))}
@@ -160,33 +174,33 @@ function ExamScoreChart({ data }: { data: { date: string; score: number; exam_na
             cx={p.x}
             cy={p.y}
             r="1.5"
-            className="fill-purple-600 dark:fill-purple-400"
+            className="fill-primary"
             vectorEffect="non-scaling-stroke"
           />
         ))}
         <defs>
           <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#6C47FF" />
+            <stop offset="0%" stopColor="var(--br-accent-ink)" />
+            <stop offset="100%" stopColor="var(--br-accent)" />
           </linearGradient>
         </defs>
       </svg>
       <div className="absolute bottom-0 left-0 right-0 flex justify-between px-1">
         {data.length > 1 && (
           <>
-            <span className="text-[10px] text-stone-400 dark:text-stone-500">
+            <span className="text-[10px] text-[var(--br-text3)]">
               {new Date(data[0].date).toLocaleDateString("en", { month: "short", day: "numeric" })}
             </span>
-            <span className="text-[10px] text-stone-400 dark:text-stone-500">
+            <span className="text-[10px] text-[var(--br-text3)]">
               {new Date(data[data.length - 1].date).toLocaleDateString("en", { month: "short", day: "numeric" })}
             </span>
           </>
         )}
       </div>
       <div className="absolute top-0 left-0 flex flex-col justify-between h-full py-1 -translate-x-full pr-2">
-        <span className="text-[10px] text-stone-400 dark:text-stone-500">100%</span>
-        <span className="text-[10px] text-stone-400 dark:text-stone-500">50%</span>
-        <span className="text-[10px] text-stone-400 dark:text-stone-500">0%</span>
+        <span className="text-[10px] text-[var(--br-text3)]">100%</span>
+        <span className="text-[10px] text-[var(--br-text3)]">50%</span>
+        <span className="text-[10px] text-[var(--br-text3)]">0%</span>
       </div>
     </div>
   )
@@ -196,7 +210,7 @@ function DonutChart({ mastered, learning, newCards }: { mastered: number; learni
   const total = mastered + learning + newCards
   if (total === 0) {
     return (
-      <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-10">
+      <p className="py-10 text-center text-sm text-[var(--br-text3)]">
         Review some flashcards to see your mastery breakdown.
       </p>
     )
@@ -221,8 +235,7 @@ function DonutChart({ mastered, learning, newCards }: { mastered: number; learni
             cy="50"
             r={radius}
             fill="none"
-            stroke="currentColor"
-            className="text-stone-100 dark:text-stone-800"
+            stroke="var(--br-border)"
             strokeWidth="12"
           />
           {masteredPct > 0 && (
@@ -257,7 +270,7 @@ function DonutChart({ mastered, learning, newCards }: { mastered: number; learni
               cy="50"
               r={radius}
               fill="none"
-              stroke="#8b5cf6"
+              stroke="var(--br-accent)"
               strokeWidth="12"
               strokeDasharray={`${newPct * circumference} ${circumference}`}
               strokeDashoffset={-newOffset}
@@ -266,57 +279,39 @@ function DonutChart({ mastered, learning, newCards }: { mastered: number; learni
           )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-bold text-stone-900 dark:text-stone-100">{total}</span>
-          <span className="text-[10px] text-stone-500 dark:text-stone-400">total</span>
+          <span className="text-xl font-bold text-[var(--br-text)]">{total}</span>
+          <span className="text-[10px] text-[var(--br-text3)]">total</span>
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-green-500" />
-          <div>
-            <p className="text-sm font-medium text-stone-700 dark:text-stone-300">Mastered</p>
-            <p className="text-xs text-stone-400 dark:text-stone-500">{mastered} cards</p>
+        {[
+          { dot: "bg-green-500", label: "Mastered", count: mastered },
+          { dot: "bg-amber-500", label: "Learning", count: learning },
+          { dot: "bg-primary", label: "New", count: newCards },
+        ].map((row) => (
+          <div key={row.label} className="flex items-center gap-2">
+            <div aria-hidden className={`size-3 rounded-full ${row.dot}`} />
+            <div>
+              <p className="text-sm font-medium text-[var(--br-text2)]">{row.label}</p>
+              <p className="text-xs text-[var(--br-text3)]">{row.count} cards</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-amber-500" />
-          <div>
-            <p className="text-sm font-medium text-stone-700 dark:text-stone-300">Learning</p>
-            <p className="text-xs text-stone-400 dark:text-stone-500">{learning} cards</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-purple-500" />
-          <div>
-            <p className="text-sm font-medium text-stone-700 dark:text-stone-300">New</p>
-            <p className="text-xs text-stone-400 dark:text-stone-500">{newCards} cards</p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   )
 }
 
-function ProGateOverlay() {
+/** Header is identical on every branch of this page, so it lives in one place. */
+function AnalyticsHeader({ actions }: { actions?: React.ReactNode }) {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/40 mb-3">
-        <Lock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-      </div>
-      <p className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">Pro Feature</p>
-      <p className="text-xs text-stone-500 dark:text-stone-400 text-center max-w-[200px] mb-3">
-        Unlock detailed analytics and insights
-      </p>
-      <Link href="/settings">
-        <Button
-          size="sm"
-          className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-5 text-xs"
-        >
-          Upgrade to Pro
-        </Button>
-      </Link>
-    </div>
+    <PageHeader
+      title="Analytics"
+      subtitle={SUBTITLE}
+      icon={<BarChart3 />}
+      actions={actions}
+    />
   )
 }
 
@@ -347,9 +342,13 @@ export function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400" />
-      </div>
+      <PageContainer>
+        <AnalyticsHeader />
+        <div role="status" className="flex items-center justify-center py-20">
+          <Loader2 aria-hidden className="size-6 animate-spin text-primary" />
+          <span className="sr-only">Loading your analytics…</span>
+        </div>
+      </PageContainer>
     )
   }
 
@@ -362,9 +361,12 @@ export function AnalyticsPage() {
 
   if (error || !data) {
     return (
-      <div className="text-center py-20 px-6">
-        <p className="text-stone-500 dark:text-stone-400">Failed to load analytics. Try again later.</p>
-      </div>
+      <PageContainer>
+        <AnalyticsHeader />
+        <p role="alert" className="py-20 text-center text-sm text-[var(--br-text3)]">
+          Failed to load analytics. Try again later.
+        </p>
+      </PageContainer>
     )
   }
 
@@ -387,77 +389,57 @@ export function AnalyticsPage() {
     : data.averageExamScore
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Analytics</h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-            Your study progress at a glance
-          </p>
-        </div>
-
-        {/* Time Range Selector */}
-        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-1">
-          {([
-            { key: "week", label: "This Week" },
-            { key: "month", label: "This Month" },
-            { key: "all", label: "All Time" },
-          ] as const).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setTimeRange(key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 ${
-                timeRange === key
-                  ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm"
-                  : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <PageContainer>
+      <AnalyticsHeader
+        actions={
+          <SegmentedControl
+            value={timeRange}
+            onValueChange={(v) => setTimeRange(v as TimeRange)}
+            label="Time range"
+            options={RANGE_OPTIONS}
+          />
+        }
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          icon={<Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-          iconBg="bg-blue-50 dark:bg-blue-900/30"
+          icon={<Clock className="size-5 text-blue-400" />}
+          iconBg="bg-blue-500/15"
           value={formatMinutes(totalStudyMinutes)}
           label="Study time"
         />
         <StatCard
-          icon={<Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
-          iconBg="bg-purple-50 dark:bg-purple-900/30"
+          icon={<Brain className="size-5 text-primary" />}
+          iconBg="bg-[var(--br-accent-wash)]"
           value={String(flashcardsReviewed)}
           label="Cards reviewed"
         />
         <StatCard
-          icon={<GraduationCap className="h-5 w-5 text-green-600 dark:text-green-400" />}
-          iconBg="bg-green-50 dark:bg-green-900/30"
+          icon={<GraduationCap className="size-5 text-green-400" />}
+          iconBg="bg-green-500/15"
           value={`${averageExamScore}%`}
           label="Avg exam score"
         />
         <StatCard
-          icon={<Flame className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
-          iconBg="bg-orange-50 dark:bg-orange-900/30"
+          icon={<Flame className="size-5 text-orange-400" />}
+          iconBg="bg-orange-500/15"
           value={String(data.streak)}
           label="Day streak"
         />
       </div>
 
       {/* Activity Chart */}
-      <Card className="border-stone-200 dark:border-stone-800 rounded-xl">
+      <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-stone-900 dark:text-stone-100">
-            <BarChart3 className="h-4 w-4 text-purple-500" />
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <BarChart3 className="size-4 text-primary" />
             Daily Activity
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-4">
           {activityData.length === 0 ? (
-            <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-10">
+            <p className="py-10 text-center text-sm text-[var(--br-text3)]">
               No activity yet. Start studying to see your progress!
             </p>
           ) : (
@@ -469,10 +451,10 @@ export function AnalyticsPage() {
       {/* Two-column charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Exam Scores */}
-        <Card className="border-stone-200 dark:border-stone-800 rounded-xl">
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-stone-900 dark:text-stone-100">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <TrendingUp className="size-4 text-green-400" />
               Exam Scores
             </CardTitle>
           </CardHeader>
@@ -482,10 +464,10 @@ export function AnalyticsPage() {
         </Card>
 
         {/* Flashcard Mastery */}
-        <Card className="border-stone-200 dark:border-stone-800 rounded-xl relative overflow-hidden">
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-stone-900 dark:text-stone-100">
-              <Brain className="h-4 w-4 text-purple-500" />
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Brain className="size-4 text-primary" />
               Flashcard Mastery
             </CardTitle>
           </CardHeader>
@@ -498,7 +480,7 @@ export function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   )
 }
 
@@ -518,18 +500,18 @@ function StatCard({
   trendSuffix?: string
 }) {
   return (
-    <Card className="border-stone-200 dark:border-stone-800 rounded-xl">
+    <Card>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg}`}>
+          <div className={`flex size-9 items-center justify-center rounded-lg ${iconBg}`}>
             {icon}
           </div>
           {trend != null && <TrendBadge value={trend} suffix={trendSuffix} />}
         </div>
-        <p className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+        <p className="text-2xl font-bold tracking-tight text-[var(--br-text)]">
           {value}
         </p>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
+        <p className="mt-0.5 text-xs text-[var(--br-text3)]">{label}</p>
       </CardContent>
     </Card>
   )
@@ -537,68 +519,55 @@ function StatCard({
 
 function NoDataYetPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-      <div>
-        <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Analytics</h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-          Your study progress at a glance
-        </p>
-      </div>
-
-      <div className="flex flex-col items-center justify-center text-center py-20 px-6">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/40 mb-4">
-          <BarChart3 className="h-7 w-7 text-purple-600 dark:text-purple-400" />
-        </div>
-        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-1">
-          No study data yet
-        </h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400 text-center max-w-xs mb-4">
-          Complete your first flashcard review or exam to start tracking your progress here.
-        </p>
-        <Link href="/flashcards">
-          <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-6">
-            Start Studying
-          </Button>
-        </Link>
-      </div>
-    </div>
+    <PageContainer>
+      <AnalyticsHeader />
+      {/* illustration="sessions": this is has-no-data-yet, not a failed query, so
+          not "search"; and what is missing is study ACTIVITY (a flashcard review,
+          an exam attempt) rather than uploaded files, so "sessions" fits better
+          than "documents". */}
+      <EmptyState
+        illustration="sessions"
+        title="No study data yet"
+        description="Complete your first flashcard review or exam to start tracking your progress here."
+        action={
+          <Button render={<Link href="/flashcards" />}>Start studying</Button>
+        }
+      />
+    </PageContainer>
   )
 }
 
 function ProRequiredPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Analytics</h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-          Your study progress at a glance
-        </p>
-      </div>
+    <PageContainer>
+      <AnalyticsHeader />
 
       {/* Blurred Stats Preview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 blur-sm pointer-events-none select-none">
+      <div
+        aria-hidden
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 blur-sm pointer-events-none select-none"
+      >
         <StatCard
-          icon={<Clock className="h-5 w-5 text-blue-600" />}
-          iconBg="bg-blue-50"
+          icon={<Clock className="size-5 text-blue-400" />}
+          iconBg="bg-blue-500/15"
           value="4h 32m"
           label="Study time"
         />
         <StatCard
-          icon={<Brain className="h-5 w-5 text-purple-600" />}
-          iconBg="bg-purple-50"
+          icon={<Brain className="size-5 text-primary" />}
+          iconBg="bg-[var(--br-accent-wash)]"
           value="248"
           label="Cards reviewed"
         />
         <StatCard
-          icon={<GraduationCap className="h-5 w-5 text-green-600" />}
-          iconBg="bg-green-50"
+          icon={<GraduationCap className="size-5 text-green-400" />}
+          iconBg="bg-green-500/15"
           value="85%"
           label="Avg exam score"
         />
         <StatCard
-          icon={<Flame className="h-5 w-5 text-orange-600" />}
-          iconBg="bg-orange-50"
+          icon={<Flame className="size-5 text-orange-400" />}
+          iconBg="bg-orange-500/15"
           value="14"
           label="Day streak"
         />
@@ -606,28 +575,24 @@ function ProRequiredPage() {
 
       {/* CTA Overlay */}
       <div className="relative">
-        <div className="blur-sm pointer-events-none select-none">
-          <Card className="border-stone-200 rounded-xl">
-            <CardContent className="p-6 h-48 bg-stone-50" />
+        <div aria-hidden className="blur-sm pointer-events-none select-none">
+          <Card>
+            <CardContent className="h-48 p-6" />
           </Card>
         </div>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/40 mb-4">
-            <Lock className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-[var(--br-accent-line)] bg-[var(--br-accent-wash)]">
+            <Lock className="size-7 text-primary" />
           </div>
-          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-1">
+          <h2 className="mb-1 text-lg font-semibold text-[var(--br-text)]">
             Unlock Analytics
           </h2>
-          <p className="text-sm text-stone-500 dark:text-stone-400 text-center max-w-xs mb-4">
+          <p className="mb-4 max-w-xs text-sm text-[var(--br-text3)]">
             Get detailed study insights, streak tracking, exam score trends, and weekly activity breakdowns.
           </p>
-          <Link href="/settings">
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-6">
-              Upgrade to Pro
-            </Button>
-          </Link>
+          <Button render={<Link href="/settings" />}>Upgrade to Pro</Button>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

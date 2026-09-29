@@ -1,23 +1,19 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
+
+/**
+ * The document rows moved into the brain HUD's VAULT column when /dashboard
+ * became full-screen — see dashboard-accessibility.test.tsx for the same
+ * repointing. Keyboard activation is what these guard: a row that cannot be
+ * reached or opened without a mouse makes the vault unusable on a keyboard.
+ */
 
 const mockPush = vi.fn()
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
-
-vi.mock("next/image", () => ({
-  default: (props: Record<string, unknown>) => <img {...props} />,
-}))
-
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...props }: Record<string, unknown>) => (
-      <div {...(props as React.HTMLAttributes<HTMLDivElement>)}>{children as React.ReactNode}</div>
-    ),
-  },
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), prefetch: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/dashboard",
 }))
 
 vi.mock("@/hooks/use-courses", () => ({
@@ -29,15 +25,29 @@ vi.mock("@/hooks/use-courses", () => ({
 }))
 
 vi.mock("@/hooks/use-sessions", () => ({
-  useSessions: () => ({
-    createSession: vi.fn(),
-  }),
+  useSessions: () => ({ sessions: [], isLoading: false, createSession: vi.fn() }),
+}))
+
+vi.mock("@/hooks/use-streak", () => ({
+  useStreak: () => ({ streak: 0, recordStreak: vi.fn() }),
 }))
 
 vi.mock("@/stores/auth-store", () => ({
-  useAuthStore: () => ({
-    user: { name: "Test User", email: "test@example.com" },
+  useAuthStore: () => ({ user: { name: "Test User", email: "test@example.com" }, logout: vi.fn() }),
+}))
+
+vi.mock("@/hooks/use-notifications", () => ({
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    isLoading: false,
+    markAllRead: vi.fn(),
+    refresh: vi.fn(),
   }),
+}))
+
+vi.mock("@/components/brain/brain-hero", () => ({
+  BrainHero: () => <div data-testid="brain-hero-mock" />,
 }))
 
 const mockDocuments = [
@@ -69,55 +79,66 @@ vi.mock("@/hooks/use-documents", () => ({
   }),
 }))
 
-describe("DashboardPage document rows accessibility", () => {
+import { BrainHud } from "@/components/brain/brain-hud"
+
+function renderHud() {
+  render(<BrainHud onUpload={vi.fn().mockResolvedValue(undefined)} />)
+}
+
+describe("BrainHud vault document rows accessibility", () => {
   beforeEach(() => {
     mockPush.mockClear()
   })
 
-  it("document rows have role=button and tabIndex=0", async () => {
-    const DashboardPage = (await import("../dashboard-page")).default
-    render(<DashboardPage />)
+  it("document rows are buttons and take keyboard focus", () => {
+    renderHud()
 
     const rows = screen.getAllByRole("button", { name: /Biology Notes|Chemistry Lab/i })
     expect(rows.length).toBe(2)
 
     for (const row of rows) {
-      expect(row).toHaveAttribute("tabindex", "0")
+      expect(row.tagName).toBe("BUTTON")
+      row.focus()
+      expect(row).toHaveFocus()
     }
   })
 
-  it("navigates on Enter key press", async () => {
+  it("picks the document on Enter key press", async () => {
     const user = userEvent.setup()
-    const DashboardPage = (await import("../dashboard-page")).default
-    render(<DashboardPage />)
+    renderHud()
 
-    const row = screen.getByText("Biology Notes").closest("[role='button']")!
-    await user.tab()
+    const row = screen.getByRole("button", { name: /Biology Notes/ })
     row.focus()
     await user.keyboard("{Enter}")
 
-    expect(mockPush).toHaveBeenCalledWith("/sessions/session-1")
+    // The vault row's job is to pick the document as tutor context, not to
+    // navigate. Picking opens the ask column so the choice is visible. The
+    // document then appears twice (its vault row + a selected chip), so find
+    // the row by its pressed state rather than by name.
+    expect(screen.getAllByRole("button", { name: /Biology Notes/ }).some((b) => b.getAttribute("aria-pressed") === "true")).toBe(true)
+    expect(screen.getByText(/1 DOCUMENT SELECTED/i)).toBeInTheDocument()
   })
 
-  it("navigates on Space key press", async () => {
+  it("picks the document on Space key press", async () => {
     const user = userEvent.setup()
-    const DashboardPage = (await import("../dashboard-page")).default
-    render(<DashboardPage />)
+    renderHud()
 
-    const row = screen.getByText("Chemistry Lab").closest("[role='button']")!
+    const row = screen.getByRole("button", { name: /Chemistry Lab/ })
     row.focus()
     await user.keyboard(" ")
 
-    expect(mockPush).toHaveBeenCalledWith("/sessions/session-2")
+    expect(screen.getAllByRole("button", { name: /Chemistry Lab/ }).some((b) => b.getAttribute("aria-pressed") === "true")).toBe(true)
+    expect(screen.getByText(/1 DOCUMENT SELECTED/i)).toBeInTheDocument()
   })
 
-  it("has focus-visible ring classes", async () => {
-    const DashboardPage = (await import("../dashboard-page")).default
-    render(<DashboardPage />)
+  it("has focus-visible ring classes", () => {
+    renderHud()
 
-    const row = screen.getByText("Biology Notes").closest("[role='button']")!
+    const row = screen.getByRole("button", { name: /Biology Notes/ })
     expect(row.className).toContain("focus-visible:ring-2")
-    expect(row.className).toContain("focus-visible:ring-purple-500")
     expect(row.className).toContain("focus-visible:outline-none")
+    // Ring colour tracks the brand token; it has moved before, so assert a
+    // ring colour exists rather than pinning one palette name.
+    expect(row.className).toMatch(/focus-visible:ring-(?!2\b)[^\s]+/)
   })
 })

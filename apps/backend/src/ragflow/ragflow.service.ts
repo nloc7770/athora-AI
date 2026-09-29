@@ -27,6 +27,10 @@ export class RagflowService {
 
     this.client = axios.create({
       baseURL,
+      // Without this, an unreachable RAGFlow host hangs until the OS TCP
+      // timeout (~27s on Windows) before every call fails. 10s is generous
+      // for a LAN peer; parsing is polled separately, not done in-request.
+      timeout: Number(this.config.get<string>('RAGFLOW_TIMEOUT_MS', '10000')),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',

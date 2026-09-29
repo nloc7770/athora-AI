@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 
-const COLORS = ['#8052ff', '#ffb829', '#15846e', '#ffffff']
+const COLORS = ['#ff7a3c', '#ff9256', '#ffab81', '#ffffff']
 const SHAPES = ['circle', 'triangle', 'diamond', 'square'] as const
 
 interface Particle {

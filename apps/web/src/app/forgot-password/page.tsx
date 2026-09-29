@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center px-4 py-12">
+    <div className="auth-dark flex min-h-[calc(100svh_-_var(--consent-h))] w-full items-center justify-center px-4 py-12">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-2 text-2xl font-bold tracking-tight text-foreground">

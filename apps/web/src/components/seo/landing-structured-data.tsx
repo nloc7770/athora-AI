@@ -9,12 +9,16 @@ const webApplicationSchema = {
   operatingSystem: "Web",
   description:
     "AI-powered study assistant that helps students pass exams faster with smart flashcards, practice tests, mind maps, and AI tutoring.",
+  // A single free Offer, not an AggregateOffer range. Everything is free right
+  // now, and this block is what Google reads for the price shown in a rich
+  // result — an AggregateOffer topping out at $12 would advertise a price the
+  // pricing section no longer names, which is both wrong and a policy problem
+  // (structured data has to match visible page content).
   offers: {
-    "@type": "AggregateOffer",
-    lowPrice: "0",
-    highPrice: "12",
+    "@type": "Offer",
+    price: "0",
     priceCurrency: "USD",
-    offerCount: 2,
+    availability: "https://schema.org/InStock",
   },
   aggregateRating: {
     "@type": "AggregateRating",
@@ -50,7 +54,7 @@ const faqSchema = {
       name: "Is Athora free to use?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes, Athora offers a free plan with 5 document uploads, basic AI chat, and 10 flashcard sets. The Pro plan at $12/month unlocks unlimited documents, advanced AI features, exam generation, and more.",
+        text: "Yes. Every Athora feature is free right now — unlimited document uploads, AI chat, flashcards, practice exams, mind maps and the AI Tutor — with no credit card required. We'll give plenty of notice before that changes.",
       },
     },
     {

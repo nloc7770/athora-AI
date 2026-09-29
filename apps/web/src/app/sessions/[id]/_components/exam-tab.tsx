@@ -31,7 +31,14 @@ interface ExamGeneration {
   type: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   result?: {
-    questions: ExamQuestion[]
+    /**
+     * Optional because a generation carries a result long before it carries
+     * questions — a pending or failed row has a payload with nothing useful in
+     * it. Requiring the key here made the hook's own generation type
+     * unassignable while claiming a guarantee the backend does not give; the
+     * render path already reads it as `result?.questions ?? []`.
+     */
+    questions?: ExamQuestion[]
   }
 }
 
@@ -48,15 +55,15 @@ function getScoreCelebration(score: number, total: number): { emoji: string; mes
   const percentage = total > 0 ? (score / total) * 100 : 0
 
   if (percentage >= 90) {
-    return { emoji: '🎊', message: 'Outstanding!', colorClass: 'text-emerald-600' }
+    return { emoji: '🎊', message: 'Outstanding!', colorClass: 'text-emerald-600 dark:text-emerald-400' }
   }
   if (percentage >= 70) {
-    return { emoji: '🎉', message: 'Great job!', colorClass: 'text-purple-600' }
+    return { emoji: '🎉', message: 'Great job!', colorClass: 'text-purple-600 dark:text-purple-400' }
   }
   if (percentage >= 50) {
-    return { emoji: '👍', message: 'Good effort!', colorClass: 'text-amber-600' }
+    return { emoji: '👍', message: 'Good effort!', colorClass: 'text-amber-600 dark:text-amber-400' }
   }
-  return { emoji: '', message: 'Keep practicing', colorClass: 'text-zinc-600' }
+  return { emoji: '', message: 'Keep practicing', colorClass: 'text-zinc-600 dark:text-zinc-400' }
 }
 
 export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoading, onGenerate }: ExamTabProps) {
@@ -160,11 +167,11 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
   if (!hasReadyDocs && hasProcessingDocs) {
     return (
       <div className="mx-auto flex w-full flex-col items-center justify-center px-3 pt-20 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
-        <div className="rounded-full bg-purple-50 p-4 mb-4">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        <div className="rounded-full bg-purple-50 p-4 mb-4 dark:bg-purple-950/40">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500 dark:text-purple-400" />
         </div>
-        <p className="text-sm font-medium text-gray-700">Processing documents...</p>
-        <p className="text-xs text-gray-400 mt-1">You can generate an exam once processing is complete</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Processing documents...</p>
+        <p className="text-xs text-gray-400 mt-1 dark:text-stone-500">You can generate an exam once processing is complete</p>
       </div>
     )
   }
@@ -172,10 +179,10 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
   if (!hasReadyDocs) {
     return (
       <div className="mx-auto flex w-full flex-col items-center justify-center px-3 pt-20 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
-        <div className="rounded-full bg-gray-100 p-4 mb-4">
-          <ClipboardList className="h-8 w-8 text-gray-400" />
+        <div className="rounded-full bg-gray-100 p-4 mb-4 dark:bg-stone-800">
+          <ClipboardList className="h-8 w-8 text-gray-400 dark:text-stone-500" />
         </div>
-        <p className="text-gray-500 text-center">Upload documents first to generate exams</p>
+        <p className="text-gray-500 text-center dark:text-stone-400">Upload documents first to generate exams</p>
       </div>
     )
   }
@@ -183,11 +190,11 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
   if ((isLoading || pending) && !latest) {
     return (
       <div className="mx-auto flex w-full flex-col items-center justify-center px-3 pt-20 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
-        <div className="rounded-full bg-indigo-50 p-4 mb-4">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <div className="rounded-full bg-indigo-50 p-4 mb-4 dark:bg-indigo-950/40">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500 dark:text-indigo-400" />
         </div>
-        <p className="text-sm font-medium text-gray-700">Generating exam...</p>
-        <p className="text-xs text-gray-400 mt-1">Creating questions from your documents</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Generating exam...</p>
+        <p className="text-xs text-gray-400 mt-1 dark:text-stone-500">Creating questions from your documents</p>
       </div>
     )
   }
@@ -196,11 +203,11 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
     return (
       <div className="mx-auto w-full space-y-6 px-3 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
         <div className="flex flex-col items-center justify-center pt-12">
-          <div className="rounded-full bg-red-50 p-4 mb-4">
+          <div className="rounded-full bg-red-50 p-4 mb-4 dark:bg-red-950/40">
             <AlertCircle className="h-8 w-8 text-red-400" />
           </div>
-          <p className="text-sm font-medium text-gray-700">Exam generation failed</p>
-          <p className="text-xs text-gray-400 mt-1">Something went wrong. Please try again.</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-stone-300">Exam generation failed</p>
+          <p className="text-xs text-gray-400 mt-1 dark:text-stone-500">Something went wrong. Please try again.</p>
           <Button onClick={onGenerate} disabled={isLoading} variant="outline" className="mt-4 gap-2">
             <RotateCcw className="h-4 w-4" />
             Retry
@@ -214,10 +221,10 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
     return (
       <div className="mx-auto w-full space-y-6 px-3 sm:max-w-2xl sm:px-6 lg:max-w-3xl">
         <div className="flex flex-col items-center justify-center pt-12">
-          <div className="rounded-full bg-gray-100 p-4 mb-4">
-            <ClipboardList className="h-8 w-8 text-gray-300" />
+          <div className="rounded-full bg-gray-100 p-4 mb-4 dark:bg-stone-800">
+            <ClipboardList className="h-8 w-8 text-gray-300 dark:text-stone-600" />
           </div>
-          <p className="text-sm text-gray-500 mb-4">Generate an exam from your session documents</p>
+          <p className="text-sm text-gray-500 mb-4 dark:text-stone-400">Generate an exam from your session documents</p>
           <Button onClick={onGenerate} disabled={isLoading} size="lg" className="gap-2">
             <Sparkles className="h-4 w-4" />
             {isLoading ? 'Generating...' : 'Generate Exam'}
@@ -241,7 +248,7 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
             {totalQuestions} questions
           </Badge>
           {answeredCount > 0 && !showResults && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-stone-500">
               {answeredCount}/{totalQuestions} answered
             </span>
           )}
@@ -263,9 +270,9 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
 
       {/* Score card - Task 42: Score-conditional celebration */}
       {showResults && (
-        <Card className={`border-2 ${score / totalQuestions >= 0.9 ? 'border-emerald-200 bg-emerald-50/50' : score / totalQuestions >= 0.7 ? 'border-purple-200 bg-purple-50/50' : score / totalQuestions >= 0.5 ? 'border-amber-200 bg-amber-50/50' : 'border-zinc-200 bg-zinc-50/50'}`}>
+        <Card className={`border-2 ${score / totalQuestions >= 0.9 ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30' : score / totalQuestions >= 0.7 ? 'border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/30' : score / totalQuestions >= 0.5 ? 'border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/30' : 'border-zinc-200 bg-zinc-50/50 dark:border-stone-700 dark:bg-stone-800/50'}`}>
           <CardContent className="p-4 text-center sm:p-5">
-            <p className="text-2xl font-bold text-gray-900">{score} / {totalQuestions}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-stone-100">{score} / {totalQuestions}</p>
             <p className={`text-sm mt-1 font-medium ${celebration.colorClass}`}>
               {celebration.emoji && <span className="mr-1">{celebration.emoji}</span>}
               {celebration.message}
@@ -276,13 +283,13 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
 
       {/* Task 38: Keyboard shortcut hints */}
       {!showResults && totalQuestions > 0 && (
-        <p className="text-center text-xs text-zinc-400">
+        <p className="text-center text-xs text-zinc-400 dark:text-stone-500">
           <span className="hidden sm:inline">
-            Use <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">&larr;</kbd>{' '}
-            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">&rarr;</kbd> to navigate,{' '}
-            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">1</kbd>-
-            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">4</kbd> to select,{' '}
-            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px]">Enter</kbd> to submit
+            Use <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">&larr;</kbd>{' '}
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">&rarr;</kbd> to navigate,{' '}
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">1</kbd>-
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">4</kbd> to select,{' '}
+            <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">Enter</kbd> to submit
           </span>
         </p>
       )}
@@ -299,12 +306,12 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
               <CardContent className="p-4 space-y-3 sm:p-5">
                 {/* Question header */}
                 <div className="flex items-start gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300">
                     {qIdx + 1}
                   </span>
                   <p
                     id={`exam-tab-question-${qIdx}`}
-                    className="text-sm font-medium text-gray-900 pt-0.5 sm:text-base"
+                    className="text-sm font-medium text-gray-900 pt-0.5 sm:text-base dark:text-stone-100"
                   >
                     {q.question}
                   </p>
@@ -325,16 +332,16 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
 
                       if (isRevealed) {
                         if (isCorrectOption) {
-                          optionClasses += ' border-emerald-300 bg-emerald-50 text-emerald-800'
+                          optionClasses += ' border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                         } else if (isSelected && !isCorrectOption) {
-                          optionClasses += ' border-red-300 bg-red-50 text-red-800'
+                          optionClasses += ' border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200'
                         } else {
-                          optionClasses += ' border-gray-200 text-gray-400'
+                          optionClasses += ' border-gray-200 text-gray-400 dark:border-stone-800 dark:text-stone-500'
                         }
                       } else if (isSelected) {
-                        optionClasses += ' border-indigo-400 bg-indigo-50 text-indigo-800 scale-[1.02] shadow-sm'
+                        optionClasses += ' border-indigo-400 bg-indigo-50 text-indigo-800 scale-[1.02] shadow-sm dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200'
                       } else {
-                        optionClasses += ' border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                        optionClasses += ' border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-600 dark:hover:bg-stone-800'
                       }
 
                       return (
@@ -356,7 +363,7 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
                             isSelected && !isRevealed ? 'border-indigo-400 bg-indigo-500 text-white' :
                             isRevealed && isCorrectOption ? 'border-emerald-400 bg-emerald-500 text-white' :
                             isRevealed && isSelected && !isCorrectOption ? 'border-red-400 bg-red-500 text-white' :
-                            'border-gray-300 text-gray-500'
+                            'border-gray-300 text-gray-500 dark:border-stone-600 dark:text-stone-400'
                           }`}>
                             {String.fromCharCode(65 + optIdx)}
                           </span>
@@ -373,7 +380,7 @@ export function ExamTab({ hasReadyDocs, hasProcessingDocs, generations, isLoadin
                 <div className="pl-9">
                   <button
                     onClick={() => toggleReveal(qIdx)}
-                    className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium"
+                    className="text-xs text-indigo-500 hover:text-indigo-700 transition font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
                   >
                     {isRevealed ? 'Hide answer' : 'Reveal answer'}
                   </button>

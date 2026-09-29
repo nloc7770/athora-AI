@@ -44,8 +44,11 @@ vi.mock('@/components/auth/protected-route', () => ({
   ProtectedRoute: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-vi.mock('@/components/layout/app-layout', () => ({
-  AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+// The page renders inside the brain shell now, not AppLayout. The shell pulls in
+// the rail, the top bar and four data hooks that this test has no fixtures for,
+// so it is stubbed down to its children.
+vi.mock('@/components/brain/brain-shell', () => ({
+  BrainShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/components/ui/button', () => ({

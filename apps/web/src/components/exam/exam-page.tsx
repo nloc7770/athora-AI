@@ -13,21 +13,26 @@ import {
   X,
   BarChart3,
   Loader2,
-  FileQuestion,
   Trophy,
   RotateCcw,
   AlertCircle,
-  Search,
 } from 'lucide-react'
 import { useExams, useExam, useAllExamAttempts } from '@/hooks/use-exams'
 import { apiClient } from '@/lib/api'
 import { markFirstStudyDone } from '@/hooks/use-first-study'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import {
+  PageContainer,
+  PageHeader,
+  PageToolbar,
+  SearchField,
+  FilterChip,
+  EmptyState,
+  ListCard,
+  ListSkeleton,
+} from '@/components/page'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +60,20 @@ interface SubmitResponse {
 }
 
 const SESSION_STORAGE_PREFIX = 'exam-progress-'
+
+/**
+ * The list view is full-bleed. The ACTIVE EXAM and RESULTS views keep a reading
+ * measure — a question with four options stretched across 1400px is a worse
+ * test than a column. `max-w-2xl` is the same measure /flashcards uses for its
+ * review and summary views, so both focused flows sit on the same column.
+ */
+const FOCUS_MEASURE = 'mx-auto max-w-2xl'
+
+/** ui/progress's default track is `bg-muted`, a light-theme grey. */
+const PROGRESS_TRACK = '[&_[data-slot=progress-track]]:bg-[var(--br-bg3)]'
+
+/** Panel recipe shared by the question card and the result blocks. */
+const PANEL = 'rounded-xl border border-[var(--br-border)] bg-[var(--br-bg2)]'
 
 function getSessionKey(examId: string): string {
   return `${SESSION_STORAGE_PREFIX}${examId}`
@@ -99,7 +118,7 @@ function ExamPageInner() {
   const [examState, setExamState] = useState<ExamState>('list')
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number | string>>({})
+  const [answers, setAnswers] = useState<Record<number, number>>({})
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -174,10 +193,10 @@ function ExamPageInner() {
   }
 
   function getTimerColorClass(): string {
-    if (remainingSeconds === null) return 'text-stone-500 dark:text-stone-400'
-    if (remainingSeconds <= 60) return 'text-red-500 animate-pulse dark:text-red-400'
-    if (remainingSeconds <= 300) return 'text-orange-500 dark:text-orange-400'
-    return 'text-stone-500 dark:text-stone-400'
+    if (remainingSeconds === null) return 'text-[var(--br-text3)]'
+    if (remainingSeconds <= 60) return 'animate-pulse text-red-400'
+    if (remainingSeconds <= 300) return 'text-primary'
+    return 'text-[var(--br-text3)]'
   }
 
   // Prevent accidental browser close/refresh during active exam
@@ -374,264 +393,218 @@ function ExamPageInner() {
 
   function getDifficultyColor(difficulty?: string): string {
     switch (difficulty) {
-      case 'easy': return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-      case 'medium': return 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
-      case 'hard': return 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400'
-      default: return 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400'
+      case 'easy': return 'bg-emerald-500/15 text-emerald-400'
+      case 'medium': return 'bg-amber-500/15 text-amber-400'
+      case 'hard': return 'bg-red-500/15 text-red-400'
+      default: return 'bg-white/[0.06] text-[var(--br-text3)]'
     }
   }
 
   // Task 42: Score-conditional celebration
-  function getScoreCelebration(score: number): { emoji: string; message: string; colorClass: string; circleClass: string } {
-    if (score >= 90) return { emoji: '🎊', message: 'Outstanding!', colorClass: 'text-emerald-600 dark:text-emerald-400', circleClass: 'text-emerald-600 dark:text-emerald-400' }
-    if (score >= 70) return { emoji: '🎉', message: 'Great job!', colorClass: 'text-purple-600 dark:text-purple-400', circleClass: 'text-purple-600 dark:text-purple-400' }
-    if (score >= 50) return { emoji: '👍', message: 'Good effort!', colorClass: 'text-amber-600 dark:text-amber-400', circleClass: 'text-amber-600 dark:text-amber-400' }
-    return { emoji: '', message: 'Keep practicing', colorClass: 'text-stone-600 dark:text-stone-400', circleClass: 'text-stone-600 dark:text-stone-400' }
+  function getScoreCelebration(score: number): { emoji: string; message: string; colorClass: string } {
+    if (score >= 90) return { emoji: '🎊', message: 'Outstanding!', colorClass: 'text-emerald-400' }
+    if (score >= 70) return { emoji: '🎉', message: 'Great job!', colorClass: 'text-primary' }
+    if (score >= 50) return { emoji: '👍', message: 'Good effort!', colorClass: 'text-amber-400' }
+    return { emoji: '', message: 'Keep practicing', colorClass: 'text-[var(--br-text3)]' }
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-stone-50 dark:bg-stone-950">
-      <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait">
 
-        {/* ── LIST VIEW ── */}
-        {examState === 'list' && (
-          <motion.div
-            key="list"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.2 }}
-            className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6"
-          >
-            {/* Header */}
-            <div className="mb-8 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600">
-                <GraduationCap className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
-                  Exam Mode
-                </h1>
-                <p className="text-sm text-stone-500 dark:text-stone-400">
-                  Test your knowledge with AI-generated questions
-                </p>
-              </div>
-            </div>
+      {/* ── LIST VIEW ── */}
+      {examState === 'list' && (
+        <motion.div
+          key="list"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.2 }}
+        >
+          <PageContainer>
+            <PageHeader
+              title="Exam Mode"
+              subtitle="Test your knowledge with AI-generated questions."
+              count={`${exams.length} exam${exams.length !== 1 ? 's' : ''}`}
+              icon={<GraduationCap />}
+            />
 
-            {examsLoading ? (
-              <div className="grid gap-3" role="status" aria-busy="true">
-                <span className="sr-only">Loading exams...</span>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Card key={i} className="animate-pulse border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="h-4 w-40 rounded bg-stone-200 dark:bg-stone-700" />
-                      <div className="h-5 w-16 rounded-full bg-stone-100 dark:bg-stone-800" />
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="h-5 w-20 rounded-full bg-stone-100 dark:bg-stone-800" />
-                      <div className="h-5 w-16 rounded-full bg-stone-100 dark:bg-stone-800" />
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : examsError ? (
-              <Card className="flex flex-col items-center justify-center border-red-200 bg-red-50/50 p-12 text-center dark:border-red-900 dark:bg-red-950/30">
-                <AlertCircle className="h-10 w-10 text-red-400" />
-                <h2 className="mt-4 text-base font-medium text-stone-700 dark:text-stone-300">
-                  Failed to load exams
-                </h2>
-                <p className="mt-1 max-w-xs text-sm text-red-600 dark:text-red-400">{examsError}</p>
-                <Button
-                  onClick={() => refresh()}
-                  variant="outline"
-                  className="mt-4 gap-2 border-red-200 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Retry
-                </Button>
-              </Card>
-            ) : exams.length === 0 ? (
-              <Card className="flex flex-col items-center justify-center border-stone-200 bg-white p-12 text-center dark:border-stone-800 dark:bg-stone-900">
-                <FileQuestion className="h-12 w-12 text-stone-300 dark:text-stone-600" />
-                <h2 className="mt-4 text-base font-medium text-stone-700 dark:text-stone-300">
-                  No exams available
-                </h2>
-                <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
-                  Generate exams from your course materials to start practicing.
-                </p>
-              </Card>
-            ) : (
-              <>
-                {/* Search and filter */}
-                <div className="mb-4 space-y-3">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
-                    <Input
-                      type="text"
-                      placeholder="Search exams..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
+            {!examsLoading && !examsError && exams.length > 0 ? (
+              <PageToolbar
+                search={
+                  <SearchField
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    placeholder="Search exams…"
+                    label="Search exams"
+                  />
+                }
+                filters={
+                  <>
                     {(['all', 'easy', 'medium', 'hard'] as const).map((level) => (
-                      <button
+                      <FilterChip
                         key={level}
+                        active={difficultyFilter === level}
                         onClick={() => setDifficultyFilter(level)}
-                        className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors duration-150 ${
-                          difficultyFilter === level
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
-                        }`}
+                        className="capitalize"
                       >
                         {level}
-                      </button>
+                      </FilterChip>
                     ))}
-                  </div>
-                </div>
+                  </>
+                }
+              />
+            ) : null}
 
-                {filteredExams.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-stone-500 dark:text-stone-400">
-                    No exams match your filters.
-                  </p>
-                ) : (
-                <div className="grid gap-3">
-                  {filteredExams.map((examItem) => (
-                  <Card
-                    key={examItem.id}
-                    className="cursor-pointer border-stone-200 bg-white p-5 transition-all duration-150 hover:border-purple-200 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-purple-800"
-                    onClick={() => handleStartExam(examItem.id)}
+            {examsLoading ? (
+              <ListSkeleton count={6} variant="card" label="Loading exams" />
+            ) : examsError ? (
+              <EmptyState
+                illustration="offline"
+                title="Failed to load exams"
+                description={examsError}
+                action={<Button onClick={() => refresh()}><RotateCcw />Retry</Button>}
+              />
+            ) : exams.length === 0 ? (
+              <EmptyState
+                illustration="exams"
+                title="No exams available"
+                description="Generate exams from your course materials to start practicing."
+                action={
+                  <Button onClick={() => { window.location.href = '/sessions' }}>
+                    <GraduationCap /> Generate an exam
+                  </Button>
+                }
+              />
+            ) : filteredExams.length === 0 ? (
+              <EmptyState
+                illustration="search"
+                title="No exams match your filters"
+                description="Try a different keyword or difficulty."
+                secondaryAction={
+                  <Button
+                    variant="outline"
+                    onClick={() => { setSearchQuery(''); setDifficultyFilter('all') }}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-semibold text-stone-900 dark:text-stone-100">
-                          {examItem.name}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <Badge variant="secondary" className="bg-stone-100 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-                            {examItem.questionCount} questions
-                          </Badge>
-                          {examItem.difficulty && (
-                            <Badge variant="secondary" className={`text-xs ${getDifficultyColor(examItem.difficulty)}`}>
-                              {examItem.difficulty}
-                            </Badge>
-                          )}
-                          {examItem.timeLimit && examItem.timeLimit > 0 && (
-                            <Badge variant="secondary" className="gap-1 bg-stone-100 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-                              <Clock className="h-3 w-3" />
-                              {examItem.timeLimit} min
-                            </Badge>
-                          )}
-                        </div>
-                        {/* Attempt history */}
-                        {(() => {
-                          const attempts = attemptsByExam[examItem.id]
-                          if (!attempts || attempts.length === 0) {
-                            return (
-                              <p className="mt-2 text-[12px] text-stone-500 dark:text-stone-400">
-                                Not attempted
-                              </p>
-                            )
-                          }
-                          const bestScore = Math.max(...attempts.map((a) => a.score))
-                          const lastAttempt = attempts.reduce((latest, a) =>
-                            new Date(a.completedAt) > new Date(latest.completedAt) ? a : latest
-                          )
-                          return (
-                            <p className="mt-2 text-[12px] text-stone-500 dark:text-stone-400">
-                              Best: {bestScore}% &bull; {attempts.length} {attempts.length === 1 ? 'attempt' : 'attempts'} &bull; Last: {formatRelativeDate(lastAttempt.completedAt)}
-                            </p>
-                          )
-                        })()}
-                      </div>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-stone-400 dark:text-stone-500" />
-                    </div>
-                  </Card>
-                ))}
-                </div>
-                )}
-              </>
-            )}
-          </motion.div>
-        )}
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredExams.map((examItem) => {
+                  const attempts = attemptsByExam[examItem.id]
+                  let history = 'Not attempted'
+                  if (attempts && attempts.length > 0) {
+                    const bestScore = Math.max(...attempts.map((a) => a.score))
+                    const lastAttempt = attempts.reduce((latest, a) =>
+                      new Date(a.completedAt) > new Date(latest.completedAt) ? a : latest
+                    )
+                    history = `Best ${bestScore}% · ${attempts.length} ${attempts.length === 1 ? 'attempt' : 'attempts'} · Last ${formatRelativeDate(lastAttempt.completedAt)}`
+                  }
 
-        {/* ── ACTIVE EXAM VIEW ── */}
-        {examState === 'active' && (
-          <motion.div
-            key="active"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.2 }}
-            className="mx-auto flex w-full max-w-2xl flex-col px-4 py-6 sm:px-6"
-          >
-            {examLoading ? (
-              <div className="flex flex-col items-center justify-center py-24">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
-                <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">Loading questions...</p>
+                  return (
+                    <ListCard
+                      key={examItem.id}
+                      onClick={() => handleStartExam(examItem.id)}
+                      icon={<GraduationCap />}
+                      title={examItem.name}
+                      description={history}
+                      meta={
+                        <>
+                          <span>{examItem.questionCount} questions</span>
+                          {examItem.timeLimit && examItem.timeLimit > 0 ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>{examItem.timeLimit} min</span>
+                            </>
+                          ) : null}
+                        </>
+                      }
+                      badge={
+                        examItem.difficulty ? (
+                          <Badge className={`capitalize ${getDifficultyColor(examItem.difficulty)}`}>
+                            {examItem.difficulty}
+                          </Badge>
+                        ) : null
+                      }
+                    />
+                  )
+                })}
               </div>
+            )}
+          </PageContainer>
+        </motion.div>
+      )}
+
+      {/* ── ACTIVE EXAM VIEW ── */}
+      {examState === 'active' && (
+        <motion.div
+          key="active"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.2 }}
+        >
+          <PageContainer className={FOCUS_MEASURE}>
+            {examLoading ? (
+              <ListSkeleton count={3} label="Loading questions" />
             ) : questionCount === 0 ? (
-              <Card className="flex flex-col items-center justify-center border-stone-200 bg-white p-12 text-center dark:border-stone-800 dark:bg-stone-900">
-                <FileQuestion className="h-12 w-12 text-stone-300 dark:text-stone-600" />
-                <h2 className="mt-4 text-base font-medium text-stone-700 dark:text-stone-300">No questions found</h2>
-                <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">This exam has no questions yet.</p>
-                <Button onClick={handleBackToList} className="mt-4 bg-purple-600 text-white hover:bg-purple-700">
-                  Back to Exams
-                </Button>
-              </Card>
+              <EmptyState
+                illustration="exams"
+                title="No questions found"
+                description="This exam has no questions yet."
+                action={<Button onClick={handleBackToList}>Back to Exams</Button>}
+              />
             ) : (
               <>
-                {/* Top bar */}
-                <div className="mb-4 flex items-center justify-between rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                  <div className="flex items-center gap-2">
-                    {exam && (
-                      <span className="max-w-[160px] truncate text-sm font-medium text-stone-700 dark:text-stone-300 sm:max-w-xs">
-                        {exam.name}
+                <PageHeader
+                  title={exam?.name ?? 'Exam'}
+                  icon={<GraduationCap />}
+                  count={`Q ${currentQuestion + 1} / ${questionCount}`}
+                  actions={
+                    <>
+                      <span
+                        className={`inline-flex items-center gap-1.5 font-mono text-sm font-medium tabular-nums ${getTimerColorClass()}`}
+                        aria-live="polite"
+                        aria-atomic="true"
+                      >
+                        <Clock className="size-4" aria-hidden />
+                        {getTimerDisplay()}
                       </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium text-stone-500 dark:text-stone-400">
-                    Q {currentQuestion + 1} / {questionCount}
-                  </span>
-                  <div
-                    className={`flex items-center gap-1.5 text-sm font-mono font-medium ${getTimerColorClass()}`}
-                    aria-live="polite"
-                    aria-atomic="true"
-                  >
-                    <Clock className="h-4 w-4" />
-                    {getTimerDisplay()}
-                  </div>
-                </div>
+                      <Button variant="ghost" size="lg" onClick={() => setShowExitConfirm(true)}>
+                        <X /> Exit Exam
+                      </Button>
+                    </>
+                  }
+                />
 
-                {/* Progress bar */}
-                <div className="mb-5">
-                  <Progress value={progressPercent} className="h-1.5 bg-stone-100 dark:bg-stone-800 [&>div]:bg-purple-600" />
-                </div>
+                <Progress
+                  value={progressPercent}
+                  aria-label="Questions answered"
+                  className={`gap-0 ${PROGRESS_TRACK}`}
+                />
 
-                {/* Question card */}
-                <Card className="mb-5 border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900 sm:p-7">
+                {/* Question */}
+                <div className={`${PANEL} p-5 sm:p-7`}>
                   <div className="mb-3 flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-widest text-purple-500 dark:text-purple-400">
+                    <span className="text-xs font-semibold tracking-widest text-primary uppercase">
                       Question {currentQuestion + 1}
                     </span>
                     {questions[currentQuestion]?.type && (
-                      <Badge variant="secondary" className="bg-stone-100 text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                        {questions[currentQuestion].type}
-                      </Badge>
+                      <Badge variant="secondary">{questions[currentQuestion].type}</Badge>
                     )}
                   </div>
                   <p
                     id={`question-label-${currentQuestion}`}
-                    className="text-base font-medium leading-relaxed text-stone-900 dark:text-stone-100 sm:text-lg"
+                    className="text-base leading-relaxed font-medium text-[var(--br-text)] sm:text-lg"
                   >
                     {questions[currentQuestion]?.text}
                   </p>
-                </Card>
+                </div>
 
                 {/* Answer options — roving tabIndex, ArrowDown/ArrowUp moves between options */}
                 <div
-                  className="mb-6 grid gap-2.5"
+                  className="grid gap-2.5"
                   role="radiogroup"
                   aria-labelledby={`question-label-${currentQuestion}`}
                   onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -661,7 +634,7 @@ function ExamPageInner() {
                     const shouldReceiveFocus = isSelected || (!hasSelection && index === 0)
 
                     return (
-                      <Card
+                      <div
                         key={index}
                         role="radio"
                         aria-checked={isSelected}
@@ -673,45 +646,45 @@ function ExamPageInner() {
                             handleSelectAnswer(currentQuestion, index)
                           }
                         }}
-                        className={`cursor-pointer border p-4 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 ${
+                        className={`cursor-pointer rounded-xl border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/70 ${
                           isSelected
-                            ? 'border-purple-600 bg-purple-50 dark:border-purple-500 dark:bg-purple-950'
-                            : 'border-stone-200 bg-white hover:border-purple-200 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-purple-800'
+                            ? 'border-[var(--br-accent-line)] bg-[var(--br-accent-wash)]'
+                            : 'border-[var(--br-border)] bg-[var(--br-bg2)] hover:border-[var(--br-accent-line)] hover:bg-white/[0.04]'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors duration-150 ${
+                          <span
+                            className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
                               isSelected
-                                ? 'bg-purple-600 text-white dark:bg-purple-500'
-                                : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-white/[0.06] text-[var(--br-text3)]'
                             }`}
                           >
                             {letter}
-                          </div>
-                          <span className={`text-sm font-medium ${isSelected ? 'text-purple-900 dark:text-purple-100' : 'text-stone-700 dark:text-stone-300'}`}>
+                          </span>
+                          <span className={`text-sm font-medium ${isSelected ? 'text-[var(--br-accent-ink)]' : 'text-[var(--br-text2)]'}`}>
                             {option}
                           </span>
                         </div>
-                      </Card>
+                      </div>
                     )
                   })}
                 </div>
 
                 {/* Task 38: Keyboard shortcut hints */}
-                <p className="mb-5 hidden text-center text-xs text-stone-400 dark:text-stone-600 sm:block">
-                  <kbd className="rounded border border-stone-200 bg-stone-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">&larr;</kbd>{' '}
-                  <kbd className="rounded border border-stone-200 bg-stone-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">&rarr;</kbd>{' '}
+                <p className="hidden text-center text-xs text-[var(--br-text3)] sm:block">
+                  <kbd className="rounded border border-[var(--br-border)] bg-[var(--br-bg2)] px-1 py-0.5 font-mono text-[10px]">&larr;</kbd>{' '}
+                  <kbd className="rounded border border-[var(--br-border)] bg-[var(--br-bg2)] px-1 py-0.5 font-mono text-[10px]">&rarr;</kbd>{' '}
                   navigate{' · '}
-                  <kbd className="rounded border border-stone-200 bg-stone-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">1</kbd>–
-                  <kbd className="rounded border border-stone-200 bg-stone-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">4</kbd>{' '}
+                  <kbd className="rounded border border-[var(--br-border)] bg-[var(--br-bg2)] px-1 py-0.5 font-mono text-[10px]">1</kbd>–
+                  <kbd className="rounded border border-[var(--br-border)] bg-[var(--br-bg2)] px-1 py-0.5 font-mono text-[10px]">4</kbd>{' '}
                   select{' · '}
-                  <kbd className="rounded border border-stone-200 bg-stone-100 px-1 py-0.5 font-mono text-[10px] dark:border-stone-700 dark:bg-stone-800">Enter</kbd>{' '}
+                  <kbd className="rounded border border-[var(--br-border)] bg-[var(--br-bg2)] px-1 py-0.5 font-mono text-[10px]">Enter</kbd>{' '}
                   submit
                 </p>
 
                 {/* Task 11: Question navigator */}
-                <div className="mb-5 max-h-20 overflow-y-auto">
+                <div className="max-h-20 overflow-y-auto">
                   <div className="flex flex-wrap items-center justify-center gap-1.5">
                     {Array.from({ length: questionCount }, (_, i) => {
                       const isAnswered = answers[i] !== undefined
@@ -722,12 +695,12 @@ function ExamPageInner() {
                           onClick={() => setCurrentQuestion(i)}
                           aria-label={`Go to question ${i + 1}${isAnswered ? ' (answered)' : ''}`}
                           aria-current={isCurrent ? 'step' : undefined}
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1 ${
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/70 ${
                             isCurrent
-                              ? 'border-2 border-purple-600 bg-white text-purple-700 dark:border-purple-500 dark:bg-stone-900 dark:text-purple-400'
+                              ? 'border-2 border-[var(--br-accent-line)] bg-[var(--br-accent-wash)] text-[var(--br-accent-ink)]'
                               : isAnswered
-                                ? 'bg-purple-600 text-white dark:bg-purple-500'
-                                : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-white/[0.06] text-[var(--br-text3)] hover:bg-white/[0.12]'
                           }`}
                         >
                           {i + 1}
@@ -739,42 +712,37 @@ function ExamPageInner() {
 
                 {/* Task 13: Submit error with retry */}
                 {submitError && (
-                  <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/40">
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                      <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-400" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-red-700 dark:text-red-400">{submitError}</p>
+                        <p className="text-sm font-medium text-red-300">{submitError}</p>
                         {retryCount > 0 && (
-                          <p className="mt-0.5 text-xs text-red-500 dark:text-red-500">
+                          <p className="mt-0.5 text-xs text-red-400">
                             Retry attempted {retryCount} {retryCount === 1 ? 'time' : 'times'}
                           </p>
                         )}
                       </div>
-                      <Button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 border-red-200 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                      >
-                        <RotateCcw className="mr-1.5 h-3 w-3" />
+                      <Button onClick={handleSubmit} disabled={isSubmitting} variant="outline" size="sm">
+                        <RotateCcw />
                         Retry
                       </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Task 10: Navigation — submit always visible */}
+                {/* Task 10: Navigation — submit always visible. ONE primary action. */}
                 <div className="flex items-center justify-between gap-3">
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    size="lg"
                     onClick={handlePrevious}
                     disabled={currentQuestion === 0}
-                    className="border-stone-200 text-stone-600 dark:border-stone-700 dark:text-stone-400"
                   >
                     Previous
                   </Button>
                   <Button
+                    size="lg"
                     onClick={() => {
                       if (answeredCount < questionCount) {
                         setShowSubmitConfirm(true)
@@ -783,17 +751,8 @@ function ExamPageInner() {
                       }
                     }}
                     disabled={isSubmitting}
-                    className={
-                      answeredCount === questionCount
-                        ? 'bg-purple-600 text-white hover:bg-purple-700'
-                        : 'bg-stone-700 text-white hover:bg-stone-600 dark:bg-stone-700 dark:hover:bg-stone-600'
-                    }
                   >
-                    {isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                    )}
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : <BarChart3 />}
                     {isSubmitting
                       ? 'Submitting…'
                       : answeredCount < questionCount
@@ -801,24 +760,14 @@ function ExamPageInner() {
                         : 'Submit Exam'}
                   </Button>
                   <Button
+                    variant="outline"
+                    size="lg"
                     onClick={handleNext}
                     disabled={currentQuestion === questionCount - 1}
-                    className="bg-stone-900 text-white hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200"
                   >
                     Next
-                    <ChevronRight className="ml-1 h-4 w-4" />
+                    <ChevronRight />
                   </Button>
-                </div>
-
-                {/* Exit link */}
-                <div className="mt-5 flex justify-center">
-                  <button
-                    onClick={() => setShowExitConfirm(true)}
-                    className="flex items-center gap-1.5 text-sm text-stone-400 transition-colors duration-150 hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-400"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Exit Exam
-                  </button>
                 </div>
 
                 {/* Exit confirmation dialog */}
@@ -859,10 +808,7 @@ function ExamPageInner() {
                       <DialogClose render={<Button variant="outline" />}>
                         Go Back
                       </DialogClose>
-                      <Button
-                        className="bg-purple-600 text-white hover:bg-purple-700"
-                        onClick={() => { setShowSubmitConfirm(false); handleSubmit() }}
-                      >
+                      <Button onClick={() => { setShowSubmitConfirm(false); handleSubmit() }}>
                         Submit Anyway
                       </Button>
                     </DialogFooter>
@@ -870,75 +816,78 @@ function ExamPageInner() {
                 </Dialog>
               </>
             )}
-          </motion.div>
-        )}
+          </PageContainer>
+        </motion.div>
+      )}
 
-        {/* ── RESULTS VIEW ── */}
-        {examState === 'results' && examResults && (
-          <motion.div
-            key="results"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.2 }}
-            className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6"
-          >
-            {/* Score card */}
+      {/* ── RESULTS VIEW ── */}
+      {examState === 'results' && examResults && (
+        <motion.div
+          key="results"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.2 }}
+        >
+          <PageContainer className={FOCUS_MEASURE}>
             {(() => {
               const celebration = getScoreCelebration(examResults.score)
               return (
-                <Card className="mb-6 border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                  <Trophy className="mx-auto h-10 w-10 text-purple-400 dark:text-purple-500" />
-                  <h2 className="mt-3 text-lg font-semibold text-stone-900 dark:text-stone-100">
-                    Exam Complete
-                  </h2>
-                  <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-                    Completed in {formatTime(elapsedSeconds)}
-                  </p>
-
-                  {/* Score circle */}
-                  <div className="my-6 flex flex-col items-center">
-                    <span className={`text-6xl font-bold tabular-nums ${celebration.circleClass}`}>
-                      {examResults.score}%
+                <PageHeader
+                  title="Exam Complete"
+                  icon={<Trophy />}
+                  count={`${examResults.score}%`}
+                  subtitle={
+                    <span className={celebration.colorClass}>
+                      {celebration.emoji && <span aria-hidden>{celebration.emoji} </span>}
+                      {celebration.message} · completed in {formatTime(elapsedSeconds)}
                     </span>
-                    <span className={`mt-1 text-sm font-medium ${celebration.colorClass}`}>
-                      {celebration.emoji && <span className="mr-1">{celebration.emoji}</span>}
-                      {celebration.message}
-                    </span>
-                  </div>
-
-                  <Separator className="mb-5 dark:bg-stone-800" />
-
-                  <div className="flex items-center justify-center gap-8">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-                        {examResults.correctAnswers}/{examResults.totalQuestions}
-                      </p>
-                      <p className="text-xs text-stone-500 dark:text-stone-400">Correct</p>
-                    </div>
-                    <Separator orientation="vertical" className="h-10 dark:bg-stone-800" />
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-                        {formatTime(elapsedSeconds)}
-                      </p>
-                      <p className="text-xs text-stone-500 dark:text-stone-400">Time taken</p>
-                    </div>
-                  </div>
-                </Card>
+                  }
+                  actions={
+                    <>
+                      <Button size="lg" onClick={handleBackToList}>Back to Exams</Button>
+                      <Button variant="outline" size="lg" onClick={handleRetakeExam}>
+                        <RotateCcw /> Retake
+                      </Button>
+                    </>
+                  }
+                />
               )
             })()}
 
+            {/* Score summary */}
+            <div className={`${PANEL} flex flex-wrap items-center justify-center gap-8 p-6 text-center`}>
+              <div>
+                <p className={`text-5xl font-bold tabular-nums ${getScoreCelebration(examResults.score).colorClass}`}>
+                  {examResults.score}%
+                </p>
+                <p className="mt-1 text-xs text-[var(--br-text3)]">Score</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-[var(--br-text)]">
+                  {examResults.correctAnswers}/{examResults.totalQuestions}
+                </p>
+                <p className="mt-1 text-xs text-[var(--br-text3)]">Correct</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-[var(--br-text)]">
+                  {formatTime(elapsedSeconds)}
+                </p>
+                <p className="mt-1 text-xs text-[var(--br-text3)]">Time taken</p>
+              </div>
+            </div>
+
             {/* Task 14: Question breakdown */}
-            <div className="mb-6 grid gap-2.5">
+            <div className="grid gap-2.5">
               {examResults.results.map((result, index) => {
                 const isExpanded = expandedResults.has(index)
                 return (
-                  <Card
+                  <div
                     key={result.questionId}
-                    className={`overflow-hidden border transition-all duration-150 ${
+                    className={`overflow-hidden rounded-xl border ${
                       result.correct
-                        ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/30'
-                        : 'border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/30'
+                        ? 'border-emerald-500/30 bg-emerald-500/[0.07]'
+                        : 'border-red-500/30 bg-red-500/[0.07]'
                     }`}
                   >
                     <button
@@ -950,67 +899,67 @@ function ExamPageInner() {
                           return next
                         })
                       }
-                      className="flex w-full items-start gap-3 p-4 text-left"
+                      className="flex w-full items-start gap-3 p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
                       aria-expanded={isExpanded}
                     >
-                      <div
-                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                      <span
+                        className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${
                           result.correct
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-400'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-red-500/20 text-red-400'
                         }`}
                       >
-                        {result.correct ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-800 dark:text-stone-200">
+                        {result.correct ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="text-sm font-medium text-[var(--br-text)]">
                           Question {index + 1}
-                          {result.questionText && (
-                            <span className="ml-2 font-normal text-stone-500 dark:text-stone-400">
-                              {result.questionText.length > 60
-                                ? `${result.questionText.slice(0, 60)}…`
-                                : result.questionText}
-                            </span>
-                          )}
-                        </p>
-                      </div>
+                        </span>
+                        {result.questionText && (
+                          <span className="ml-2 text-sm font-normal text-[var(--br-text3)]">
+                            {result.questionText.length > 60
+                              ? `${result.questionText.slice(0, 60)}…`
+                              : result.questionText}
+                          </span>
+                        )}
+                      </span>
                       {isExpanded
-                        ? <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
-                        : <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />}
+                        ? <ChevronUp className="mt-0.5 size-4 shrink-0 text-[var(--br-text3)]" />
+                        : <ChevronDown className="mt-0.5 size-4 shrink-0 text-[var(--br-text3)]" />}
                     </button>
 
                     {isExpanded && (
-                      <div className="border-t border-stone-200/60 px-4 pb-4 pt-3 dark:border-stone-700/40">
+                      <div className="border-t border-[var(--br-border)] px-4 pt-3 pb-4">
                         {result.questionText && (
-                          <p className="mb-3 text-sm text-stone-700 dark:text-stone-300">{result.questionText}</p>
+                          <p className="mb-3 text-sm text-[var(--br-text2)]">{result.questionText}</p>
                         )}
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 rounded-lg bg-emerald-100/80 px-3 py-2 dark:bg-emerald-900/40">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                          <div className="flex items-center gap-2 rounded-lg bg-emerald-500/15 px-3 py-2">
+                            <Check className="size-3.5 text-emerald-400" />
+                            <span className="text-sm font-medium text-emerald-300">
                               {result.correctAnswer}
                             </span>
                           </div>
                           {!result.correct && result.userAnswer && (
-                            <div className="flex items-center gap-2 rounded-lg bg-red-100/80 px-3 py-2 dark:bg-red-900/40">
-                              <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                              <span className="text-sm font-medium text-red-800 dark:text-red-300">
+                            <div className="flex items-center gap-2 rounded-lg bg-red-500/15 px-3 py-2">
+                              <X className="size-3.5 text-red-400" />
+                              <span className="text-sm font-medium text-red-300">
                                 Your answer: {result.userAnswer}
                               </span>
                             </div>
                           )}
                         </div>
                         {result.explanation && (
-                          <div className="mt-3 rounded-lg bg-stone-100 px-3 py-2 dark:bg-stone-800">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                          <div className="mt-3 rounded-lg bg-white/[0.04] px-3 py-2">
+                            <p className="text-xs font-semibold tracking-wide text-[var(--br-text3)] uppercase">
                               Explanation
                             </p>
-                            <p className="mt-1 text-sm text-stone-700 dark:text-stone-300">{result.explanation}</p>
+                            <p className="mt-1 text-sm text-[var(--br-text2)]">{result.explanation}</p>
                           </div>
                         )}
                       </div>
                     )}
-                  </Card>
+                  </div>
                 )
               })}
             </div>
@@ -1039,12 +988,10 @@ function ExamPageInner() {
               if (areas.length <= 1 && weakAreas.length === 0) return null
 
               return (
-                <Card className="mb-6 border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
+                <div className={`${PANEL} p-5`}>
                   <div className="mb-3 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-                    <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                      Focus Areas
-                    </h3>
+                    <AlertCircle className="size-4 text-amber-400" />
+                    <h2 className="text-sm font-semibold text-[var(--br-text)]">Focus Areas</h2>
                   </div>
                   <div className="space-y-2">
                     {areas.map((area) => {
@@ -1052,23 +999,21 @@ function ExamPageInner() {
                       return (
                         <div
                           key={area.topic}
-                          className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm"
+                          className="flex items-center justify-between gap-3 text-sm"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
                             {isWeak && (
-                              <Badge className="shrink-0 border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                              <Badge className="shrink-0 bg-amber-500/15 text-amber-400">
                                 Needs work
                               </Badge>
                             )}
-                            <span className="truncate font-medium text-stone-700 dark:text-stone-300">
+                            <span className="truncate font-medium text-[var(--br-text2)]">
                               {area.topic}
                             </span>
                           </div>
                           <span
-                            className={`shrink-0 tabular-nums font-medium ${
-                              isWeak
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : 'text-emerald-600 dark:text-emerald-400'
+                            className={`shrink-0 font-medium tabular-nums ${
+                              isWeak ? 'text-amber-400' : 'text-emerald-400'
                             }`}
                           >
                             {area.correct}/{area.total} ({area.percent}%)
@@ -1077,32 +1022,14 @@ function ExamPageInner() {
                       )
                     })}
                   </div>
-                </Card>
+                </div>
               )
             })()}
+          </PageContainer>
+        </motion.div>
+      )}
 
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button
-                onClick={handleRetakeExam}
-                variant="outline"
-                className="flex-1 border-stone-200 text-stone-600 dark:border-stone-700 dark:text-stone-400"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Retake
-              </Button>
-              <Button
-                onClick={handleBackToList}
-                className="flex-1 bg-purple-600 text-white hover:bg-purple-700"
-              >
-                Back to Exams
-              </Button>
-            </div>
-          </motion.div>
-        )}
-
-      </AnimatePresence>
-    </div>
+    </AnimatePresence>
   )
 }
 

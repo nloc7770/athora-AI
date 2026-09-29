@@ -1,10 +1,17 @@
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+/**
+ * The return type is pinned to `Uint8Array<ArrayBuffer>` rather than a bare
+ * `Uint8Array`. Since TS 5.7 the latter widens to `Uint8Array<ArrayBufferLike>`,
+ * which includes SharedArrayBuffer and so is not assignable to `BufferSource` —
+ * exactly what `pushManager.subscribe`'s applicationServerKey wants. Allocating
+ * the ArrayBuffer explicitly is what makes the narrow type honest.
+ */
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const rawData = atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length))
   for (let i = 0; i < rawData.length; i++) {
     outputArray[i] = rawData.charCodeAt(i)
   }

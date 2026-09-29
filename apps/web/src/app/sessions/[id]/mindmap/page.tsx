@@ -54,7 +54,7 @@ function MindMapPageContent() {
     <MindMapFullscreen
       rawNodes={nodes}
       edges={edges}
-      title={session?.title}
+      title={session?.name}
       onBack={() => router.push(`/sessions/${sessionId}`)}
     />
   )

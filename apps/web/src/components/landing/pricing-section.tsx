@@ -1,103 +1,94 @@
 import Link from 'next/link'
 import { Check } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { FadeUp } from './fade-up'
+
+/**
+ * Everything is free right now, so this section states that plainly instead of
+ * showing tiers.
+ *
+ * It used to render Free / Basic / Paid columns. Keeping a priced grid while
+ * nothing is actually charged for is the worst of both: it suppresses sign-ups
+ * that would have happened, and it makes the first paid bill feel like a
+ * bait-and-switch. A single card with the full feature list and one CTA says the
+ * true thing in less space.
+ *
+ * The `id="pricing"` anchor stays — the header and footer both link to #pricing,
+ * and those links are what the nav's "Pricing" item scrolls to.
+ */
+
+// One list, not a tier split: with nothing gated, a second column would have to
+// invent a distinction that does not exist.
+const INCLUDED = [
+  'Unlimited document uploads',
+  'Unlimited AI chat',
+  'Flashcards, quizzes and mind maps',
+  'Practice exam generation',
+  'Smart summaries',
+  'AI Tutor',
+  'Progress analytics',
+]
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="px-6 py-32 md:py-44 overflow-visible">
-      <div className="mx-auto max-w-[1200px] overflow-visible">
+    <section id="pricing" className="px-6 py-32 md:py-44">
+      <div className="mx-auto max-w-[1200px]">
         <FadeUp>
-          <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#8052ff] mb-3">Pricing</p>
-          <h2 className="text-3xl font-extralight tracking-tight md:text-5xl text-white" style={{ letterSpacing: '-0.04em' }}>
-            Start free. Upgrade when it clicks.
+          <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#ff7a3c] mb-3">
+            Pricing
+          </p>
+          <h2
+            className="text-3xl font-extralight tracking-tight md:text-5xl text-[#f3f3fb]"
+            style={{ letterSpacing: '-0.04em' }}
+          >
+            Free while we&apos;re building.
           </h2>
+          <p className="mt-4 max-w-lg text-[15px] leading-relaxed tracking-[0.025em] text-[#9a9ab6]">
+            Every feature is available to every student, at no cost. No card, no
+            trial timer, no locked tabs.
+          </p>
         </FadeUp>
 
-        <div className="mt-20 md:mt-24 grid gap-5 md:grid-cols-3 md:gap-8 items-start">
-          {/* Free */}
-          <FadeUp delay={0.05}>
-            <div className="border border-white/[0.15] bg-white/[0.05] p-8 md:p-10 rounded-3xl h-full">
-              <h3 className="text-base font-semibold text-white/70">Free</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$0</span>
-                <span className="text-sm text-white/50">forever</span>
-              </div>
-              <p className="mt-3 text-sm text-white/60">Explore everything, no card needed.</p>
-              <ul className="mt-8 space-y-4">
-                {['10 document uploads', 'AI chat (10 messages/day)', 'Unlimited flashcard sets', 'Smart summaries', 'Community support'].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-white/80">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-white/50" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="block mt-10">
-                <button className="w-full h-12 rounded-full border border-white/30 text-white text-sm font-medium hover:bg-white/10 hover:border-white/50 transition-all">
-                  Start free
-                </button>
-              </Link>
-            </div>
-          </FadeUp>
-
-          {/* Basic */}
-          <FadeUp delay={0.1}>
-            <div className="border border-white/[0.2] bg-white/[0.07] p-8 md:p-10 rounded-3xl h-full">
-              <h3 className="text-base font-semibold text-white">Basic</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$7</span>
-                <span className="text-sm text-white/60">/mo</span>
-              </div>
-              <p className="mt-1.5 text-xs text-[#8052ff] font-semibold">$48/year — save 43%</p>
-              <p className="mt-3 text-sm text-white/70">For regular study sessions.</p>
-              <ul className="mt-8 space-y-4">
-                {['50 document uploads', 'Unlimited AI chat', 'Unlimited flashcards & quizzes', 'Exam generation', 'Mind maps', 'Email support'].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-white/90">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8052ff]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="block mt-10">
-                <button className="w-full h-12 rounded-full border border-[#8052ff]/60 text-[#8052ff] text-sm font-medium hover:bg-[#8052ff]/15 hover:border-[#8052ff] transition-all">
-                  Get Basic
-                </button>
-              </Link>
-            </div>
-          </FadeUp>
-
-          {/* Pro */}
-          <FadeUp delay={0.15}>
-            <div className="relative border border-[#8052ff]/70 bg-gradient-to-b from-[#8052ff]/[0.14] to-[#8052ff]/[0.05] p-8 md:p-10 rounded-3xl overflow-hidden h-full shadow-[0_0_50px_rgba(128,82,255,0.2)]">
+        <FadeUp delay={0.08}>
+          {/* Centred single card. max-w keeps the measure readable — a feature
+              list stretched across 1200px is hard to scan. */}
+          <div className="mt-16 md:mt-20 mx-auto max-w-2xl">
+            <div className="relative overflow-hidden rounded-3xl border border-[#ff7a3c]/70 bg-gradient-to-b from-[#ff7a3c]/[0.14] to-[#ff7a3c]/[0.05] p-8 md:p-12 shadow-[0_0_50px_rgba(255,122,60,0.2)]">
               <div className="absolute top-0 right-0">
-                <div className="bg-[#8052ff] text-white text-[10px] font-bold uppercase tracking-[0.08em] px-4 py-1.5 rounded-bl-2xl">
-                  Most popular
+                <div className="rounded-bl-2xl bg-[#ff7a3c] px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#1a1400]">
+                  Everything included
                 </div>
               </div>
-              <h3 className="text-base font-semibold text-white">Pro</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">$15</span>
-                <span className="text-sm text-white/60">/mo</span>
+
+              <h3 className="text-base font-semibold text-[#f3f3fb]">Athora</h3>
+              <div className="mt-4 flex items-baseline gap-2">
+                <span className="text-5xl font-bold text-[#f3f3fb]">Free</span>
+                <span className="text-sm text-[#9a9ab6]">for now</span>
               </div>
-              <p className="mt-1.5 text-xs text-[#8052ff] font-semibold">$108/year — save 40%</p>
-              <p className="mt-3 text-sm text-white/70">For students who mean business.</p>
-              <ul className="mt-8 space-y-4">
-                {['Unlimited everything', 'AI Tutor (unlimited)', 'Priority processing', 'Exam simulations', 'Advanced analytics', 'Priority support'].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-white">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8052ff]" />
+              <p className="mt-3 text-sm text-[#9a9ab6]">
+                We&apos;ll give plenty of notice before anything changes, and
+                you&apos;ll keep what you&apos;ve made.
+              </p>
+
+              <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+                {INCLUDED.map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm text-[#f3f3fb]">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#ffab81]" />
                     {item}
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className="block mt-10">
-                <button className="w-full h-12 rounded-full bg-[#8052ff] text-white text-sm font-semibold uppercase tracking-[0.05em] hover:bg-[#6b3fe6] transition-all shadow-[0_4px_20px_rgba(128,82,255,0.4)]">
-                  Get Pro
+
+              <Link href="/register" className="mt-10 block">
+                <button className="h-12 w-full rounded-full bg-[#ff7a3c] text-sm font-semibold uppercase tracking-[0.05em] text-[#1a1400] shadow-[0_4px_20px_rgba(255,122,60,0.4)] transition-all hover:bg-[#ff9256]">
+                  Start studying — it&apos;s free
                 </button>
               </Link>
+              <p className="mt-4 text-center text-xs text-[#9a9ab6]">
+                No credit card required.
+              </p>
             </div>
-          </FadeUp>
-        </div>
+          </div>
+        </FadeUp>
       </div>
     </section>
   )

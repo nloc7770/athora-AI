@@ -2,25 +2,14 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Plus,
-  Search,
-  FileText,
-  Trash2,
-  X,
-  Upload,
-  Loader2,
-  BookOpen,
-  Calendar,
-} from 'lucide-react'
+import { Plus, FileText, Trash2, X, Upload, Loader2, BookOpen } from 'lucide-react'
+
 import { useSessions } from '@/hooks/use-sessions'
 import { useDocuments } from '@/hooks/use-documents'
 import { ProtectedRoute } from '@/components/auth/protected-route'
-import { AppLayout } from '@/components/layout/app-layout'
+import { BrainShell } from '@/components/brain/brain-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +18,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  PageContainer,
+  PageHeader,
+  PageToolbar,
+  SearchField,
+  ListItem,
+  ListSkeleton,
+  EmptyState,
+} from '@/components/page'
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -113,304 +111,238 @@ export default function SessionsPage() {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const newSpaceButton = (
+    <Button onClick={() => setShowModal(true)}>
+      <Plus />
+      New Study Space
+    </Button>
+  )
+
   return (
     <ProtectedRoute>
-      <AppLayout>
-        <div className="min-h-screen bg-stone-50 dark:bg-stone-950 px-4 py-8 sm:px-6">
-          <div className="mx-auto max-w-4xl">
-            {/* Header */}
-            <div className="mb-8 flex items-center justify-between">
-              <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
-                Study Spaces
-              </h1>
-              <Button
-                onClick={() => setShowModal(true)}
-                className="gap-2 rounded-xl bg-[#6C47FF] hover:bg-[#5a38e0] text-white"
-              >
-                <Plus className="h-4 w-4" />
-                New Study Space
-              </Button>
-            </div>
+      <BrainShell>
+        <PageContainer>
+          <PageHeader
+            title="Study Spaces"
+            subtitle="A study space groups your documents, flashcards and quizzes for one topic."
+            count={`${sessions.length} ${sessions.length === 1 ? 'space' : 'spaces'}`}
+            icon={<BookOpen />}
+            actions={newSpaceButton}
+          />
 
-            {/* Search */}
-            <div className="relative mb-6">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
-              <Input
-                placeholder="Search study spaces..."
+          <PageToolbar
+            search={
+              <SearchField
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="rounded-xl border-stone-200 bg-white pl-11 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500"
-                aria-label="Search study spaces"
+                onValueChange={setSearch}
+                placeholder="Search study spaces…"
+                label="Search study spaces"
+              />
+            }
+          />
+
+          {isLoading ? (
+            <ListSkeleton count={4} label="Loading study spaces" />
+          ) : filteredSessions.length === 0 ? (
+            search ? (
+              <EmptyState
+                illustration="search"
+                title="No study spaces match your search"
+                description="Try a different keyword."
+                secondaryAction={
+                  <Button size="lg" variant="outline" onClick={() => setSearch('')}>
+                    Clear search
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                illustration="sessions"
+                title="No study spaces yet"
+                description="A study space groups your documents, flashcards, and quizzes for one topic."
+                action={newSpaceButton}
+              />
+            )
+          ) : (
+            <div className="flex flex-col gap-2">
+              {filteredSessions.map((session) => (
+                <ListItem
+                  key={session.id}
+                  href={`/sessions/${session.id}`}
+                  icon={<BookOpen />}
+                  title={session.name}
+                  meta={
+                    <>
+                      {session.description ? (
+                        <>
+                          <span className="truncate">{session.description}</span>
+                          <span aria-hidden>·</span>
+                        </>
+                      ) : null}
+                      <span>
+                        {session.document_count ?? 0}{' '}
+                        {(session.document_count ?? 0) === 1 ? 'document' : 'documents'}
+                      </span>
+                      <span aria-hidden>·</span>
+                      <span>{formatRelativeDate(session.updated_at)}</span>
+                    </>
+                  }
+                  action={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Delete study space ${session.name}`}
+                      onClick={() =>
+                        setSessionToDelete({ id: session.id, name: session.name })
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </PageContainer>
+      </BrainShell>
+
+      {/* Create study space — same Dialog primitive as the delete confirm, so this
+          file has ONE modal strategy instead of a hand-rolled framer-motion one. */}
+      <Dialog
+        open={showModal}
+        onOpenChange={(open) => {
+          if (!open && !creating) setShowModal(false)
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create new study space</DialogTitle>
+            <DialogDescription>
+              Name it after the topic or exam you are revising for.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="new-space-name"
+                className="text-sm font-medium text-[var(--br-text2)]"
+              >
+                Study space name *
+              </label>
+              <Input
+                id="new-space-name"
+                placeholder="e.g. Machine Learning Midterm"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="mt-1.5 rounded-xl"
+                autoFocus
+                disabled={creating}
               />
             </div>
 
-            {/* Session Cards */}
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
+            <div>
+              <label
+                htmlFor="new-space-description"
+                className="text-sm font-medium text-[var(--br-text2)]"
+              >
+                Description
+              </label>
+              <Input
+                id="new-space-description"
+                placeholder="Optional description"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                className="mt-1.5 rounded-xl"
+                disabled={creating}
+              />
+            </div>
+
+            <div>
+              <span className="text-sm font-medium text-[var(--br-text2)]">
+                Upload files (optional)
+              </span>
+              <div
+                onDrop={handleFileDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => !creating && fileInputRef.current?.click()}
+                className="mt-1.5 cursor-pointer rounded-xl border-2 border-dashed border-[var(--br-border)] p-8 text-center transition-colors hover:border-[var(--br-accent-line)] hover:bg-[var(--br-accent-wash)]"
+              >
+                <Upload className="mx-auto mb-2 h-6 w-6 text-[var(--br-text3)]" />
+                <p className="text-sm font-medium text-[var(--br-text2)]">
+                  Drag &amp; drop files or <span className="text-primary">browse</span>
+                </p>
+                <p className="mt-1 text-xs text-[var(--br-text3)]">PDF files up to 50MB</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  disabled={creating}
+                />
+              </div>
+            </div>
+
+            {selectedFiles.length > 0 && (
+              <div className="max-h-32 space-y-2 overflow-auto">
+                {selectedFiles.map((file, i) => (
                   <div
                     key={i}
-                    className="rounded-xl border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+                    className="flex items-center justify-between rounded-lg bg-[var(--br-bg2)] px-3 py-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="h-5 w-48 animate-pulse rounded-md bg-stone-100 dark:bg-stone-800" />
-                        <div className="h-4 w-32 animate-pulse rounded-md bg-stone-100 dark:bg-stone-800" />
-                      </div>
-                      <div className="h-6 w-16 animate-pulse rounded-md bg-stone-100 dark:bg-stone-800" />
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="truncate text-sm text-[var(--br-text2)]">
+                        {file.name}
+                      </span>
+                      <span className="shrink-0 text-xs text-[var(--br-text3)]">
+                        {(file.size / 1024 / 1024).toFixed(1)}MB
+                      </span>
                     </div>
+                    {!creating && (
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        aria-label={`Remove ${file.name}`}
+                        className="shrink-0 text-[var(--br-text3)] hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
-            ) : filteredSessions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center dark:border-stone-700 dark:bg-stone-900">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-                  <BookOpen className="h-6 w-6 text-stone-400 dark:text-stone-500" />
-                </div>
-                <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                  {search ? 'No study spaces match your search' : 'No study spaces yet'}
-                </p>
-                <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
-                  {search
-                    ? 'Try a different keyword'
-                    : 'A study space groups your documents, flashcards, and quizzes for one topic.'}
-                </p>
-                {!search && (
-                  <Button
-                    onClick={() => setShowModal(true)}
-                    className="mt-5 gap-2 rounded-xl bg-[#6C47FF] hover:bg-[#5a38e0] text-white"
-                  >
-                    <Plus className="h-4 w-4" />
-                    New Study Space
-                  </Button>
-                )}
+            )}
+
+            {uploadProgress && (
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {uploadProgress}
               </div>
-            ) : (
-              <motion.div
-                className="space-y-3"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  visible: { transition: { staggerChildren: 0.04 } },
-                }}
-              >
-                <AnimatePresence mode="popLayout">
-                  {filteredSessions.map((session) => (
-                    <motion.div
-                      key={session.id}
-                      layout
-                      variants={{
-                        hidden: { opacity: 0, y: 8 },
-                        visible: { opacity: 1, y: 0 },
-                      }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      className="group cursor-pointer rounded-xl border border-stone-200 bg-white p-5 transition-all duration-150 hover:border-purple-200 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-purple-900"
-                      onClick={() => router.push(`/sessions/${session.id}`)}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                            {session.name}
-                          </p>
-                          {session.description && (
-                            <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-500">
-                              {session.description}
-                            </p>
-                          )}
-                          <div className="mt-3 flex flex-wrap items-center gap-3">
-                            <Badge
-                              variant="secondary"
-                              className="gap-1 rounded-md bg-stone-100 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-400"
-                            >
-                              <FileText className="h-3 w-3" />
-                              {session.document_count ?? 0}{' '}
-                              {(session.document_count ?? 0) === 1
-                                ? 'document'
-                                : 'documents'}
-                            </Badge>
-                            <span className="flex items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
-                              <Calendar className="h-3 w-3" />
-                              {formatRelativeDate(session.updated_at)}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete study space ${session.name}`}
-                          className="opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSessionToDelete({
-                              id: session.id,
-                              name: session.name,
-                            })
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-stone-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400" />
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
             )}
           </div>
-        </div>
-      </AppLayout>
 
-      {/* Create Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-            onClick={() => !creating && setShowModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-stone-900"
-              onClick={(e) => e.stopPropagation()}
+          <DialogFooter>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setShowModal(false)}
+              disabled={creating}
             >
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-                  Create new study space
-                </h2>
-                <button
-                  onClick={() => !creating && setShowModal(false)}
-                  className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                    Study space name *
-                  </label>
-                  <Input
-                    placeholder="e.g. Machine Learning Midterm"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    className="mt-1.5 rounded-xl dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100"
-                    autoFocus
-                    disabled={creating}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                    Description
-                  </label>
-                  <Input
-                    placeholder="Optional description"
-                    value={newDesc}
-                    onChange={(e) => setNewDesc(e.target.value)}
-                    className="mt-1.5 rounded-xl dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100"
-                    disabled={creating}
-                  />
-                </div>
-
-                {/* File Upload Zone */}
-                <div>
-                  <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                    Upload files (optional)
-                  </label>
-                  <div
-                    onDrop={handleFileDrop}
-                    onDragOver={(e) => e.preventDefault()}
-                    onClick={() => !creating && fileInputRef.current?.click()}
-                    className="mt-1.5 cursor-pointer rounded-xl border-2 border-dashed border-stone-300 p-8 text-center transition-colors duration-150 hover:border-[#6C47FF] hover:bg-purple-50/50 dark:border-stone-700 dark:hover:border-purple-700 dark:hover:bg-purple-950/20"
-                  >
-                    <Upload className="mx-auto mb-2 h-6 w-6 text-stone-400 dark:text-stone-500" />
-                    <p className="text-sm font-medium text-stone-600 dark:text-stone-300">
-                      Drag & drop files or{' '}
-                      <span className="text-[#6C47FF]">browse</span>
-                    </p>
-                    <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
-                      PDF files up to 50MB
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf"
-                      multiple
-                      className="hidden"
-                      onChange={handleFileSelect}
-                      disabled={creating}
-                    />
-                  </div>
-                </div>
-
-                {/* Selected Files */}
-                {selectedFiles.length > 0 && (
-                  <div className="max-h-32 space-y-2 overflow-auto">
-                    {selectedFiles.map((file, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2 dark:bg-stone-800"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="h-4 w-4 shrink-0 text-red-500" />
-                          <span className="truncate text-sm text-stone-700 dark:text-stone-300">
-                            {file.name}
-                          </span>
-                          <span className="shrink-0 text-xs text-stone-400">
-                            {(file.size / 1024 / 1024).toFixed(1)}MB
-                          </span>
-                        </div>
-                        {!creating && (
-                          <button
-                            onClick={() => removeFile(i)}
-                            className="shrink-0 text-stone-400 hover:text-red-500"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Progress */}
-                {uploadProgress && (
-                  <div className="flex items-center gap-2 text-sm text-[#6C47FF]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {uploadProgress}
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    onClick={handleCreate}
-                    disabled={creating || !newName.trim()}
-                    className="flex-1 rounded-xl bg-[#6C47FF] hover:bg-[#5a38e0] text-white"
-                  >
-                    {creating
-                      ? 'Processing...'
-                      : selectedFiles.length > 0
-                        ? `Create & Upload (${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''})`
-                        : 'Create Study Space'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowModal(false)}
-                    disabled={creating}
-                    className="rounded-xl dark:border-stone-700 dark:text-stone-300"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              Cancel
+            </Button>
+            <Button size="lg" onClick={handleCreate} disabled={creating || !newName.trim()}>
+              {creating
+                ? 'Processing...'
+                : selectedFiles.length > 0
+                  ? `Create & Upload (${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''})`
+                  : 'Create Study Space'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

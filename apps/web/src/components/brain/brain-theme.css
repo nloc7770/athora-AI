@@ -1,0 +1,800 @@
+/**
+ * Veronica's HUD theme, scoped to athora's brain surface.
+ *
+ * Values are taken verbatim from veronica's own stylesheet — the tokens, the
+ * rail geometry, the glass recipes, the grid. Only the selector prefix and the
+ * localStorage namespace are athora's. Scoping everything under .athora-brain
+ * keeps this from bleeding into the rest of the app (athora is light-first;
+ * the brain is a dark island, exactly like veronica scopes under .veronica-os).
+ */
+
+.athora-brain {
+  /* ---- tokens (veronica --ln-*) ---- */
+  --br-bg: #0e0e16;
+  --br-bg2: #181822;
+  --br-bg3: #22222e;
+  --br-border: #36364c;
+  --br-hairline: #ffffff14;
+  --br-accent: #ff7a3c;
+  --br-accent2: #8b5cf6;
+  --br-accent-solid: #ff7a3c;
+  --br-on-accent: #1a1400;
+  --br-accent-ink: #ffab81;
+  --br-accent2-ink: #d5b5ff;
+  --br-text: #f3f3fb;
+  --br-text2: #c0c0da;
+  --br-text3: #9a9ab6;
+  --br-panel-bg: #0f1019c7;
+  --br-panel-solid: #0a0e1af7;
+  --br-field-bg: #14141ecc;
+  --br-accent-wash: #ff692d1f;
+  --br-accent-line: #ff82434d;
+  --br-accent2-wash: #9f68ff1f;
+  --br-red: #f4565a;
+  --br-font: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --br-vault-w: 320px;
+  --br-right-w: 320px;
+
+  background: var(--br-bg);
+  color: var(--br-text);
+  font-family: var(--br-font);
+}
+
+/* ---- shell: rail + topbar + body ----------------------------------------- */
+
+/* The shell root every authenticated route renders. One viewport tall and
+   `position: relative` so the absolutely-positioned rail anchors to it. */
+.athora-brain.br-shell {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.athora-brain .br-hud {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  /* An explicit minmax(0,1fr) column: without it the implicit column is `auto`,
+     so a top bar whose fixed-width children exceed the viewport widening the
+     grid — the HUD grew to 452px inside a 390px phone and clipped the avatar. */
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  /* Reserve the rail's width. This MUST match .br-rail's expanded width — it
+     was left at 68px (the old icon-only width) after the rail grew to 216px,
+     so the rail overlapped the top bar and ATHORA sat on top of the greeting.
+     The collapsed override lives next to .br-rail.is-collapsed below. */
+  padding-left: 216px;
+}
+
+.athora-brain .br-hud-body {
+  display: grid;
+  /* Both side columns are HIDDEN by default so the brain owns the screen;
+     the study columns open on demand. The centre stays minmax(0,1fr) so
+     opening a column can never push the layout past the viewport. */
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The templates MUST have one track per rendered child — the resizer is a
+   grid item too. Miss its track and the dropzone wraps to a second row, so the
+   brain renders UNDER the VAULT column at the vault's width instead of beside
+   it. Track order mirrors the JSX: vault, resizer, brain, resizer, chat. */
+.athora-brain .br-hud-body.is-vault-open.is-right-open {
+  grid-template-columns:
+    var(--br-vault-w) 6px minmax(0, 1fr) 6px var(--br-right-w);
+}
+.athora-brain .br-hud-body.is-vault-open:not(.is-right-open) {
+  grid-template-columns: var(--br-vault-w) 6px minmax(0, 1fr);
+}
+.athora-brain .br-hud-body.is-right-open:not(.is-vault-open) {
+  grid-template-columns: minmax(0, 1fr) 6px var(--br-right-w);
+}
+
+/* Default body for every route that is not the brain: a plain scroll box. The
+   brain's own body keeps the grid (and its hidden overflow) because its columns
+   scroll themselves. */
+.athora-brain .br-hud-body.is-scroll {
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Drag handle between columns. 6px gutter, invisible until hovered. */
+.athora-brain .br-resizer {
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+}
+.athora-brain .br-resizer:hover {
+  background: var(--br-accent-line);
+}
+
+/* ---- top bar -------------------------------------------------------------- */
+
+.athora-brain .br-hud-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 64px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--br-border);
+  background: color-mix(in srgb, var(--br-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.athora-brain .br-top-left,
+.athora-brain .br-top-right {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.athora-brain .br-top-right {
+  justify-content: flex-end;
+  gap: 8px;
+}
+.athora-brain .br-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.athora-brain .br-top-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  color: var(--br-text3);
+}
+
+/* Courses / streak readouts in the top bar. */
+.athora-brain .br-top-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--br-accent);
+}
+.athora-brain .br-top-stat em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  color: var(--br-text3);
+}
+/* Unread pill on the HUD's notification bell. */
+.athora-brain .br-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--br-accent);
+  color: var(--br-on-accent);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* Initials disc in the account menu. */
+.athora-brain .br-avatar {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--br-accent2), var(--br-accent));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+@media (max-width: 639px) {
+  /* At phone width the top bar cannot hold greeting + 2 stats + 2 column
+     toggles + bell + avatar in 390px, and the avatar was the item getting
+     clipped off the right edge. The stats are the least essential here (the
+     HUD's own strip already shows document counts), so they go first. */
+  .athora-brain .br-top-stat,
+  .athora-brain .br-top-stat em {
+    display: none;
+  }
+  /* The top bar now also carries the bell and the account menu. At phone width
+     the greeting is the only item that can give, so let it truncate. */
+  .athora-brain .br-hud-top {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .athora-brain .br-top-title {
+    display: block;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ---- rail ----------------------------------------------------------------- */
+
+/* Labelled by default. Veronica's rail is icon-only because it is a
+   single-screen HUD; athora is multi-page, and an icon-only rail meant hovering
+   each of 8 icons to find out what it was (and nothing at all on touch, where
+   there is no hover). Collapsible back to 68px for the brain's wide canvas. */
+.athora-brain .br-rail {
+  /* absolute, NOT fixed: the rail belongs to the shell. As `fixed` it was
+     viewport-pinned, so scrolling the page left a dark rail floating over the
+     content below — and any ancestor with a transform (framer-motion's intro
+     animation) silently re-anchored it anyway. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 60;
+  width: 216px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 10px 10px;
+  background: color-mix(in srgb, var(--br-bg2) 86%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-right: 1px solid var(--br-border);
+  transition: width 0.18s ease;
+}
+.athora-brain .br-rail.is-collapsed {
+  width: 68px;
+  padding: 12px 0 10px;
+  align-items: center;
+}
+
+/* The body reserves exactly the rail's width. :has() keeps this in CSS instead
+   of threading the collapsed flag through every component that renders a shell. */
+.athora-brain .br-hud:has(.br-rail.is-collapsed) {
+  padding-left: 68px;
+}
+
+.athora-brain .br-rail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 0 6px 4px;
+}
+.athora-brain .br-rail.is-collapsed .br-rail-head {
+  padding: 0;
+  justify-content: center;
+}
+.athora-brain .br-rail-brand {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  /* The logo PNG is opaque and carries its own violet tile, so the accent wash
+     that used to sit behind the Hexagon glyph would read as a box around a box.
+     Wash dropped; the glow is tuned to the mark's own hue instead of orange. */
+  overflow: hidden;
+  filter: drop-shadow(0 0 9px rgba(155, 120, 250, 0.4));
+  flex: 0 0 auto;
+}
+.athora-brain .br-rail-brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.athora-brain .br-rail-wordmark {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--br-text);
+  white-space: nowrap;
+}
+.athora-brain .br-rail.is-collapsed .br-rail-wordmark {
+  display: none;
+}
+
+.athora-brain .br-rail-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* overflow must stay visible on BOTH axes: overflow-y:auto would make
+     overflow-x auto too, clipping the collapsed-state tooltip. */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 0;
+}
+.athora-brain .br-rail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+/* Small tracked-out section header, the way the old sidebar grouped "Learn". */
+.athora-brain .br-rail-group {
+  padding: 0 8px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--br-text3);
+}
+.athora-brain .br-rail.is-collapsed .br-rail-group {
+  display: none;
+}
+
+/* One nav row: icon + label. Distinct from .br-rail-item, which stays the
+   square icon button the top bar reuses for the bell and the avatar. */
+.athora-brain .br-rail-link,
+.athora-brain .br-rail-collapse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 8px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--br-text2);
+  border-radius: 11px;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  transition: color 0.18s, background 0.18s;
+}
+.athora-brain .br-rail-link:hover,
+.athora-brain .br-rail-collapse:hover {
+  color: var(--br-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+.athora-brain .br-rail-link.is-active {
+  color: var(--br-accent);
+  background: var(--br-accent-wash);
+  font-weight: 600;
+}
+.athora-brain .br-rail-link.is-active::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 22px;
+  border-radius: 0 3px 3px 0;
+  background: var(--br-accent);
+  box-shadow: 0 0 10px var(--br-accent);
+}
+.athora-brain .br-rail-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+}
+.athora-brain .br-rail-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.athora-brain .br-rail-collapse {
+  flex: 0 0 auto;
+  color: var(--br-text3);
+  font-size: 12px;
+}
+
+/* Collapsed: icon-only, centred, and the tooltip comes back. */
+.athora-brain .br-rail.is-collapsed .br-rail-link,
+.athora-brain .br-rail.is-collapsed .br-rail-collapse {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  margin: 0 auto;
+  justify-content: center;
+  gap: 0;
+  border-radius: 13px;
+}
+.athora-brain .br-rail.is-collapsed .br-rail-label {
+  display: none;
+}
+.athora-brain .br-rail.is-collapsed .br-rail-link.is-active::before {
+  left: -11px;
+}
+.athora-brain .br-rail-item {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--br-text3);
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  transition: color 0.18s, background 0.18s, transform 0.18s;
+}
+.athora-brain .br-rail-item:hover {
+  color: var(--br-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+.athora-brain .br-rail-item.is-active {
+  color: var(--br-accent);
+  background: var(--br-accent-wash);
+}
+.athora-brain .br-rail-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 22px;
+  border-radius: 0 3px 3px 0;
+  background: var(--br-accent);
+  box-shadow: 0 0 10px var(--br-accent);
+}
+.athora-brain .br-rail-tip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--br-border);
+  background: var(--br-bg3);
+  color: var(--br-text);
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 70;
+}
+.athora-brain .br-rail-item:hover .br-rail-tip,
+.athora-brain .br-rail-item:focus-visible .br-rail-tip {
+  opacity: 1;
+}
+
+/* ---- glass surfaces ------------------------------------------------------- */
+
+.athora-brain .br-panel {
+  background: var(--br-panel-bg);
+  border: 1px solid var(--br-border);
+  border-radius: 14px;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.athora-brain .br-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--br-bg);
+}
+.athora-brain .br-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--br-border);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--br-text3);
+}
+.athora-brain .br-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar — veronica's dark thin rail. The shell's page content scrolls
+   too, and a default light scrollbar on the dark field is the one bit of chrome
+   the browser would not theme for us. */
+.athora-brain .br-scroll::-webkit-scrollbar,
+.athora-brain .br-hud-body.is-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.athora-brain .br-scroll::-webkit-scrollbar-thumb,
+.athora-brain .br-hud-body.is-scroll::-webkit-scrollbar-thumb {
+  background: #ffffff1f;
+  border-radius: 4px;
+}
+.athora-brain .br-scroll::-webkit-scrollbar-thumb:hover,
+.athora-brain .br-hud-body.is-scroll::-webkit-scrollbar-thumb:hover {
+  background: #ffffff33;
+}
+.athora-brain .br-scroll::-webkit-scrollbar-track,
+.athora-brain .br-hud-body.is-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---- tree rows ------------------------------------------------------------ */
+
+.athora-brain .br-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--br-text2);
+  font-size: 12px;
+  transition: background 0.15s, color 0.15s;
+}
+.athora-brain .br-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--br-text);
+}
+.athora-brain .br-row.is-selected {
+  background: var(--br-accent-wash);
+  color: var(--br-accent-ink);
+}
+.athora-brain .br-row-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.athora-brain .br-row-meta {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--br-text3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section divider inside a column — e.g. RECENT under the session tree. */
+.athora-brain .br-section {
+  padding: 14px 8px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--br-text3);
+}
+
+/* Picked-document pill — the vault's selection echoed in ASK YOUR BRAIN, and
+   the tutor's own context bar. Accent wash so it reads as the same state the
+   selected `.br-row` shows. */
+.athora-brain .br-chip,
+.br-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--br-accent-line);
+  border-radius: 999px;
+  background: var(--br-accent-wash);
+  color: var(--br-accent-ink);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ---- forms / buttons ------------------------------------------------------ */
+
+.athora-brain .br-field {
+  width: 100%;
+  background: var(--br-field-bg);
+  border: 1px solid var(--br-border);
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--br-text);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.athora-brain .br-field::placeholder {
+  color: var(--br-text3);
+}
+.athora-brain .br-field:focus {
+  border-color: var(--br-accent-line);
+  box-shadow: 0 0 0 3px var(--br-accent-wash);
+}
+.athora-brain .br-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--br-accent-solid);
+  color: var(--br-on-accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.athora-brain .br-btn-accent:hover {
+  opacity: 0.9;
+}
+.athora-brain .br-btn-accent:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- drag-over affordance ------------------------------------------------- */
+
+.athora-brain .br-dropzone {
+  position: relative;
+}
+.athora-brain .br-dropzone.is-dragover::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  z-index: 30;
+  border: 2px dashed rgba(139, 147, 255, 0.55);
+  border-radius: 18px;
+  background: rgba(139, 147, 255, 0.06);
+  pointer-events: none;
+}
+
+/* ---- animations ----------------------------------------------------------- */
+
+@keyframes br-orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.45); opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .athora-brain .br-orb-dot {
+    animation: none !important;
+  }
+}
+
+/* ---- responsive: below lg, the rail becomes a bottom dock ----------------- */
+
+@media (max-width: 1023px) {
+  /* This route renders no AppLayout chrome, so the rail is the ONLY navigation
+     on /dashboard and it can no longer be hidden. It docks along the bottom
+     edge instead of the left — same destinations, thumb reachable. */
+  .athora-brain .br-rail {
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 60px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    border-right: 0;
+    border-top: 1px solid var(--br-border);
+    padding: 0 6px;
+  }
+  /* The collapsed state is a left-rail concept; a dock is always icon+label. */
+  .athora-brain .br-rail.is-collapsed {
+    width: auto;
+    padding: 0 4px;
+    align-items: center;
+  }
+  .athora-brain .br-rail-nav {
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    padding: 0;
+    width: 100%;
+  }
+  .athora-brain .br-rail-stack {
+    flex-direction: row;
+    gap: 0;
+    width: auto;
+  }
+  /* Group headers and the wordmark have no room in a dock. */
+  .athora-brain .br-rail-head,
+  .athora-brain .br-rail-group,
+  .athora-brain .br-rail-collapse,
+  .athora-brain .br-rail-tip {
+    display: none;
+  }
+
+  /* Icon ABOVE a small label — the standard touch pattern. The old dock was
+     icon-only with the tooltip hidden, so on a phone nothing was labelled at
+     all: no hover means no way to learn what any of the 8 icons did. */
+  /* 8 items must fit the narrowest phone. A min-width of 54px summed to 432px
+     and overflowed a 375px viewport, clipping "Analytics"; `flex: 1 1 0` with
+     min-width:0 lets them divide whatever width there is (~46px at 375px)
+     instead of demanding a floor each. */
+  .athora-brain .br-rail-link,
+  .athora-brain .br-rail.is-collapsed .br-rail-link {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: auto;
+    min-width: 0;
+    height: 56px;
+    margin: 0;
+    padding: 4px 1px;
+    border-radius: 10px;
+    font-size: 9px;
+  }
+  .athora-brain .br-rail.is-collapsed .br-rail-label {
+    display: block;
+  }
+  .athora-brain .br-rail-label {
+    display: block;
+    max-width: 58px;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+  .athora-brain .br-rail-ico {
+    width: auto;
+  }
+  /* Indicator moves to the top edge, where the dock meets the content. */
+  .athora-brain .br-rail-link.is-active::before,
+  .athora-brain .br-rail.is-collapsed .br-rail-link.is-active::before {
+    left: 50%;
+    top: -2px;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+  }
+  /* Keep the dock from covering the bottom of the content. Taller now that the
+     rows carry a label, and the collapsed variant reserves the same space. */
+  .athora-brain .br-hud,
+  .athora-brain .br-hud:has(.br-rail.is-collapsed) {
+    padding-left: 0;
+    padding-bottom: 68px;
+  }
+
+  /* Side columns overlay the brain instead of claiming grid tracks. A fixed
+     320px track inside a ~307px content box (375px viewport minus page
+     padding) overflowed, `overflow: hidden` clipped it, and the centre track
+     resolved to 0 — so opening VAULT made the graph vanish entirely. */
+  /* One track, always. The open column becomes absolute and the resizer is
+     display:none — both leave the flow — so a multi-track template here would
+     strand the dropzone in the leftover 6px resizer track. */
+  .athora-brain .br-hud-body,
+  .athora-brain .br-hud-body.is-vault-open,
+  .athora-brain .br-hud-body.is-right-open,
+  .athora-brain .br-hud-body.is-vault-open.is-right-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .athora-brain .br-hud-body {
+    position: relative;
+  }
+  .athora-brain .br-hud-body.is-vault-open > .br-column:first-child,
+  .athora-brain .br-hud-body.is-right-open > .br-column:last-child {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    background: var(--br-bg);
+  }
+  /* Nothing to drag when the column covers the card. */
+  .athora-brain .br-resizer {
+    display: none;
+  }
+}

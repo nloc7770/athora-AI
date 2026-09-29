@@ -4,6 +4,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { RagflowService } from '../ragflow/ragflow.service';
 import { AiGenerationService } from '../ai-generation/ai-generation.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { SttService } from './stt.service';
 import { GenerationType } from '../ai-generation/dto/generate.dto';
 
 interface ProcessingResult {
@@ -27,6 +28,7 @@ export class DocumentProcessorService {
     private readonly configService: ConfigService,
     private readonly aiGenerationService: AiGenerationService,
     private readonly analyticsService: AnalyticsService,
+    private readonly sttService: SttService,
   ) {
     this.storageBucket = this.configService.get<string>(
       'SUPABASE_STORAGE_BUCKET',
@@ -65,6 +67,29 @@ export class DocumentProcessorService {
         file_size: file.size,
       });
 
+      // Audio/video must become text before RAGFlow: whisper transcribes the
+      // in-memory buffer, the transcript is persisted immediately (so it
+      // survives a RAGFlow failure), then the .txt rides the normal pipeline.
+      let processFile = file;
+      if (/^(audio|video)\//.test(file.mimetype)) {
+        await this.updateDocumentStatus(userId, documentId, 'processing', 10);
+        const { text } = await this.sttService.transcribe(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+        );
+        await this.updateDocumentRecord(userId, documentId, { transcript: text });
+        processFile = {
+          ...file,
+          buffer: Buffer.from(text, 'utf8'),
+          originalname: file.originalname.replace(/\.[^.]+$/, '') + '.txt',
+          mimetype: 'text/plain',
+        };
+        this.logger.log(
+          `Document ${documentId} transcribed (${text.length} chars) via STT`,
+        );
+      }
+
       await this.updateDocumentStatus(userId, documentId, 'processing', 10);
 
       const datasetId = await this.getOrCreateDataset(userId, documentId);
@@ -73,7 +98,7 @@ export class DocumentProcessorService {
 
       const ragflowDocId = await this.uploadToRagflow(
         datasetId,
-        file,
+        processFile,
       );
 
       await this.updateDocumentRecord(userId, documentId, {
@@ -199,7 +224,8 @@ export class DocumentProcessorService {
       .getAdminClient()
       .storage.from(this.storageBucket)
       .upload(filePath, file.buffer, {
-        contentType: 'application/pdf',
+        // Honest content type — audio used to be stored labeled as pdf.
+        contentType: file.mimetype || 'application/pdf',
         upsert: true,
       });
 
@@ -277,6 +303,19 @@ export class DocumentProcessorService {
         : `user_${userId}_doc_${documentId}`;
 
     const { id } = await this.ragflowService.createDataset(datasetName, userId);
+
+    // Persist so Priority 1 reuses this dataset for the session's other
+    // documents instead of creating a fresh one per upload.
+    if (sessionId) {
+      await this.supabaseService
+        .getAdminClient()
+        .from('study_sessions')
+        .update({ ragflow_dataset_id: id })
+        .eq('id', sessionId)
+        .eq('user_id', userId)
+        .is('ragflow_dataset_id', null);
+    }
+
     return id;
   }
 

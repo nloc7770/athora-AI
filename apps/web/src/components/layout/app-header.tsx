@@ -81,15 +81,20 @@ export function AppHeader() {
 
       {/* Notification Bell */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button aria-label="Notifications" className="relative flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors">
-            <Bell className="h-3.5 w-3.5 text-stone-600" />
-            {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-purple-600 text-[9px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+        <DropdownMenuTrigger
+          render={
+            <button
+              aria-label="Notifications"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors"
+            />
+          }
+        >
+          <Bell className="h-3.5 w-3.5 text-stone-600" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-purple-600 text-[9px] font-bold text-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80 p-0" sideOffset={8}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">

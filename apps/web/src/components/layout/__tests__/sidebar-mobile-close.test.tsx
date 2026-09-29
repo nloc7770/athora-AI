@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { Sidebar } from '../sidebar'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MobileHeader } from '../sidebar'
 
 const mockSetSidebarOpen = vi.fn()
 
@@ -30,13 +31,15 @@ vi.mock('next/link', () => ({
   ),
 }))
 
+// The sheet that closes on navigation is in MobileHeader, not the desktop
+// `Sidebar` aside.
 describe('Sidebar mobile close', () => {
   beforeEach(() => {
     mockSetSidebarOpen.mockClear()
   })
 
   it('calls setSidebarOpen(false) when a nav link is clicked', () => {
-    render(<Sidebar />)
+    render(<MobileHeader />)
 
     const libraryLink = screen.getByRole('link', { name: /library/i })
     fireEvent.click(libraryLink)

@@ -25,6 +25,10 @@ vi.mock("framer-motion", () => ({
   },
 }))
 
+
+vi.mock("@/components/brain/brain-hud", () => ({
+  BrainHud: () => <div data-testid="brain-hud-mock" />,
+}))
 vi.mock("@/hooks/use-courses", () => ({
   useCourses: () => ({
     courses: [
@@ -89,40 +93,11 @@ vi.mock("@/stores/auth-store", () => ({
 import DashboardPage from "../dashboard-page"
 
 describe("DashboardPage dark mode support", () => {
-  it("stat card containers have classes containing dark: variants", () => {
-    const { container } = render(<DashboardPage />)
-
-    // The stat cards are the grid items inside the stats row
-    // They use rounded-xl border bg-white p-4 pattern
-    const statCards = container.querySelectorAll(
-      ".grid.grid-cols-2 > div"
-    )
-
-    // Should have 4 stat cards
-    expect(statCards.length).toBe(4)
-
-    // Each stat card should have at least one dark: class variant
-    const hasDarkClasses = Array.from(statCards).some((card) => {
-      const className = card.getAttribute("class") ?? ""
-      return className.includes("dark:")
-    })
-
-    // NOTE: This test documents the current state — stat cards currently
-    // lack dark: class variants. If this test fails (i.e., dark classes were
-    // added), that means dark mode support was properly added.
-    // For now, we verify the stat cards exist and flag the gap.
-    expect(statCards.length).toBeGreaterThan(0)
-
-    // Assert that dark mode classes ARE present on stat card containers
-    // This will fail until dark mode is properly supported on these elements
-    statCards.forEach((card) => {
-      const className = card.getAttribute("class") ?? ""
-      expect(
-        className.includes("dark:"),
-        `Stat card missing dark: class variant. Classes: "${className}"`
-      ).toBe(true)
-    })
-  })
+  // The "stat card containers have dark: variants" test that used to live here
+  // asserted on `.grid.grid-cols-2 > div` — the five-card stat grid. That grid
+  // was removed (the brain's own FILES/LEARNED/LEARNING strip covers the same
+  // numbers), so the test had no subject left. The guarantee it encoded is
+  // still enforced, more broadly, by the bg-white/dark:bg- test below.
 
   it("no raw bg-white without accompanying dark:bg- class", () => {
     const { container } = render(<DashboardPage />)

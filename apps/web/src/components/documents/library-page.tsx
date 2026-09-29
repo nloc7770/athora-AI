@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import {
-  Search,
   Upload,
   ArrowUpDown,
   CheckSquare,
@@ -13,21 +12,29 @@ import {
   Trash2,
   FolderInput,
   FolderOpen,
-  FileText,
+  Library,
 } from 'lucide-react'
 
 import { useDocuments } from '@/hooks/use-documents'
 import { useCourses } from '@/hooks/use-courses'
 import { useToastStore } from '@/stores/toast-store'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  PageContainer,
+  PageHeader,
+  PageToolbar,
+  SearchField,
+  FilterChip,
+  SegmentedControl,
+  ListSkeleton,
+  EmptyState,
+} from '@/components/page'
 
 import type { DocumentItem, UploadingFile, FilterType, SortOption } from './library/types'
 import {
@@ -41,7 +48,7 @@ import {
   getCourseColor,
   SORT_STORAGE_KEY,
 } from './library/utils'
-import { DocumentCard, DocumentListItem } from './library/document-card'
+import { DocumentCard } from './library/document-card'
 import {
   UploadProgress,
   UploadBatchProgress,
@@ -52,19 +59,8 @@ import {
   MoveDialog,
 } from './library/library-dialogs'
 
-function SkeletonCard() {
-  return (
-    <Card className="flex flex-col gap-3 rounded-xl border border-stone-200 dark:border-stone-800 p-4">
-      <div className="h-9 w-9 animate-pulse rounded-lg bg-stone-100 dark:bg-stone-800" />
-      <div className="h-4 w-3/4 animate-pulse rounded bg-stone-100 dark:bg-stone-800" />
-      <div className="h-4 w-1/2 animate-pulse rounded bg-stone-100 dark:bg-stone-800" />
-      <div className="mt-auto flex items-center justify-between pt-1">
-        <div className="h-5 w-16 animate-pulse rounded-full bg-stone-100 dark:bg-stone-800" />
-        <div className="h-3 w-12 animate-pulse rounded bg-stone-100 dark:bg-stone-800" />
-      </div>
-    </Card>
-  )
-}
+/** SearchField owns its own <input>, so ⌘K reaches it by its accessible name. */
+const SEARCH_LABEL = 'Search documents'
 
 export default function LibraryPage() {
   const router = useRouter()
@@ -78,7 +74,6 @@ export default function LibraryPage() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
   const dragCounterRef = useRef(0)
 
   const [renameDoc, setRenameDoc] = useState<DocumentItem | null>(null)
@@ -187,7 +182,9 @@ export default function LibraryPage() {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        searchInputRef.current?.focus()
+        document
+          .querySelector<HTMLInputElement>(`input[aria-label="${SEARCH_LABEL}"]`)
+          ?.focus()
       }
       if (e.key === 'Escape' && selectMode) {
         setSelectMode(false)
@@ -325,10 +322,21 @@ export default function LibraryPage() {
   }, [moveDoc, bulkMoveIds, moveDocument, courses, addToast])
 
   const isLoading = docsLoading || coursesLoading
+  const hasQuery = searchQuery.trim().length > 0
+  const hasFilter = activeFilter !== 'all' || courseFilter !== 'all'
+
+  const uploadButton = (
+    <Button onClick={handleUploadClick}>
+      <Upload />
+      Upload
+    </Button>
+  )
 
   return (
+    // The drag target and the DragOverlay's positioning context. PageContainer
+    // takes no DOM handlers, so the drop zone is this shell, not a spacing div.
     <div
-      className="relative flex h-full flex-col gap-5 px-6 py-6 dark:bg-stone-950"
+      className="relative min-h-full"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -345,64 +353,62 @@ export default function LibraryPage() {
         onChange={handleFileChange}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
-          Library
-        </h1>
-        <Button className="gap-2 rounded-xl" onClick={handleUploadClick}>
-          <Upload className="h-4 w-4" />
-          Upload
-        </Button>
-      </div>
+      <PageContainer>
+        <PageHeader
+          title="Library"
+          subtitle="Every document you have uploaded, across all courses."
+          count={`${filteredDocuments.length} ${filteredDocuments.length === 1 ? 'document' : 'documents'}`}
+          icon={<Library />}
+          actions={uploadButton}
+        />
 
-      {/* Search + Sort row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
-            <Input
-              ref={searchInputRef}
-              placeholder={searchMode === 'name' ? 'Search documents...' : 'Search inside documents...'}
-              className="pl-10 pr-14 rounded-xl border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900"
+        <PageToolbar
+          search={
+            <SearchField
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onValueChange={setSearchQuery}
+              placeholder={
+                searchMode === 'name' ? 'Search documents…' : 'Search inside documents…'
+              }
+              label={SEARCH_LABEL}
+              hint
             />
-            <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded-md border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 text-[11px] font-medium text-stone-500 dark:text-stone-400">
-              <span className="text-xs">&#8984;</span>K
-            </kbd>
-          </div>
-          <div className="flex items-center rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 p-0.5">
-            <button
-              onClick={() => setSearchMode('name')}
-              className={cn(
-                'rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150',
-                searchMode === 'name'
-                  ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-sm'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'
-              )}
+          }
+          filters={filterOptions.map((opt) => (
+            <FilterChip
+              key={opt.value}
+              active={activeFilter === opt.value}
+              onClick={() => setActiveFilter(opt.value as FilterType)}
             >
-              Name only
-            </button>
-            <button
-              onClick={() => setSearchMode('fulltext')}
-              className={cn(
-                'relative rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150',
-                searchMode === 'fulltext'
-                  ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-sm'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'
-              )}
-            >
-              Full text
-              <span className="ml-1 inline-flex items-center rounded bg-purple-100 dark:bg-purple-900/40 px-1 py-px text-[10px] font-semibold text-purple-700 dark:text-purple-300">
-                Pro
-              </span>
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+              {opt.label}
+            </FilterChip>
+          ))}
+        >
+          <SegmentedControl
+            value={searchMode}
+            onValueChange={(v) => setSearchMode(v as 'name' | 'fulltext')}
+            label="Search mode"
+            options={[
+              { value: 'name', label: 'Name only' },
+              {
+                value: 'fulltext',
+                label: (
+                  <>
+                    Full text
+                    <span className="ml-1 inline-flex items-center rounded bg-[var(--br-accent-wash)] px-1 py-px text-[10px] font-semibold text-[var(--br-accent-ink)]">
+                      Pro
+                    </span>
+                  </>
+                ),
+              },
+            ]}
+          />
+
           <DropdownMenu>
-            <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 rounded-xl')}>
+            <DropdownMenuTrigger
+              aria-label="Sort documents"
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'gap-2 rounded-xl')}
+            >
               <ArrowUpDown className="h-3.5 w-3.5" />
               {sortOptions.find((o) => o.value === sortOption)?.label ?? 'Sort'}
             </DropdownMenuTrigger>
@@ -416,7 +422,10 @@ export default function LibraryPage() {
           </DropdownMenu>
 
           <DropdownMenu>
-            <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 rounded-xl')}>
+            <DropdownMenuTrigger
+              aria-label="Filter by course"
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'gap-2 rounded-xl')}
+            >
               <FolderOpen className="h-3.5 w-3.5" />
               {courseFilter === 'all' ? 'All Courses' : courses.find((c) => c.id === courseFilter)?.code ?? 'Course'}
             </DropdownMenuTrigger>
@@ -432,132 +441,110 @@ export default function LibraryPage() {
 
           <Button
             variant={selectMode ? 'default' : 'outline'}
-            size="sm"
+            size="lg"
             className="gap-2 rounded-xl"
             onClick={toggleSelectMode}
           >
             <CheckSquare className="h-3.5 w-3.5" />
             {selectMode ? 'Done' : 'Select'}
           </Button>
-        </div>
-      </div>
+        </PageToolbar>
 
-      {/* Filter pills */}
-      <div className="flex flex-wrap items-center gap-2">
-        {filterOptions.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setActiveFilter(opt.value as FilterType)}
-            className={cn(
-              'rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-150',
-              activeFilter === opt.value
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700',
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+        {/* Upload feedback */}
+        <AnimatePresence>
+          {uploadingDocId && <UploadProgress documentId={uploadingDocId} />}
+          {uploadError && <UploadError message={uploadError} onDismiss={() => setUploadError(null)} />}
+          {uploadingFiles.length > 0 && (
+            <UploadBatchProgress
+              files={uploadingFiles}
+              onDismiss={() => setUploadingFiles([])}
+              onRetry={handleRetryUpload}
+            />
+          )}
+        </AnimatePresence>
 
-      {/* Upload feedback */}
-      <AnimatePresence>
-        {uploadingDocId && <UploadProgress documentId={uploadingDocId} />}
-        {uploadError && <UploadError message={uploadError} onDismiss={() => setUploadError(null)} />}
-        {uploadingFiles.length > 0 && (
-          <UploadBatchProgress
-            files={uploadingFiles}
-            onDismiss={() => setUploadingFiles([])}
-            onRetry={handleRetryUpload}
-          />
+        {/* Error state */}
+        {docsError && (
+          <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-950/30 p-4">
+            <p className="text-sm text-red-300">{docsError}</p>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* Error state */}
-      {docsError && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4">
-          <p className="text-sm text-red-700 dark:text-red-300">{docsError}</p>
-        </div>
-      )}
-
-      {/* Document grid */}
-      <LayoutGroup>
-        <div aria-busy={isLoading} className="flex-1">
-          <AnimatePresence mode="popLayout">
+        {/* Document grid */}
+        <LayoutGroup>
+          <div aria-busy={isLoading} className="flex flex-col gap-3">
             {isLoading ? (
-              <motion.div
-                key="skeleton"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                role="status"
-                className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-              >
-                <span className="sr-only">Loading documents...</span>
-                {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-              </motion.div>
+              <ListSkeleton count={6} variant="card" label="Loading documents" />
             ) : filteredDocuments.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center py-20"
-              >
-                <div className="rounded-full bg-stone-100 dark:bg-stone-800 p-6 mb-4">
-                  <FileText className="h-10 w-10 text-stone-400 dark:text-stone-500" />
-                </div>
-                <p className="text-base font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  {searchQuery.trim() ? 'No results found' : 'Upload your first document'}
-                </p>
-                <p className="text-sm text-stone-400 dark:text-stone-500 mb-4">
-                  {searchQuery.trim()
-                    ? 'Try a different search or filter'
-                    : 'PDFs, audio, video, and notes are supported'}
-                </p>
-                {!searchQuery.trim() && (
-                  <Button className="gap-2 rounded-xl" onClick={handleUploadClick}>
-                    <Upload className="h-4 w-4" />
-                    Upload Document
-                  </Button>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div layout className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {selectMode && (
-                  <div className="col-span-full flex items-center gap-2 pb-1">
-                    <button
-                      onClick={toggleSelectAll}
-                      className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
+              hasQuery || hasFilter ? (
+                <EmptyState
+                  illustration="search"
+                  title="No documents match your search"
+                  description="Try a different keyword, or clear the filters."
+                  secondaryAction={
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchQuery('')
+                        setActiveFilter('all')
+                        setCourseFilter('all')
+                      }}
                     >
-                      {selectedIds.size === filteredDocuments.length
-                        ? <CheckSquare className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        : <Square className="h-4 w-4" />}
-                      Select all ({filteredDocuments.length})
-                    </button>
-                  </div>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  illustration="library"
+                  title="Upload your first document"
+                  description="PDFs, audio, video, and notes are supported."
+                  action={
+                    <Button onClick={handleUploadClick}>
+                      <Upload />
+                      Upload Document
+                    </Button>
+                  }
+                />
+              )
+            ) : (
+              <>
+                {selectMode && (
+                  <button
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-2 self-start text-sm text-[var(--br-text2)] transition-colors hover:text-[var(--br-text)]"
+                  >
+                    {selectedIds.size === filteredDocuments.length
+                      ? <CheckSquare className="h-4 w-4 text-primary" />
+                      : <Square className="h-4 w-4" />}
+                    Select all ({filteredDocuments.length})
+                  </button>
                 )}
-                {filteredDocuments.map((doc) => (
-                  <DocumentCard
-                    key={doc.id}
-                    document={doc}
-                    courseName={getCourseName(doc.courseId, courses)}
-                    courseColor={getCourseColor(doc.courseId, courses)}
-                    onDelete={setDocumentToDelete}
-                    onOpen={handleOpen}
-                    onRename={setRenameDoc}
-                    onMove={setMoveDoc}
-                    onQuickAction={handleQuickAction}
-                    isFavorite={favorites.has(doc.id)}
-                    onToggleFavorite={toggleFavorite}
-                    selectMode={selectMode}
-                    isSelected={selectedIds.has(doc.id)}
-                    onToggleSelect={toggleSelected}
-                  />
-                ))}
-              </motion.div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredDocuments.map((doc) => (
+                    <DocumentCard
+                      key={doc.id}
+                      document={doc}
+                      courseName={getCourseName(doc.courseId, courses)}
+                      courseColor={getCourseColor(doc.courseId, courses)}
+                      onDelete={setDocumentToDelete}
+                      onOpen={handleOpen}
+                      onRename={setRenameDoc}
+                      onMove={setMoveDoc}
+                      onQuickAction={handleQuickAction}
+                      isFavorite={favorites.has(doc.id)}
+                      onToggleFavorite={toggleFavorite}
+                      selectMode={selectMode}
+                      isSelected={selectedIds.has(doc.id)}
+                      onToggleSelect={toggleSelected}
+                    />
+                  ))}
+                </div>
+              </>
             )}
-          </AnimatePresence>
-        </div>
-      </LayoutGroup>
+          </div>
+        </LayoutGroup>
+      </PageContainer>
 
       {/* Dialogs */}
       <DeleteDialog
@@ -587,12 +574,12 @@ export default function LibraryPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-4 py-3 shadow-lg"
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-[var(--br-border)] bg-[var(--br-bg2)] px-4 py-3 shadow-lg"
           >
-            <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+            <span className="text-sm font-medium text-[var(--br-text2)]">
               {selectedIds.size} selected
             </span>
-            <div className="h-4 w-px bg-stone-200 dark:bg-stone-700" />
+            <div className="h-4 w-px bg-[var(--br-border)]" />
             <Button variant="destructive" size="sm" className="gap-1.5 rounded-lg" onClick={handleBulkDelete}>
               <Trash2 className="h-3.5 w-3.5" />
               Delete

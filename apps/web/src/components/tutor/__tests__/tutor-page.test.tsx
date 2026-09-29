@@ -24,6 +24,14 @@ vi.mock('@/lib/api', () => ({
   },
 }))
 
+// TutorPage now renders inside BrainShell, which reads usePathname to mark the
+// active rail item. A mock missing that export fails the whole render.
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/tutor',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn(), back: vi.fn() }),
+}))
+
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,

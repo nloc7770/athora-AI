@@ -51,11 +51,10 @@ export class SessionsService {
   }
 
   async create(userId: string, dto: CreateSessionDto) {
-    const dataset = await this.ragflowService.createDataset(
-      `session_${dto.name.replace(/\s+/g, '_').toLowerCase()}`,
-      userId,
-    );
-
+    // The RAGFlow dataset is created lazily on first document upload
+    // (DocumentProcessorService.getOrCreateDataset). Creating it here made
+    // session CRUD depend on RAGFlow being reachable, and orphaned a dataset
+    // in RAGFlow whenever the insert below failed.
     const { data, error } = await this.supabaseService
       .getAdminClient()
       .from('study_sessions')
@@ -63,7 +62,6 @@ export class SessionsService {
         user_id: userId,
         name: dto.name,
         description: dto.description,
-        ragflow_dataset_id: dataset.id,
       })
       .select()
       .single();

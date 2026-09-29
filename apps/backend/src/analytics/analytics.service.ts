@@ -97,12 +97,12 @@ export class AnalyticsService {
   }
 
   private async getFlashcardsReviewed(client: any, userId: string): Promise<number> {
+    // .in() takes an array of values, not a query builder — passing a builder
+    // threw "object is not iterable" and 500'd the whole summary.
     const { count } = await client
       .from('flashcards')
-      .select('id', { count: 'exact', head: true })
-      .in('set_id',
-        client.from('flashcard_sets').select('id').eq('user_id', userId)
-      )
+      .select('id, flashcard_sets!inner(user_id)', { count: 'exact', head: true })
+      .eq('flashcard_sets.user_id', userId)
       .not('last_reviewed', 'is', null);
 
     return count ?? 0;

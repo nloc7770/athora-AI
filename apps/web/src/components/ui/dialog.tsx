@@ -53,7 +53,17 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // The mobile inset is a WIDTH, and the cap is a MAX-WIDTH, on purpose.
+          // Both used to be max-width (`w-full max-w-[calc(100%-2rem)]` plus
+          // `sm:max-w-sm`), which put two rules of equal specificity on one
+          // property: the winner came down to their order in the generated
+          // stylesheet, and the arbitrary value won. Every dialog in the app
+          // rendered at viewport-minus-2rem — 1318px on a 1350px screen — so the
+          // panel background spanned the page and a call site passing
+          // `sm:max-w-lg` had no effect at all. Splitting the properties means
+          // max-width has exactly one declaration, so a call-site override is
+          // always the one that applies.
+          "fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:w-full sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

@@ -98,7 +98,11 @@
   --card-foreground: oklch(0.93 0.01 80);
   --popover: oklch(0.22 0.01 60);
   --popover-foreground: oklch(0.93 0.01 80);
-  --primary: oklch(0.70 0.20 295);
+  /* Orange, not violet. Every dark page's buttons, chips and links resolve
+     through --primary, and the shell chrome (rail, HUD) is --br-accent #ff7a3c.
+     Leaving this at hue 295 put a purple CTA next to an orange active rail item
+     on every single page — the clearest "unfinished" tell in the whole app. */
+  --primary: #ff7a3c;
   --primary-foreground: oklch(0.18 0.02 60);
   --secondary: oklch(0.28 0.01 60);
   --secondary-foreground: oklch(0.93 0.01 80);
@@ -230,4 +234,244 @@
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
+}
+
+/* ---- cookie consent bar --------------------------------------------------- */
+/* CookieConsent docks to the bottom edge and publishes its own height here
+   while it is visible (`0px` otherwise). Surfaces that pin themselves to that
+   edge take the height off instead of being covered by the bar: <body>'s
+   wrapper reserves it for scrolling documents, the auth screens subtract it
+   from their viewport height, and the brain shell — one viewport tall, with
+   its icon rail anchored to its own bottom edge — shrinks by it, so the rail
+   lands directly above the bar. */
+:root {
+  --consent-h: 0px;
+}
+
+/* `html` prefix for specificity: brain-theme.css owns this height and may be
+   injected after this file. */
+html .athora-brain.br-shell {
+  height: calc(100dvh - var(--consent-h));
+}
+
+/* ---- auth screens: the veronica dark island -------------------------------- */
+/* /login, /register and /forgot-password are the only pages a signed-out user
+   sees, and every signed-in page is now the dark veronica shell. Rather than
+   restyle each element, this re-points the shadcn token layer at veronica's
+   --br-* values for the subtree: Card, Input, Button and every `text-*`
+   utility on these pages resolve through these vars, so they turn dark with no
+   markup change. Scoped to the wrapper, so the rest of the light-first app and
+   the shared components are untouched. Values mirror brain-theme.css. */
+.auth-dark {
+  --background: #0e0e16;
+  --foreground: #f3f3fb;
+  --card: #181822;
+  --card-foreground: #f3f3fb;
+  --popover: #181822;
+  --popover-foreground: #f3f3fb;
+  --muted: #22222e;
+  --muted-foreground: #9a9ab6;
+  --secondary: #22222e;
+  --secondary-foreground: #f3f3fb;
+  --border: #36364c;
+  --input: #36364c;
+  /* The accent replaces the purple primary on these pages only. */
+  --primary: #ff7a3c;
+  --primary-foreground: #1a1400;
+  --ring: #ff8243;
+  --destructive: #f4565a;
+
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* brain-theme's .br-field recipe: the shadcn input is `bg-transparent`, which
+   over a #181822 card reads as an unfilled gap rather than a field. */
+.auth-dark [data-slot="input"] {
+  background: #14141ecc;
+}
+.auth-dark [data-slot="input"]:focus-visible {
+  border-color: #ff82434d;
+  box-shadow: 0 0 0 3px #ff692d1f;
+}
+
+/* Inline accent links ("Sign up", "Forgot password?", the Terms pair) sit as
+   small text on #181822, where the solid accent is too dark to read
+   comfortably. brain-theme's --br-accent-ink is the text-weight accent. */
+.auth-dark a.text-primary {
+  color: #ffab81;
+}
+
+/* The native checkbox paints its own white control, so `bg-*` does nothing to
+   it — it was the one light chip left on /register. `appearance-none` on the
+   element hands the box back to CSS; the tick is drawn here on :checked. It is
+   still a real <input type=checkbox>, so keyboard focus and `required`
+   validation are unchanged. */
+.auth-dark input[type="checkbox"]:checked {
+  border-color: #ff7a3c;
+  background-color: #ff7a3c;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%231a1400' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5 6.5 11.5 12.5 5.5'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+}
+
+/* The base Button variant fades a disabled control to 50% opacity. Over the
+   #181822 card that turns the orange primary into a muddy brown, which reads as
+   a broken button rather than an unavailable one — most visible on /register,
+   where submit stays disabled until the terms box is ticked. On the auth pages
+   a disabled submit gets an explicit quiet treatment: no accent at all, a
+   hairline border and muted text, so the button itself says "not yet". */
+.auth-dark button[data-slot="button"]:disabled {
+  opacity: 1;
+  background-color: #22222e;
+  color: #7c7c96;
+  border-color: #36364c;
+}
+
+/* Mid-submit is a different state — the button is busy, not unavailable. It
+   keeps the accent so the click reads as registered, just settled down a step
+   so the spinner is the thing that draws the eye. */
+.auth-dark button[data-slot="button"][data-loading]:disabled {
+  background-color: #d1622f;
+  color: #1a1400;
+}
+
+/* The global base layer paints every focus ring purple. On these pages the
+   accent is orange, and a purple ring is the last light-theme remnant. */
+.auth-dark :focus-visible {
+  outline-color: #ff8243;
+}
+.auth-dark button:focus-visible,
+.auth-dark a:focus-visible,
+.auth-dark input:focus-visible {
+  --tw-ring-color: #ff82434d;
+  --tw-ring-offset-color: #0e0e16;
+}
+
+/* ---- /login + /register: the aurora panel ---------------------------------
+   Replaces the auth-study-nook photo on the left half. Three heavily blurred
+   radial blobs, each drifting on its own cycle with a different period, so the
+   field never lands back on an arrangement the eye recognises. Animating only
+   `transform` on a blurred element keeps the work on the compositor — no layout,
+   no repaint, and none of the ~180KB the photo cost. */
+.auth-aurora {
+  background: radial-gradient(125% 95% at 50% 0%, #181822 0%, #0e0e16 62%);
+  /* Contains the blend modes below so they cannot reach the form panel. */
+  isolation: isolate;
+  /* The blobs are deliberately wider than the panel and bleed past its box. */
+  overflow: hidden;
+}
+
+/* Each field paints its pools as plain radial-gradients and is oversized so the
+   drift never exposes an edge. This used to be three separate blobs with
+   `filter: blur(74px)` + `mix-blend-mode: screen`; that combination is dropped
+   deliberately — on some GPU configurations the compositor throws the layer
+   away and the panel renders empty. A gradient needs no filter to be soft, so
+   there is nothing left for the compositor to fail at. */
+.auth-aurora-field {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  will-change: transform;
+  background:
+    radial-gradient(58% 52% at 26% 20%, rgb(255 122 60 / 0.6) 0%, rgb(255 122 60 / 0.2) 44%, transparent 72%),
+    radial-gradient(46% 44% at 80% 47%, rgb(139 92 246 / 0.28) 0%, rgb(139 92 246 / 0.1) 46%, transparent 74%),
+    radial-gradient(54% 50% at 20% 84%, rgb(255 171 129 / 0.46) 0%, rgb(255 122 60 / 0.15) 46%, transparent 74%);
+  animation: auth-aurora-drift 38s ease-in-out infinite alternate;
+}
+
+/* Second pool drifting against the first. Two layers at different speeds read
+   as depth; the coprime periods (38s / 53s) keep the pair from visibly
+   resetting to the same arrangement. */
+.auth-aurora-field-2 {
+  background:
+    radial-gradient(48% 44% at 72% 14%, rgb(255 105 45 / 0.38) 0%, transparent 70%),
+    radial-gradient(42% 40% at 28% 60%, rgb(139 92 246 / 0.24) 0%, transparent 72%);
+  animation: auth-aurora-drift-2 53s ease-in-out infinite alternate;
+}
+
+@keyframes auth-aurora-drift {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); }
+  to { transform: translate3d(4%, 3%, 0) scale(1.12); }
+}
+
+@keyframes auth-aurora-drift-2 {
+  from { transform: translate3d(3%, 2%, 0) scale(1.1); }
+  to { transform: translate3d(-4%, -3%, 0) scale(1); }
+}
+
+/* Wide blurred gradients band visibly on 8-bit panels. A faint noise layer
+   breaks the ramps up so they read smooth instead of stepped. */
+.auth-aurora-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+}
+
+/* Sinks the corners and the foot of the panel so the eyebrow, quote and stat
+   chips hold their contrast wherever the blobs have drifted to. */
+.auth-aurora-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgb(14 14 22 / 0.9) 0%, rgb(14 14 22 / 0.42) 18%, transparent 46%),
+    radial-gradient(120% 90% at 50% 40%, transparent 58%, rgb(14 14 22 / 0.42) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-aurora-field,
+  .auth-aurora-field-2 {
+    animation: none;
+  }
+}
+
+/* ---- landing page: the same dark island, signed out ----------------------- */
+/* `/` is the first surface a visitor sees and the last one that still read as a
+   different product: black canvas, #8052ff violet CTAs, stone greys. Every
+   signed-in route is the veronica shell and /login already re-points its tokens
+   here, so a violet landing page made the hand-off look like two apps.
+   Same mechanism as .auth-dark — remap the shadcn token layer for the subtree so
+   Card, Button and the `text-*`/`border-*` utilities resolve dark with no markup
+   change — and the same values, which are brain-theme.css's --br-*. */
+.landing-dark {
+  --background: #0e0e16;
+  --foreground: #f3f3fb;
+  --card: #181822;
+  --card-foreground: #f3f3fb;
+  --popover: #181822;
+  --popover-foreground: #f3f3fb;
+  --muted: #22222e;
+  --muted-foreground: #9a9ab6;
+  --secondary: #22222e;
+  --secondary-foreground: #f3f3fb;
+  --border: #36364c;
+  --input: #36364c;
+  --primary: #ff7a3c;
+  --primary-foreground: #1a1400;
+  --ring: #ff8243;
+  --destructive: #f4565a;
+
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Purple focus rings and the purple text selection from the base layer are the
+   two things a token remap alone does not reach — both are hardcoded utilities
+   in @layer base, not var() lookups. */
+.landing-dark :focus-visible {
+  outline-color: #ff8243;
+}
+.landing-dark button:focus-visible,
+.landing-dark a:focus-visible,
+.landing-dark input:focus-visible {
+  --tw-ring-color: #ff82434d;
+  --tw-ring-offset-color: #0e0e16;
+}
+.landing-dark ::selection {
+  background: #ff692d3d;
+  color: #f3f3fb;
 }

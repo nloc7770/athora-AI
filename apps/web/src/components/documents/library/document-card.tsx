@@ -106,7 +106,7 @@ function QuickActions({ document, onQuickAction }: { document: DocumentItem; onQ
             render={
               <button
                 onClick={(e) => { e.stopPropagation(); onQuickAction(document, 'flashcards') }}
-                className="rounded-md p-1.5 text-stone-400 hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950/40 dark:hover:text-purple-400 transition-colors"
+                className="rounded-md p-1.5 text-[var(--br-text3)] hover:bg-[var(--br-accent-wash)] hover:text-primary transition-colors"
                 aria-label="Generate Flashcards"
               />
             }
@@ -178,9 +178,12 @@ export function DocumentCard({
     >
       <Card
         className={cn(
-          'group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 transition-all duration-150',
-          'hover:scale-[1.01] hover:shadow-sm',
-          isSelected && 'ring-2 ring-purple-500 dark:ring-purple-400',
+          // Same surface recipe as @/components/page ListCard, so a document tile
+          // and a study-space row read as one system.
+          'group relative flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition-colors',
+          'border-[var(--br-border)] bg-[var(--br-bg2)]',
+          'hover:border-[var(--br-accent-line)] hover:bg-white/[0.04]',
+          isSelected && 'border-[var(--br-accent-line)] bg-[var(--br-accent-wash)]',
         )}
         role="button"
         tabIndex={0}
@@ -193,10 +196,10 @@ export function DocumentCard({
             {selectMode && (
               <button
                 onClick={(e) => { e.stopPropagation(); onToggleSelect(document.id) }}
-                className="text-stone-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                className="text-[var(--br-text3)] hover:text-primary transition-colors"
                 aria-label={isSelected ? 'Deselect' : 'Select'}
               >
-                {isSelected ? <CheckSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" /> : <Square className="h-5 w-5" />}
+                {isSelected ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
               </button>
             )}
             <div className={cn('rounded-lg p-2', colors.bg, colors.darkBg)}>
@@ -219,7 +222,7 @@ export function DocumentCard({
             {!selectMode && (
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  className="rounded-md p-1 text-stone-400 dark:text-stone-500 opacity-0 group-hover:opacity-100 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-600 dark:hover:text-stone-300 transition-all duration-150"
+                  className="rounded-md p-1 text-[var(--br-text3)] opacity-0 group-hover:opacity-100 hover:bg-white/[0.06] hover:text-[var(--br-text)] transition-all duration-150"
                   aria-label="Document options"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -236,16 +239,16 @@ export function DocumentCard({
         </div>
 
         {/* Name */}
-        <p className="line-clamp-2 text-sm font-medium text-stone-800 dark:text-stone-200 leading-snug">
+        <p className="line-clamp-2 text-sm font-medium leading-snug text-[var(--br-text)]">
           {document.name}
         </p>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <Badge variant="secondary" className="text-[11px] font-normal text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 border-0">
+        <div className="mt-auto flex items-center justify-between border-t border-[var(--br-border)] pt-3">
+          <Badge variant="secondary" className="border-0 bg-white/[0.06] text-[11px] font-normal text-[var(--br-text3)]">
             {courseName}
           </Badge>
-          <span className="text-[11px] text-stone-400 dark:text-stone-500">
+          <span className="text-[11px] text-[var(--br-text3)]">
             {formatFileDate(document.updatedAt)}
           </span>
         </div>
@@ -258,7 +261,7 @@ export function DocumentCard({
 
         {/* Study quick-action buttons */}
         <div className={cn(
-          'flex items-center gap-1.5 pt-1 border-t border-stone-100 dark:border-stone-800',
+          'flex items-center gap-1.5 pt-1',
           isReady
             ? 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150'
             : 'opacity-50 pointer-events-none',
@@ -290,99 +293,3 @@ export function DocumentCard({
   )
 }
 
-export function DocumentListItem({
-  document,
-  courseName,
-  onDelete,
-  onOpen,
-  onRename,
-  onMove,
-  onQuickAction,
-  isFavorite,
-  onToggleFavorite,
-  selectMode,
-  isSelected,
-  onToggleSelect,
-}: DocumentCardProps) {
-  const docType = document.type as DocumentType
-  const Icon = typeIconMap[docType] ?? FileText
-  const colors = typeColorMap[docType] ?? { icon: 'text-stone-600', bg: 'bg-stone-50', darkBg: 'dark:bg-stone-900' }
-  const status = document.status as DocumentStatus
-  const isReady = status === 'ready'
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -4 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -4 }}
-      transition={{ duration: 0.12 }}
-    >
-      <Card
-        className={cn(
-          'group flex cursor-pointer items-center gap-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 transition-all duration-150',
-          'hover:shadow-sm',
-          isSelected && 'ring-2 ring-purple-500 dark:ring-purple-400',
-        )}
-        role="button"
-        tabIndex={0}
-        onClick={selectMode ? () => onToggleSelect(document.id) : () => onOpen(document)}
-      >
-        {selectMode && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleSelect(document.id) }}
-            className="shrink-0 text-stone-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-            aria-label={isSelected ? 'Deselect' : 'Select'}
-          >
-            {isSelected ? <CheckSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" /> : <Square className="h-5 w-5" />}
-          </button>
-        )}
-
-        <div className={cn('shrink-0 rounded-lg p-2', colors.bg, colors.darkBg)}>
-          <Icon className={cn('h-4 w-4', colors.icon)} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-stone-800 dark:text-stone-200">{document.name}</p>
-          <p className="text-xs text-stone-400 dark:text-stone-500">{courseName}</p>
-        </div>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(document.id) }}
-          className={cn(
-            'shrink-0 rounded-md p-1 transition-all duration-150',
-            isFavorite ? 'text-amber-400' : 'text-stone-300 dark:text-stone-600 opacity-0 group-hover:opacity-100 hover:text-amber-400',
-          )}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          <Star className={cn('h-4 w-4', isFavorite && 'fill-amber-400')} />
-        </button>
-
-        {isReady && <QuickActions document={document} onQuickAction={onQuickAction} />}
-
-        <StatusBadge status={status} />
-
-        <span className="hidden shrink-0 text-[11px] text-stone-400 dark:text-stone-500 sm:block">
-          {formatFileDate(document.updatedAt)}
-        </span>
-
-        {!selectMode && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="shrink-0 rounded-md p-1 text-stone-400 dark:text-stone-500 opacity-0 group-hover:opacity-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all duration-150"
-              aria-label="Document options"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onOpen(document)}>Open</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onRename(document)}>Rename</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onMove(document)}>Move</DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600 dark:text-red-400" onClick={() => onDelete(document.id)}>Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </Card>
-    </motion.div>
-  )
-}
