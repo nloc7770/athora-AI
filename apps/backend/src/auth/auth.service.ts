@@ -77,7 +77,9 @@ export class AuthService {
       .auth.refreshSession({ refresh_token: refreshToken });
 
     if (error || !data.session) {
-      throw new UnauthorizedException(error?.message ?? 'Failed to refresh session');
+      throw new UnauthorizedException(
+        error?.message ?? 'Failed to refresh session',
+      );
     }
 
     return { user: data.user, session: data.session };
