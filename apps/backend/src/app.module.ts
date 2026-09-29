@@ -20,6 +20,7 @@ import { HealthModule } from './health/health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { BillingModule } from './billing/billing.module';
 import { BrainModule } from './brain/brain.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { BrainModule } from './brain/brain.module';
         limit: 30,
       },
     ]),
+    CacheModule,
     AiModule,
     RagflowModule,
     SupabaseModule,

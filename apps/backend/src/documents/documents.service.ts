@@ -1,5 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+  applyPagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 
@@ -7,7 +11,11 @@ import { UpdateDocumentDto } from './dto/update-document.dto';
 export class DocumentsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll(userId: string, filters?: { courseId?: string; type?: string; sessionId?: string }) {
+  async findAll(
+    userId: string,
+    filters?: { courseId?: string; type?: string; sessionId?: string },
+    page?: ListPaginationDto,
+  ) {
     let query = this.supabaseService
       .getAdminClient()
       .from('documents')
@@ -27,7 +35,7 @@ export class DocumentsService {
       query = query.eq('session_id', filters.sessionId);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await applyPagination(query, page);
 
     if (error) {
       throw new NotFoundException('Could not fetch documents');

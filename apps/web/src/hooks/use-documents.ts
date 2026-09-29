@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiClient } from '@/lib/api'
+import { getCached } from '@/lib/api-cache'
 import { useToastStore } from '@/stores/toast-store'
 
 function usePageVisibility(): boolean {
@@ -52,26 +53,29 @@ interface UseDocumentsFilters {
 }
 
 export function useDocuments(filters?: UseDocumentsFilters) {
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const params = new URLSearchParams()
+  if (filters?.courseId) params.set('courseId', filters.courseId)
+  if (filters?.type) params.set('type', filters.type)
+  if (filters?.sessionId) params.set('sessionId', filters.sessionId)
+  if (filters?.limit !== undefined) params.set('limit', String(filters.limit))
+  if (filters?.offset !== undefined) params.set('offset', String(filters.offset))
+  if (filters?.sortBy) params.set('sortBy', filters.sortBy)
+  if (filters?.order) params.set('order', filters.order)
+  const query = params.toString()
+  const path = query ? `/documents?${query}` : '/documents'
+
+  // Stale-while-revalidate: paint the last response for this exact path, then refetch.
+  const [documents, setDocuments] = useState<Document[]>(() => getCached<Document[]>(path) ?? [])
+  const [isLoading, setIsLoading] = useState(() => getCached(path) === undefined)
   const [error, setError] = useState<string | null>(null)
 
   const fetchDocuments = useCallback(async () => {
-    setIsLoading(true)
+    const cached = getCached<Document[]>(path)
+    if (cached) setDocuments(cached)
+    setIsLoading(cached === undefined)
     setError(null)
 
     try {
-      const params = new URLSearchParams()
-      if (filters?.courseId) params.set('courseId', filters.courseId)
-      if (filters?.type) params.set('type', filters.type)
-      if (filters?.sessionId) params.set('sessionId', filters.sessionId)
-      if (filters?.limit !== undefined) params.set('limit', String(filters.limit))
-      if (filters?.offset !== undefined) params.set('offset', String(filters.offset))
-      if (filters?.sortBy) params.set('sortBy', filters.sortBy)
-      if (filters?.order) params.set('order', filters.order)
-
-      const query = params.toString()
-      const path = query ? `/documents?${query}` : '/documents'
       const data = await apiClient.get<Document[]>(path)
       setDocuments(data)
     } catch (err) {
@@ -80,7 +84,7 @@ export function useDocuments(filters?: UseDocumentsFilters) {
     } finally {
       setIsLoading(false)
     }
-  }, [filters?.courseId, filters?.type, filters?.sessionId, filters?.limit, filters?.offset, filters?.sortBy, filters?.order])
+  }, [path])
 
   useEffect(() => {
     fetchDocuments()

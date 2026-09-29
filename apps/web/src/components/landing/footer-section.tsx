@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export function FooterSection() {
   return (
     <footer className="px-6 py-12 border-t border-[#ffffff14]">
@@ -5,8 +7,8 @@ export function FooterSection() {
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <img src="/images/logo.png" alt="Athora" width={28} height={28} className="h-7 w-7 rounded-lg" />
-              <span className="font-semibold text-[#f3f3fb]">Athora</span>
+              <Image src="/images/logo.png" alt="Nrop-on" width={28} height={28} className="h-7 w-7 rounded-lg" />
+              <span className="font-semibold text-[#f3f3fb]">Nrop-on</span>
             </div>
             <p className="mt-3 text-sm text-[#9a9ab6]">Made for students, by students.</p>
           </div>
@@ -26,7 +28,7 @@ export function FooterSection() {
           </div>
         </div>
         <div className="mt-10 border-t border-[#ffffff14] pt-6 text-center">
-          <p className="text-xs text-[#9a9ab6]">&copy; {new Date().getFullYear()} Athora. All rights reserved.</p>
+          <p className="text-xs text-[#9a9ab6]">&copy; {new Date().getFullYear()} Nrop-on. All rights reserved.</p>
         </div>
       </div>
     </footer>

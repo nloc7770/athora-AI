@@ -1,4 +1,5 @@
 import type { ApiError } from './api-types'
+import { getCacheGeneration, invalidateCached, setCached } from './api-cache'
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
@@ -201,25 +202,40 @@ async function request<T>(
   throw lastError
 }
 
+/**
+ * Mutations invalidate even on failure: a timed-out write may still have
+ * landed server-side, and a spare refetch is cheaper than a stale list.
+ */
+function mutate<T>(path: string, run: Promise<T>): Promise<T> {
+  return run.finally(() => invalidateCached(path))
+}
+
 export const apiClient = {
   get<T>(path: string, options?: RequestOptions): Promise<T> {
-    return request<T>('GET', path, undefined, options)
+    const startedAt = getCacheGeneration()
+    return request<T>('GET', path, undefined, options).then((data) => {
+      if (data !== undefined) setCached(path, data, startedAt)
+      return data
+    })
   },
 
   post<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
-    return request<T>('POST', path, body, options)
+    return mutate(path, request<T>('POST', path, body, options))
   },
 
   patch<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
-    return request<T>('PATCH', path, body, options)
+    return mutate(path, request<T>('PATCH', path, body, options))
   },
 
   delete<T>(path: string, options?: RequestOptions): Promise<T> {
-    return request<T>('DELETE', path, undefined, options)
+    return mutate(path, request<T>('DELETE', path, undefined, options))
   },
 
   upload<T>(path: string, formData: FormData, options?: RequestOptions): Promise<T> {
-    return request<T>('POST', path, formData, { ...options, timeoutMs: options?.timeoutMs ?? UPLOAD_TIMEOUT_MS })
+    return mutate(
+      path,
+      request<T>('POST', path, formData, { ...options, timeoutMs: options?.timeoutMs ?? UPLOAD_TIMEOUT_MS })
+    )
   },
 }
 

@@ -1,5 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+  applyPagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { SubmitExamDto } from './dto/submit-exam.dto';
 
@@ -7,13 +11,14 @@ import { SubmitExamDto } from './dto/submit-exam.dto';
 export class ExamsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll(userId: string) {
-    const { data, error } = await this.supabaseService
+  async findAll(userId: string, page?: ListPaginationDto) {
+    const query = this.supabaseService
       .getAdminClient()
       .from('exams')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+    const { data, error } = await applyPagination(query, page);
 
     if (error) {
       throw new NotFoundException('Could not fetch exams');
@@ -35,7 +40,8 @@ export class ExamsService {
       throw new NotFoundException('Exam not found');
     }
 
-    const rawQuestions = ((data as Record<string, unknown>).exam_questions ?? []) as Record<string, unknown>[];
+    const rawQuestions = ((data as Record<string, unknown>).exam_questions ??
+      []) as Record<string, unknown>[];
 
     return {
       ...data,
@@ -63,7 +69,9 @@ export class ExamsService {
       .single();
 
     if (examError || !exam) {
-      throw new NotFoundException(examError?.message ?? 'Could not create exam');
+      throw new NotFoundException(
+        examError?.message ?? 'Could not create exam',
+      );
     }
 
     const questionsWithExamId = questions.map((q) => ({
@@ -94,9 +102,7 @@ export class ExamsService {
       throw new NotFoundException('Exam questions not found');
     }
 
-    const correctMap = new Map(
-      questions.map((q) => [q.id, q.correct_answer]),
-    );
+    const correctMap = new Map(questions.map((q) => [q.id, q.correct_answer]));
 
     // Normalize to snake_case so stored answers stay consistent regardless of
     // which naming the client used.

@@ -422,9 +422,23 @@ html .athora-brain.br-shell {
     radial-gradient(120% 90% at 50% 40%, transparent 58%, rgb(14 14 22 / 0.42) 100%);
 }
 
+/* Above-the-fold entrance for the landing hero. FadeUp waits for hydration +
+   IntersectionObserver before un-hiding its children, which held the hero
+   headline (the LCP element) invisible until JS ran. A CSS animation starts at
+   first paint with no JS. */
+.landing-rise {
+  animation: landing-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes landing-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-aurora-field,
-  .auth-aurora-field-2 {
+  .auth-aurora-field-2,
+  .landing-rise {
     animation: none;
   }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Image from 'next/image'
 import {
   BookOpen,
   Library,
@@ -16,7 +17,7 @@ import {
 
 /**
  * The navigation rail. Veronica's rail is icon-only because veronica is a
- * single-screen HUD — you land on the brain and stay there. Athora is a
+ * single-screen HUD — you land on the brain and stay there. Nrop-on is a
  * multi-page study app: students move between library, flashcards, exams and
  * the tutor constantly, and the icon-only rail made them hover every icon to
  * find out what it was (and on touch, where there is no hover, gave them
@@ -33,7 +34,7 @@ const ICO = { size: 20, strokeWidth: 1.9, 'aria-hidden': true } as const
  * no alpha channel to give it a shape.
  */
 const LOGO_ICO = (
-  <img
+  <Image
     src="/images/logo.png"
     alt=""
     width={20}
@@ -106,9 +107,9 @@ export function HudRailNav() {
     >
       <div className="br-rail-head">
         <span className="br-rail-brand" aria-hidden>
-          <img src="/images/logo.png" alt="" width={38} height={38} />
+          <Image src="/images/logo.png" alt="" width={38} height={38} priority />
         </span>
-        <span className="br-rail-wordmark">ATHORA</span>
+        <span className="br-rail-wordmark">NROP-ON</span>
       </div>
 
       <div className="br-rail-nav">

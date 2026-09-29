@@ -16,6 +16,10 @@ import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  Pagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 
 @Controller('flashcards')
 @UseGuards(SupabaseAuthGuard)
@@ -28,8 +32,13 @@ export class FlashcardsController {
     @Query('courseId') courseId?: string,
     @Query('documentId') documentId?: string,
     @Query('sessionId') sessionId?: string,
+    @Pagination() page?: ListPaginationDto,
   ) {
-    return this.flashcardsService.findAllSets(userId, { courseId, documentId, sessionId });
+    return this.flashcardsService.findAllSets(
+      userId,
+      { courseId, documentId, sessionId },
+      page,
+    );
   }
 
   @Get('sets/:id')

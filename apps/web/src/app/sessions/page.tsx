@@ -6,6 +6,7 @@ import { Plus, FileText, Trash2, X, Upload, Loader2, BookOpen } from 'lucide-rea
 
 import { useSessions } from '@/hooks/use-sessions'
 import { useDocuments } from '@/hooks/use-documents'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { BrainShell } from '@/components/brain/brain-shell'
 import { Button } from '@/components/ui/button'
@@ -63,8 +64,10 @@ export default function SessionsPage() {
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const debouncedSearch = useDebouncedValue(search)
+
   const filteredSessions = sessions.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase())
+    s.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
   const handleCreate = async () => {
@@ -144,7 +147,7 @@ export default function SessionsPage() {
           {isLoading ? (
             <ListSkeleton count={4} label="Loading study spaces" />
           ) : filteredSessions.length === 0 ? (
-            search ? (
+            debouncedSearch ? (
               <EmptyState
                 illustration="search"
                 title="No study spaces match your search"

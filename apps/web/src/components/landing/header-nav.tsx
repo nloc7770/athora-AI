@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { NavAuthSection, MobileNavAuthSection } from './nav-auth-section'
 
 export function HeaderNav() {
@@ -13,8 +14,8 @@ export function HeaderNav() {
       <nav aria-label="Main navigation">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
           <div className="flex items-center gap-2.5">
-            <img src="/images/logo.png" alt="Athora" width={28} height={28} className="h-7 w-7 rounded-lg" />
-            <span className="text-lg font-semibold tracking-tight text-[#f3f3fb]">Athora</span>
+            <Image src="/images/logo.png" alt="Nrop-on" width={28} height={28} priority className="h-7 w-7 rounded-lg" />
+            <span className="text-lg font-semibold tracking-tight text-[#f3f3fb]">Nrop-on</span>
           </div>
           <div className="hidden items-center gap-8 md:flex">
             <a href="#features" className="text-sm text-[#9a9ab6] hover:text-[#f3f3fb] transition-colors tracking-[0.021em]">Features</a>

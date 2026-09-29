@@ -14,6 +14,10 @@ import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  Pagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 
 @Controller('sessions')
 @UseGuards(SupabaseAuthGuard)
@@ -21,8 +25,11 @@ export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
   @Get()
-  findAll(@CurrentUser('id') userId: string) {
-    return this.sessionsService.findAll(userId);
+  findAll(
+    @CurrentUser('id') userId: string,
+    @Pagination() page: ListPaginationDto,
+  ) {
+    return this.sessionsService.findAll(userId, page);
   }
 
   @Get(':id')

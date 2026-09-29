@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
+import { getCached } from '@/lib/api-cache'
 
 interface ChatSession {
   id: string
@@ -80,21 +81,25 @@ export function useChatSessions(config?: string | ChatSessionsConfig): UseChatSe
   const sessionId = resolvedConfig?.sessionId
   const documentId = resolvedConfig?.documentId
 
-  const [sessions, setSessions] = useState<ChatSession[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const searchParams = new URLSearchParams()
+  if (sessionId) searchParams.set('sessionId', sessionId)
+  if (documentId) searchParams.set('documentId', documentId)
+  const query = searchParams.toString()
+  const path = query ? `/chat/sessions?${query}` : '/chat/sessions'
+
+  // Stale-while-revalidate: paint the last response for this exact path, then refetch.
+  const [sessions, setSessions] = useState<ChatSession[]>(() => getCached<ChatSession[]>(path) ?? [])
+  const [isLoading, setIsLoading] = useState(() => getCached(path) === undefined)
   const [error, setError] = useState<string | null>(null)
 
   const fetchSessions = useCallback(async () => {
-    setIsLoading(true)
+    const cached = getCached<ChatSession[]>(path)
+    if (cached) setSessions(cached)
+    setIsLoading(cached === undefined)
     setError(null)
 
     try {
-      const searchParams = new URLSearchParams()
-      if (sessionId) searchParams.set('sessionId', sessionId)
-      if (documentId) searchParams.set('documentId', documentId)
-      const query = searchParams.toString()
-      const params = query ? `?${query}` : ''
-      const data = await apiClient.get<ChatSession[]>(`/chat/sessions${params}`)
+      const data = await apiClient.get<ChatSession[]>(path)
       setSessions(data)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch sessions'
@@ -102,7 +107,7 @@ export function useChatSessions(config?: string | ChatSessionsConfig): UseChatSe
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, documentId])
+  }, [path])
 
   useEffect(() => {
     fetchSessions()

@@ -1,34 +1,70 @@
-import posthog from 'posthog-js'
+import type { PostHog } from 'posthog-js'
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? ''
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com'
 
-export function initPostHog(): void {
-  if (typeof window === 'undefined' || !POSTHOG_KEY) return
+// Mirrors COOKIE_CONSENT_KEY in components/ui/cookie-consent.tsx. Analytics
+// cookies are optional, so nothing loads until the user picks "Accept all".
+const COOKIE_CONSENT_KEY = 'athora-cookie-consent'
 
-  posthog.init(POSTHOG_KEY, {
-    api_host: POSTHOG_HOST,
-    person_profiles: 'identified_only',
-    capture_pageview: true,
-    capture_pageleave: true,
-    autocapture: false,
-    persistence: 'localStorage+cookie',
-  })
+let client: PostHog | null = null
+let started = false
+
+function hasConsent(): boolean {
+  try {
+    return localStorage.getItem(COOKIE_CONSENT_KEY) === 'accepted'
+  } catch {
+    return false
+  }
 }
 
+/**
+ * Loads posthog-js off the critical path: its chunk is fetched with a dynamic
+ * import once the browser is idle, and only after analytics consent. Safe to
+ * call repeatedly — the provider calls it on every navigation so a consent
+ * given mid-session starts analytics without a reload.
+ */
+export function initPostHog(): void {
+  if (typeof window === 'undefined' || !POSTHOG_KEY || started || !hasConsent()) return
+  started = true
+
+  const load = () => {
+    import('posthog-js')
+      .then(({ default: posthog }) => {
+        posthog.init(POSTHOG_KEY, {
+          api_host: POSTHOG_HOST,
+          person_profiles: 'identified_only',
+          capture_pageview: true,
+          capture_pageleave: true,
+          autocapture: false,
+          persistence: 'localStorage+cookie',
+        })
+        client = posthog
+      })
+      // Blocked by an ad blocker or a flaky network: let the next call retry.
+      .catch(() => {
+        started = false
+      })
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(load, { timeout: 5000 })
+  } else {
+    setTimeout(load, 1)
+  }
+}
+
+// Calls made before posthog has loaded are dropped, same as when no key is set.
 export function identifyUser(userId: string, properties?: Record<string, unknown>): void {
-  if (!POSTHOG_KEY) return
-  posthog.identify(userId, properties)
+  client?.identify(userId, properties)
 }
 
 export function resetUser(): void {
-  if (!POSTHOG_KEY) return
-  posthog.reset()
+  client?.reset()
 }
 
 export function trackEvent(event: string, properties?: Record<string, unknown>): void {
-  if (!POSTHOG_KEY) return
-  posthog.capture(event, properties)
+  client?.capture(event, properties)
 }
 
 // Predefined event helpers
@@ -73,5 +109,3 @@ export const analytics = {
     trackEvent('exam_completed', { score, time_spent_seconds: timeSpentSeconds })
   },
 }
-
-export { posthog }

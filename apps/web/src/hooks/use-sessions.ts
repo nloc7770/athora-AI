@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
+import { getCached } from '@/lib/api-cache'
 import { useToastStore } from '@/stores/toast-store'
 
 interface StudySession {
@@ -35,26 +36,24 @@ export interface UseSessionsParams {
 }
 
 export function useSessions(params?: UseSessionsParams) {
-  const [sessions, setSessions] = useState<StudySession[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const searchParams = new URLSearchParams()
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit))
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset))
+  if (params?.sortBy !== undefined) searchParams.set('sortBy', params.sortBy)
+  if (params?.order !== undefined) searchParams.set('order', params.order)
+  const query = searchParams.toString()
+  const path = query ? `/sessions?${query}` : '/sessions'
 
-  const limit = params?.limit
-  const offset = params?.offset
-  const sortBy = params?.sortBy
-  const order = params?.order
+  // Stale-while-revalidate: paint the last response for this exact path, then refetch.
+  const [sessions, setSessions] = useState<StudySession[]>(() => getCached<StudySession[]>(path) ?? [])
+  const [isLoading, setIsLoading] = useState(() => getCached(path) === undefined)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchSessions = useCallback(async () => {
     try {
-      setIsLoading(true)
-      const searchParams = new URLSearchParams()
-      if (limit !== undefined) searchParams.set('limit', String(limit))
-      if (offset !== undefined) searchParams.set('offset', String(offset))
-      if (sortBy !== undefined) searchParams.set('sortBy', sortBy)
-      if (order !== undefined) searchParams.set('order', order)
-
-      const query = searchParams.toString()
-      const path = query ? `/sessions?${query}` : '/sessions'
+      const cached = getCached<StudySession[]>(path)
+      if (cached) setSessions(cached)
+      setIsLoading(cached === undefined)
       const data = await apiClient.get<StudySession[]>(path)
       setSessions(data)
       setError(null)
@@ -63,7 +62,7 @@ export function useSessions(params?: UseSessionsParams) {
     } finally {
       setIsLoading(false)
     }
-  }, [limit, offset, sortBy, order])
+  }, [path])
 
   useEffect(() => {
     fetchSessions()

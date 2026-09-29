@@ -15,6 +15,10 @@ import * as express from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  Pagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 import { ChatService } from './chat.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -37,8 +41,9 @@ export class ChatController {
     @CurrentUser('id') userId: string,
     @Query('documentId') documentId?: string,
     @Query('sessionId') sessionId?: string,
+    @Pagination() page?: ListPaginationDto,
   ) {
-    return this.chatService.getSessions(userId, documentId, sessionId);
+    return this.chatService.getSessions(userId, documentId, sessionId, page);
   }
 
   @Delete('sessions/:id')
@@ -64,7 +69,12 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) sessionId: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.chatService.sendMessage(userId, sessionId, dto.content, dto.courseContext);
+    return this.chatService.sendMessage(
+      userId,
+      sessionId,
+      dto.content,
+      dto.courseContext,
+    );
   }
 
   @Post('sessions/:id/messages/stream')
@@ -86,6 +96,7 @@ export class ChatController {
         userId,
         sessionId,
         dto.content,
+        dto.courseContext,
       );
 
       for await (const chunk of generator) {

@@ -17,6 +17,7 @@ import {
 
 import { useDocuments } from '@/hooks/use-documents'
 import { useCourses } from '@/hooks/use-courses'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useToastStore } from '@/stores/toast-store'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
@@ -66,6 +67,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<FilterType>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const debouncedQuery = useDebouncedValue(searchQuery)
   const [searchMode, setSearchMode] = useState<'name' | 'fulltext'>('name')
   const [courseFilter, setCourseFilter] = useState<string>('all')
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null)
@@ -110,8 +112,8 @@ export default function LibraryPage() {
       result = result.filter((doc) => favorites.has(doc.id))
     }
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
+    if (debouncedQuery.trim()) {
+      const query = debouncedQuery.toLowerCase()
       result = result.filter((doc) => {
         const courseName = getCourseName(doc.courseId, courses)
         return doc.name.toLowerCase().includes(query) || courseName.toLowerCase().includes(query)
@@ -127,7 +129,7 @@ export default function LibraryPage() {
     }
 
     return sorted
-  }, [documents, searchQuery, courses, sortOption, activeFilter, favorites])
+  }, [documents, debouncedQuery, courses, sortOption, activeFilter, favorites])
 
   const handleSortChange = useCallback((value: SortOption) => {
     setSortOption(value)
@@ -322,7 +324,7 @@ export default function LibraryPage() {
   }, [moveDoc, bulkMoveIds, moveDocument, courses, addToast])
 
   const isLoading = docsLoading || coursesLoading
-  const hasQuery = searchQuery.trim().length > 0
+  const hasQuery = debouncedQuery.trim().length > 0
   const hasFilter = activeFilter !== 'all' || courseFilter !== 'all'
 
   const uploadButton = (

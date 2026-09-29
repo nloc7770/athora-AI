@@ -6,6 +6,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+  applyPagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 import { RagflowService, Chunk } from '../ragflow/ragflow.service';
 import { LlmService } from '../ai/llm.service';
 import { CreateSessionDto, ChatSessionType } from './dto/create-session.dto';
@@ -115,8 +119,7 @@ export class ChatService {
       }
     }
 
-    const title =
-      dto.type === 'tutor' ? 'AI Tutor Session' : 'Document Chat';
+    const title = dto.type === 'tutor' ? 'AI Tutor Session' : 'Document Chat';
 
     const { data, error } = await this.supabaseService
       .getAdminClient()
@@ -154,15 +157,16 @@ export class ChatService {
     let sources: ChunkSource[] = [];
 
     if (session.type === 'document_chat') {
-      const result = await this.handleDocumentChat(
-        session,
-        message,
-        history,
-      );
+      const result = await this.handleDocumentChat(session, message, history);
       assistantContent = result.content;
       sources = result.sources;
     } else {
-      assistantContent = await this.handleTutorChat(userId, message, history, courseContext);
+      assistantContent = await this.handleTutorChat(
+        userId,
+        message,
+        history,
+        courseContext,
+      );
     }
 
     const assistantMessage = await this.storeMessage(
@@ -181,6 +185,7 @@ export class ChatService {
     userId: string,
     sessionId: string,
     message: string,
+    courseContext?: string,
   ): AsyncGenerator<string> {
     const session = await this.getSessionOrThrow(userId, sessionId);
     const history = await this.getHistory(userId, sessionId);
@@ -188,11 +193,7 @@ export class ChatService {
     await this.storeMessage(sessionId, 'user', message, null);
 
     let sources: ChunkSource[] = [];
-    const llmMessages = await this.buildLlmMessages(
-      session,
-      message,
-      history,
-    );
+    const llmMessages = await this.buildLlmMessages(session, message, history);
 
     if (session.type === 'document_chat') {
       const chunks = await this.retrieveDocumentChunks(session, message);
@@ -202,9 +203,10 @@ export class ChatService {
         score: c.score,
       }));
 
-      const contextText = chunks.length > 0
-        ? chunks.map((c) => c.content).join('\n\n---\n\n')
-        : '[NO DOCUMENT CONTEXT AVAILABLE - The documents have not been processed yet or no relevant content was found. You MUST refuse to answer and tell the user to ensure documents are uploaded and processed.]';
+      const contextText =
+        chunks.length > 0
+          ? chunks.map((c) => c.content).join('\n\n---\n\n')
+          : '[NO DOCUMENT CONTEXT AVAILABLE - The documents have not been processed yet or no relevant content was found. You MUST refuse to answer and tell the user to ensure documents are uploaded and processed.]';
 
       const systemPrompt = DOCUMENT_CHAT_SYSTEM_PROMPT.replace(
         '{context}',
@@ -213,7 +215,14 @@ export class ChatService {
 
       llmMessages[0] = { role: 'system', content: systemPrompt };
     } else {
-      // Tutor: retrieve from all user's datasets
+      // Tutor: retrieve from all user's datasets. Same courseContext wording as
+      // the non-stream handleTutorChat, which the stream path used to drop.
+      if (courseContext) {
+        llmMessages[0] = {
+          role: 'system',
+          content: `${llmMessages[0].content}\n\nThe student is currently studying: ${courseContext}. Tailor your responses to this course context.`,
+        };
+      }
       const chunks = await this.retrieveAllUserChunks(userId, message);
       if (chunks.length > 0) {
         const context = chunks.map((c) => c.content).join('\n\n---\n\n');
@@ -266,6 +275,7 @@ export class ChatService {
     userId: string,
     documentId?: string,
     studySessionId?: string,
+    page?: ListPaginationDto,
   ): Promise<ChatSession[]> {
     let query = this.supabaseService
       .getAdminClient()
@@ -282,7 +292,7 @@ export class ChatService {
       query = query.eq('study_session_id', studySessionId);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await applyPagination(query, page);
 
     if (error) {
       this.logger.error('Failed to fetch sessions', { error });
@@ -343,7 +353,10 @@ export class ChatService {
     }));
   }
 
-  async deleteSession(userId: string, sessionId: string): Promise<{ deleted: true }> {
+  async deleteSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ deleted: true }> {
     await this.getSessionOrThrow(userId, sessionId);
 
     const { error } = await this.supabaseService
@@ -492,9 +505,7 @@ export class ChatService {
     ];
   }
 
-  private buildHistoryMessages(
-    history: ChatMessageRecord[],
-  ): LlmChatMessage[] {
+  private buildHistoryMessages(history: ChatMessageRecord[]): LlmChatMessage[] {
     const recentHistory = history.slice(-20);
 
     return recentHistory.map((msg) => ({
@@ -553,7 +564,10 @@ export class ChatService {
 
         if (sessionDocs) {
           sessionDocs.forEach((d) => {
-            if (d.ragflow_dataset_id && !datasetIds.includes(d.ragflow_dataset_id)) {
+            if (
+              d.ragflow_dataset_id &&
+              !datasetIds.includes(d.ragflow_dataset_id)
+            ) {
               datasetIds.push(d.ragflow_dataset_id);
             }
           });
@@ -562,15 +576,23 @@ export class ChatService {
     }
 
     if (datasetIds.length === 0) {
-      this.logger.warn('No dataset found for chat session', { sessionId: session.id });
+      this.logger.warn('No dataset found for chat session', {
+        sessionId: session.id,
+      });
       return [];
     }
 
     try {
-      const chunks = await this.ragflowService.retrieveChunks(datasetIds, query, 10);
+      const chunks = await this.ragflowService.retrieveChunks(
+        datasetIds,
+        query,
+        10,
+      );
 
       if (chunks.length === 0) {
-        this.logger.warn('Semantic retrieval returned 0 chunks, falling back to direct chunk listing');
+        this.logger.warn(
+          'Semantic retrieval returned 0 chunks, falling back to direct chunk listing',
+        );
         return await this.ragflowService.getDocumentChunks(datasetIds[0]);
       }
 

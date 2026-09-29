@@ -20,6 +20,7 @@ import {
 import { useExams, useExam, useAllExamAttempts } from '@/hooks/use-exams'
 import { apiClient } from '@/lib/api'
 import { markFirstStudyDone } from '@/hooks/use-first-study'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -138,8 +139,10 @@ function ExamPageInner() {
   const [searchQuery, setSearchQuery] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
 
+  const debouncedQuery = useDebouncedValue(searchQuery)
+
   const filteredExams = exams.filter((e) => {
-    const matchesSearch = searchQuery === '' || e.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = debouncedQuery === '' || e.name.toLowerCase().includes(debouncedQuery.toLowerCase())
     const matchesDifficulty = difficultyFilter === 'all' || e.difficulty === difficultyFilter
     return matchesSearch && matchesDifficulty
   })

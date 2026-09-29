@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { CacheService } from '../cache/cache.service';
 import {
   AiGeneration,
   GenerationType,
@@ -15,20 +16,25 @@ import { SummaryGenerator } from './generators/summary.generator';
 import { FlashcardGenerator } from './generators/flashcard.generator';
 import { ExamGenerator } from './generators/exam.generator';
 import { MindmapGenerator } from './generators/mindmap.generator';
-import { AI_GENERATION_QUEUE, AiGenerationJobData } from './ai-generation.constants';
+import {
+  AI_GENERATION_QUEUE,
+  AiGenerationJobData,
+} from './ai-generation.constants';
 
 @Injectable()
 export class AiGenerationService {
   private readonly logger = new Logger(AiGenerationService.name);
 
   constructor(
-    @InjectQueue(AI_GENERATION_QUEUE) private readonly generationQueue: Queue<AiGenerationJobData>,
+    @InjectQueue(AI_GENERATION_QUEUE)
+    private readonly generationQueue: Queue<AiGenerationJobData>,
     private readonly supabaseService: SupabaseService,
     private readonly analyticsService: AnalyticsService,
     private readonly summaryGenerator: SummaryGenerator,
     private readonly flashcardGenerator: FlashcardGenerator,
     private readonly examGenerator: ExamGenerator,
     private readonly mindmapGenerator: MindmapGenerator,
+    private readonly cache: CacheService,
   ) {}
 
   private async getUserPriority(userId: string): Promise<number> {
@@ -58,11 +64,9 @@ export class AiGenerationService {
       );
     }
 
-    const generation = await this.createGenerationRecord(
-      userId,
-      type,
-      { documentId },
-    );
+    const generation = await this.createGenerationRecord(userId, type, {
+      documentId,
+    });
 
     await this.generationQueue.add(
       `${type}-${generation.id}`,
@@ -114,11 +118,9 @@ export class AiGenerationService {
       );
     }
 
-    const generation = await this.createGenerationRecord(
-      userId,
-      type,
-      { sessionId },
-    );
+    const generation = await this.createGenerationRecord(userId, type, {
+      sessionId,
+    });
 
     await this.generationQueue.add(
       `${type}-${generation.id}`,
@@ -142,7 +144,10 @@ export class AiGenerationService {
     return generation;
   }
 
-  async getGeneration(userId: string, generationId: string): Promise<AiGeneration> {
+  async getGeneration(
+    userId: string,
+    generationId: string,
+  ): Promise<AiGeneration> {
     const { data, error } = await this.supabaseService
       .getAdminClient()
       .from('ai_generations')
@@ -247,7 +252,9 @@ export class AiGenerationService {
       .single();
 
     if (error || !data) {
-      throw new NotFoundException(error?.message ?? 'Could not create generation record');
+      throw new NotFoundException(
+        error?.message ?? 'Could not create generation record',
+      );
     }
 
     return data as AiGeneration;
@@ -269,8 +276,16 @@ export class AiGenerationService {
         .eq('id', generationId);
 
       this.logger.log(`Running generator ${type} for ${generationId}`);
-      const output = await this.runGenerator(userId, datasetId, documentId, sessionId, type);
-      this.logger.log(`Generator ${type} completed for ${generationId}, saving result...`);
+      const output = await this.runGenerator(
+        userId,
+        datasetId,
+        documentId,
+        sessionId,
+        type,
+      );
+      this.logger.log(
+        `Generator ${type} completed for ${generationId}, saving result...`,
+      );
 
       const { error: updateError } = await this.supabaseService
         .getAdminClient()
@@ -282,19 +297,35 @@ export class AiGenerationService {
         .eq('id', generationId);
 
       if (updateError) {
-        this.logger.error(`Failed to save generation result: ${updateError.message}`);
+        this.logger.error(
+          `Failed to save generation result: ${updateError.message}`,
+        );
       } else {
         this.logger.log(`Generation ${generationId} saved successfully`);
+        // Runs in the BullMQ worker, outside any HTTP request: a new mindmap
+        // changes the brain graph's concepts.
+        if (type === GenerationType.MINDMAP)
+          void this.cache.invalidateUser(userId);
         if (type === GenerationType.EXAM) {
-          this.analyticsService.logActivity(userId, 'exam_generation', 0, sessionId ?? undefined, {
-            generationId,
-            examId: (output as ExamOutput & { examId?: string }).examId,
-          }).catch(() => {});
+          this.analyticsService
+            .logActivity(userId, 'exam_generation', 0, sessionId ?? undefined, {
+              generationId,
+              examId: (output as ExamOutput & { examId?: string }).examId,
+            })
+            .catch(() => {});
         } else if (type === GenerationType.FLASHCARD) {
-          this.analyticsService.logActivity(userId, 'flashcard_generation', 0, sessionId ?? undefined, {
-            generationId,
-            cardCount: (output as FlashcardOutput).cards?.length ?? 0,
-          }).catch(() => {});
+          this.analyticsService
+            .logActivity(
+              userId,
+              'flashcard_generation',
+              0,
+              sessionId ?? undefined,
+              {
+                generationId,
+                cardCount: (output as FlashcardOutput).cards?.length ?? 0,
+              },
+            )
+            .catch(() => {});
         }
       }
     } catch (error: unknown) {
@@ -323,9 +354,19 @@ export class AiGenerationService {
       case GenerationType.SUMMARY:
         return this.summaryGenerator.generate(datasetId, documentId);
       case GenerationType.FLASHCARD:
-        return this.flashcardGenerator.generate(datasetId, documentId, userId, sessionId);
+        return this.flashcardGenerator.generate(
+          datasetId,
+          documentId,
+          userId,
+          sessionId,
+        );
       case GenerationType.EXAM:
-        return this.examGenerator.generate(datasetId, documentId, userId, sessionId);
+        return this.examGenerator.generate(
+          datasetId,
+          documentId,
+          userId,
+          sessionId,
+        );
       case GenerationType.MINDMAP:
         return this.mindmapGenerator.generate(datasetId, documentId);
     }

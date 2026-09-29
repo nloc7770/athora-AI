@@ -8,6 +8,7 @@ import { Loader2, Search, Upload, X } from 'lucide-react'
 import { buildGraphData, type BrainGraphNode } from '@/lib/brain-graph'
 import { useBrainGraph } from '@/hooks/use-brain-graph'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 // WebGL/three never load on the server or in jsdom (dashboard tests mock this file).
 const BrainGraph3D = dynamic(() => import('./brain-graph-3d'), { ssr: false, loading: () => null })
@@ -64,6 +65,8 @@ export function BrainHero({ onUpload, onNodeSelect }: BrainHeroProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [query, setQuery] = useState('')
+  // Each keystroke rebuilds the whole graph; wait for a pause instead.
+  const debouncedQuery = useDebouncedValue(query)
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   const maxNodes = isMobile ? 60 : 400
@@ -71,14 +74,14 @@ export function BrainHero({ onUpload, onNodeSelect }: BrainHeroProps) {
   // null when idle, a Set when searching — an empty Set legitimately means
   // "no hits, dim everything". See buildGraphData's highlightIds contract.
   const highlightIds = useMemo(() => {
-    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const terms = debouncedQuery.trim().toLowerCase().split(/\s+/).filter(Boolean)
     if (terms.length === 0) return null
     const hits = new Set<string>()
     for (const n of data?.nodes ?? []) {
       if (n.id && n.label && matchesQuery(n.label, terms)) hits.add(n.id)
     }
     return hits
-  }, [query, data])
+  }, [debouncedQuery, data])
 
   const graph = useMemo(
     () => buildGraphData(data, { maxNodes, isDark: true, highlightIds }),

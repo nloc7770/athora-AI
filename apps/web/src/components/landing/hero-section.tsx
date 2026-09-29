@@ -2,7 +2,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FadeUp } from './fade-up'
 import { ParticleField } from './particle-field'
 
 export function HeroSection() {
@@ -14,12 +13,12 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-[1200px]">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16 items-center">
           <div>
-            <FadeUp>
+            <div className="landing-rise">
               <p className="text-xs font-semibold uppercase tracking-[0.05em] text-[#ff7a3c] mb-5">
                 Pass exams faster with AI
               </p>
-            </FadeUp>
-            <FadeUp delay={0.05}>
+            </div>
+            <div className="landing-rise" style={{ animationDelay: '0.05s' }}>
               <h1
                 className="text-5xl font-extralight leading-[0.9] md:text-7xl lg:text-[clamp(5rem,8vw,7rem)] text-[#f3f3fb]"
                 style={{ letterSpacing: '-0.04em' }}
@@ -30,13 +29,13 @@ export function HeroSection() {
                   everything.
                 </span>
               </h1>
-            </FadeUp>
-            <FadeUp delay={0.1}>
+            </div>
+            <div className="landing-rise" style={{ animationDelay: '0.1s' }}>
               <p className="mt-7 max-w-md text-[15px] text-[#c0c0da] leading-relaxed tracking-[0.025em]">
                 Drop your lectures, textbooks, or notes. Get AI-generated flashcards, practice exams, and smart summaries in seconds — grounded in <span className="font-semibold text-[#f3f3fb]">your</span> materials.
               </p>
-            </FadeUp>
-            <FadeUp delay={0.15}>
+            </div>
+            <div className="landing-rise" style={{ animationDelay: '0.15s' }}>
               <div className="mt-9 flex items-center gap-4">
                 <Link href="/register">
                   <Button className="bg-[#ff7a3c] text-[#1a1400] h-12 px-7 text-xs font-semibold uppercase tracking-[0.05em] rounded-full hover:bg-[#ff9256] transition-all duration-300">
@@ -44,11 +43,11 @@ export function HeroSection() {
                   </Button>
                 </Link>
               </div>
-            </FadeUp>
+            </div>
           </div>
 
           {/* Right — Product visual */}
-          <FadeUp delay={0.2}>
+          <div className="landing-rise" style={{ animationDelay: '0.2s' }}>
             <div className="relative hidden lg:block">
               <div className="rounded-3xl border border-[#ffffff14] bg-[#181822] p-3 backdrop-blur-sm">
                 {/* next/image, not a raw <img>: this is the LCP element on the
@@ -59,7 +58,7 @@ export function HeroSection() {
                     lazy-loading the LCP image delays it. */}
                 <Image
                   src="/images/hero-product.png"
-                  alt="Athora AI workspace"
+                  alt="Nrop-on AI workspace"
                   width={1440}
                   height={900}
                   sizes="(min-width: 1024px) 45vw, 100vw"
@@ -79,7 +78,7 @@ export function HeroSection() {
                 <p className="text-[11px] font-bold text-[#ffab81]">+23% <span className="font-normal text-[#c0c0da]">this week</span></p>
               </div>
             </div>
-          </FadeUp>
+          </div>
         </div>
       </div>
     </section>

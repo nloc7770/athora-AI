@@ -1,5 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+  applyPagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 import { RagflowService } from '../ragflow/ragflow.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
@@ -11,13 +15,14 @@ export class SessionsService {
     private readonly ragflowService: RagflowService,
   ) {}
 
-  async findAll(userId: string) {
-    const { data, error } = await this.supabaseService
+  async findAll(userId: string, page?: ListPaginationDto) {
+    const query = this.supabaseService
       .getAdminClient()
       .from('study_sessions')
       .select('*, documents(id)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+    const { data, error } = await applyPagination(query, page);
 
     if (error) throw new NotFoundException(error.message);
 

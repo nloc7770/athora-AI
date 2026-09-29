@@ -1,5 +1,13 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+  applyPagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 import { CreateFlashcardSetDto } from './dto/create-flashcard-set.dto';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto';
 import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
@@ -11,6 +19,7 @@ export class FlashcardsService {
   async findAllSets(
     userId: string,
     filters?: { courseId?: string; documentId?: string; sessionId?: string },
+    page?: ListPaginationDto,
   ) {
     let query = this.supabaseService
       .getAdminClient()
@@ -29,7 +38,7 @@ export class FlashcardsService {
       query = query.eq('session_id', filters.sessionId);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await applyPagination(query, page);
 
     if (error) {
       throw new NotFoundException('Could not fetch flashcard sets');
@@ -69,7 +78,10 @@ export class FlashcardsService {
     return data;
   }
 
-  private async verifySetOwnership(setId: string, userId: string): Promise<void> {
+  private async verifySetOwnership(
+    setId: string,
+    userId: string,
+  ): Promise<void> {
     const { data, error } = await this.supabaseService
       .getAdminClient()
       .from('flashcard_sets')
@@ -79,7 +91,9 @@ export class FlashcardsService {
       .single();
 
     if (error || !data) {
-      throw new ForbiddenException('You do not have access to this flashcard set');
+      throw new ForbiddenException(
+        'You do not have access to this flashcard set',
+      );
     }
   }
 

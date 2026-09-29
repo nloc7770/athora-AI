@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { CacheService } from '../cache/cache.service';
 
 interface DailyActivity {
   date: string;
@@ -24,21 +25,31 @@ export interface AnalyticsSummary {
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly cache: CacheService,
+  ) {}
 
   async getSummary(userId: string): Promise<AnalyticsSummary> {
     const client = this.supabaseService.getAdminClient();
 
-    const [streak, studyTime, flashcards, examScore, documents, weeklyActivity, examTrend] =
-      await Promise.all([
-        this.calculateStreak(client, userId),
-        this.getTotalStudyTime(client, userId),
-        this.getFlashcardsReviewed(client, userId),
-        this.getAverageExamScore(client, userId),
-        this.getDocumentsUploaded(client, userId),
-        this.getWeeklyActivity(client, userId),
-        this.getExamTrend(client, userId),
-      ]);
+    const [
+      streak,
+      studyTime,
+      flashcards,
+      examScore,
+      documents,
+      weeklyActivity,
+      examTrend,
+    ] = await Promise.all([
+      this.calculateStreak(client, userId),
+      this.getTotalStudyTime(client, userId),
+      this.getFlashcardsReviewed(client, userId),
+      this.getAverageExamScore(client, userId),
+      this.getDocumentsUploaded(client, userId),
+      this.getWeeklyActivity(client, userId),
+      this.getExamTrend(client, userId),
+    ]);
 
     return {
       streak,
@@ -62,7 +73,7 @@ export class AnalyticsService {
     if (!data || data.length === 0) return 0;
 
     const dates = new Set(
-      data.map((a: any) => new Date(a.created_at).toISOString().split('T')[0])
+      data.map((a: any) => new Date(a.created_at).toISOString().split('T')[0]),
     );
 
     let streak = 0;
@@ -85,30 +96,45 @@ export class AnalyticsService {
     return streak;
   }
 
-  private async getTotalStudyTime(client: any, userId: string): Promise<number> {
+  private async getTotalStudyTime(
+    client: any,
+    userId: string,
+  ): Promise<number> {
     const { data } = await client
       .from('study_activities')
       .select('duration_seconds')
       .eq('user_id', userId);
 
     if (!data) return 0;
-    const totalSeconds = data.reduce((sum: number, a: any) => sum + (a.duration_seconds || 0), 0);
+    const totalSeconds = data.reduce(
+      (sum: number, a: any) => sum + (a.duration_seconds || 0),
+      0,
+    );
     return Math.round(totalSeconds / 60);
   }
 
-  private async getFlashcardsReviewed(client: any, userId: string): Promise<number> {
+  private async getFlashcardsReviewed(
+    client: any,
+    userId: string,
+  ): Promise<number> {
     // .in() takes an array of values, not a query builder — passing a builder
     // threw "object is not iterable" and 500'd the whole summary.
     const { count } = await client
       .from('flashcards')
-      .select('id, flashcard_sets!inner(user_id)', { count: 'exact', head: true })
+      .select('id, flashcard_sets!inner(user_id)', {
+        count: 'exact',
+        head: true,
+      })
       .eq('flashcard_sets.user_id', userId)
       .not('last_reviewed', 'is', null);
 
     return count ?? 0;
   }
 
-  private async getAverageExamScore(client: any, userId: string): Promise<number> {
+  private async getAverageExamScore(
+    client: any,
+    userId: string,
+  ): Promise<number> {
     const { data } = await client
       .from('exam_attempts')
       .select('score')
@@ -116,11 +142,16 @@ export class AnalyticsService {
       .not('score', 'is', null);
 
     if (!data || data.length === 0) return 0;
-    const avg = data.reduce((sum: number, a: any) => sum + Number(a.score), 0) / data.length;
+    const avg =
+      data.reduce((sum: number, a: any) => sum + Number(a.score), 0) /
+      data.length;
     return Math.round(avg * 10) / 10;
   }
 
-  private async getDocumentsUploaded(client: any, userId: string): Promise<number> {
+  private async getDocumentsUploaded(
+    client: any,
+    userId: string,
+  ): Promise<number> {
     const { count } = await client
       .from('documents')
       .select('id', { count: 'exact', head: true })
@@ -129,7 +160,10 @@ export class AnalyticsService {
     return count ?? 0;
   }
 
-  private async getWeeklyActivity(client: any, userId: string): Promise<DailyActivity[]> {
+  private async getWeeklyActivity(
+    client: any,
+    userId: string,
+  ): Promise<DailyActivity[]> {
     const twelveWeeksAgo = new Date();
     twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
 
@@ -148,10 +182,16 @@ export class AnalyticsService {
       countByDate.set(date, (countByDate.get(date) || 0) + 1);
     }
 
-    return Array.from(countByDate.entries()).map(([date, count]) => ({ date, count }));
+    return Array.from(countByDate.entries()).map(([date, count]) => ({
+      date,
+      count,
+    }));
   }
 
-  private async getExamTrend(client: any, userId: string): Promise<ExamTrend[]> {
+  private async getExamTrend(
+    client: any,
+    userId: string,
+  ): Promise<ExamTrend[]> {
     const { data } = await client
       .from('exam_attempts')
       .select('score, completed_at, exams(name)')
@@ -175,7 +215,11 @@ export class AnalyticsService {
       .from('study_activities')
       .select('id, activity_type, metadata, created_at')
       .eq('user_id', userId)
-      .in('activity_type', ['document_upload', 'exam_generation', 'flashcard_generation'])
+      .in('activity_type', [
+        'document_upload',
+        'exam_generation',
+        'flashcard_generation',
+      ])
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -198,5 +242,8 @@ export class AnalyticsService {
       duration_seconds: durationSeconds,
       metadata,
     });
+    // Background callers (document processing, generation jobs) bypass the
+    // HTTP invalidation interceptor; this is where their writes land.
+    await this.cache.invalidateUser(userId);
   }
 }

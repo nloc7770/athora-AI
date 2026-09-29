@@ -24,6 +24,10 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  Pagination,
+  ListPaginationDto,
+} from '../common/decorators/pagination.decorator';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 // STT (whisper) works on 25 MB inputs; larger audio is rejected before the
@@ -37,7 +41,8 @@ const AUDIO_MIME =
 // video/mp4|webm accepted because phones label voice memos m4a as audio/mp4
 // and MediaRecorder emits webm.
 const ACCEPTED_MIME = new RegExp(
-  /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/.source +
+  /(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/
+    .source +
     '|' +
     AUDIO_MIME.source,
 );
@@ -56,8 +61,13 @@ export class DocumentsController {
     @Query('courseId') courseId?: string,
     @Query('type') type?: string,
     @Query('sessionId') sessionId?: string,
+    @Pagination() page?: ListPaginationDto,
   ) {
-    return this.documentsService.findAll(userId, { courseId, type, sessionId });
+    return this.documentsService.findAll(
+      userId,
+      { courseId, type, sessionId },
+      page,
+    );
   }
 
   @Get(':id')
@@ -111,7 +121,8 @@ export class DocumentsController {
     const mimeToType: Record<string, string> = {
       'application/pdf': 'pdf',
       'application/msword': 'doc',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        'doc',
     };
     let docType = mimeToType[file.mimetype];
     if (!docType && AUDIO_MIME.test(file.mimetype)) {
@@ -126,14 +137,18 @@ export class DocumentsController {
 
     // Audio goes through whisper (25 MB limit), reject before creating a row.
     if (docType === 'audio' && file.size > MAX_AUDIO_SIZE) {
-      throw new BadRequestException('Audio file exceeds the 25 MB transcription limit');
+      throw new BadRequestException(
+        'Audio file exceeds the 25 MB transcription limit',
+      );
     }
 
     // PDF magic byte check (only for PDFs)
     if (docType === 'pdf') {
       const header = file.buffer.subarray(0, 5).toString();
       if (!header.startsWith('%PDF-')) {
-        throw new BadRequestException('Invalid PDF file: content does not match PDF format');
+        throw new BadRequestException(
+          'Invalid PDF file: content does not match PDF format',
+        );
       }
     }
 

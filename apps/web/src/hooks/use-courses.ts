@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
+import { getCached } from '@/lib/api-cache'
 
 interface Course {
   id: string
@@ -38,12 +39,15 @@ interface UseCoursesReturn {
 }
 
 export function useCourses(): UseCoursesReturn {
-  const [courses, setCourses] = useState<Course[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Stale-while-revalidate: paint the last response, then refetch.
+  const [courses, setCourses] = useState<Course[]>(() => getCached<Course[]>('/courses') ?? [])
+  const [isLoading, setIsLoading] = useState(() => getCached('/courses') === undefined)
   const [error, setError] = useState<string | null>(null)
 
   const fetchCourses = useCallback(async () => {
-    setIsLoading(true)
+    const cached = getCached<Course[]>('/courses')
+    if (cached) setCourses(cached)
+    setIsLoading(cached === undefined)
     setError(null)
 
     try {
