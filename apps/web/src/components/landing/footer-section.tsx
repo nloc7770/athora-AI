@@ -5,8 +5,8 @@ export function FooterSection() {
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <img src="/images/logo.png" alt="Athora" width={28} height={28} className="h-7 w-7 rounded-lg" />
-              <span className="font-semibold text-white">Athora</span>
+              <img src="/images/logo.png" alt="Nrop-on" width={28} height={28} className="h-7 w-7 rounded-lg" />
+              <span className="font-semibold text-white">Nrop-on</span>
             </div>
             <p className="mt-3 text-sm text-white/50">Made for students, by students.</p>
           </div>
@@ -26,7 +26,7 @@ export function FooterSection() {
           </div>
         </div>
         <div className="mt-10 border-t border-white/[0.08] pt-6 text-center">
-          <p className="text-xs text-white/30">&copy; {new Date().getFullYear()} Athora. All rights reserved.</p>
+          <p className="text-xs text-white/30">&copy; {new Date().getFullYear()} Nrop-on. All rights reserved.</p>
         </div>
       </div>
     </footer>

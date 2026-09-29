@@ -21,7 +21,7 @@ export function StudentsSection() {
             Built for how you <span className="text-[#9a9a9a]">actually study</span>
           </h2>
           <p className="mt-4 text-white/60 max-w-lg text-[15px] leading-relaxed tracking-[0.025em]">
-            Late nights, group sessions, messy desks, and breakthroughs. Athora fits the way you already work.
+            Late nights, group sessions, messy desks, and breakthroughs. Nrop-on fits the way you already work.
           </p>
         </FadeUp>
 

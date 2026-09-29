@@ -36,7 +36,7 @@ export function CookieConsent() {
     >
       <p className="text-sm text-white/70 leading-relaxed">
         We use essential cookies for authentication and optional analytics cookies to improve
-        Athora. See our{' '}
+        Nrop-on. See our{' '}
         <Link href="/privacy" className="text-[#8052ff] underline hover:text-[#9b72ff]">
           Privacy Policy
         </Link>{' '}

@@ -18,7 +18,7 @@ export function MobileAppSection() {
               className="text-3xl font-extralight tracking-tight md:text-5xl lg:text-6xl text-balance text-white"
               style={{ letterSpacing: '-0.04em' }}
             >
-              Study anywhere with the <span className="text-[#8052ff]">Athora app</span>
+              Study anywhere with the <span className="text-[#8052ff]">Nrop-on app</span>
             </h2>
             <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-white/60 tracking-[0.025em]">
               Flashcards on the bus. Exams during lunch break. Your AI tutor in your pocket. Available soon on iOS and Android.

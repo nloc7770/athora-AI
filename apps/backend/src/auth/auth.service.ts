@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -86,6 +90,31 @@ export class AuthService {
       .auth.resetPasswordForEmail(email);
 
     return { message: 'If an account exists, a reset link has been sent.' };
+  }
+
+  async changePassword(
+    userId: string,
+    email: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    // Re-verify identity: a stolen session cookie alone must not be enough
+    const { error: verifyError } = await this.supabaseService
+      .getAuthClient()
+      .auth.signInWithPassword({ email, password: currentPassword });
+    // 400 not 401: the web client treats any 401 as an expired session and redirects to /login
+    if (verifyError) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const { error } = await this.supabaseService
+      .getAdminClient()
+      .auth.admin.updateUserById(userId, { password: newPassword });
+    if (error) {
+      throw new BadRequestException(error.message);
+    }
+
+    return { message: 'Password updated' };
   }
 
   async getProfile(userId: string) {

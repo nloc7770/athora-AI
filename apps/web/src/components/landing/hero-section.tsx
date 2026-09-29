@@ -50,7 +50,7 @@ export function HeroSection() {
           <FadeUp delay={0.2}>
             <div className="relative hidden lg:block">
               <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-3 backdrop-blur-sm">
-                <img src="/images/hero-product.png" alt="Athora AI workspace" width={800} height={600} className="w-full rounded-2xl opacity-90" />
+                <img src="/images/hero-product.png" alt="Nrop-on AI workspace" width={800} height={600} className="w-full rounded-2xl opacity-90" />
               </div>
               {/* Floating card */}
               <div className="absolute -bottom-6 -left-6 rounded-2xl border border-white/[0.1] bg-black/80 backdrop-blur-md p-3.5 max-w-[200px]">

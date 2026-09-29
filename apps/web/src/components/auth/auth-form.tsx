@@ -33,7 +33,7 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
   const title = isLogin ? 'Welcome back' : 'Create an account'
   const description = isLogin
     ? 'Sign in to continue your learning journey'
-    : 'Start your exam prep with Athora'
+    : 'Start your exam prep with Nrop-on'
   const submitLabel = isLogin ? 'Sign in' : 'Create account'
   const switchText = isLogin
     ? "Don't have an account?"
@@ -61,7 +61,7 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         <div className="absolute bottom-12 left-8 right-8 text-white">
           <p className="text-lg font-medium leading-relaxed">
-            &ldquo;Athora helped me pass my exams in half the study time.&rdquo;
+            &ldquo;Nrop-on helped me pass my exams in half the study time.&rdquo;
           </p>
           <p className="mt-2 text-sm text-white/70">— 10,000+ students worldwide</p>
         </div>
@@ -72,8 +72,8 @@ export function AuthForm({ mode, onSubmit, isLoading, error }: AuthFormProps) {
         <Card className="w-full max-w-sm border-0 shadow-none lg:border lg:shadow-sm">
           <CardHeader className="text-center">
             <Link href="/" className="mb-2 inline-flex items-center justify-center gap-2 hover:opacity-80 transition-opacity">
-              <img src="/images/logo.png" alt="Athora" className="h-8 w-8 rounded-lg" />
-              <span className="text-2xl font-bold tracking-tight text-foreground">Athora</span>
+              <img src="/images/logo.png" alt="Nrop-on" className="h-8 w-8 rounded-lg" />
+              <span className="text-2xl font-bold tracking-tight text-foreground">Nrop-on</span>
             </Link>
             <CardTitle>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>

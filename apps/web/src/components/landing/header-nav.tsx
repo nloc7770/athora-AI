@@ -13,8 +13,8 @@ export function HeaderNav() {
       <nav aria-label="Main navigation">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
           <div className="flex items-center gap-2.5">
-            <img src="/images/logo.png" alt="Athora" width={28} height={28} className="h-7 w-7 rounded-lg" />
-            <span className="text-lg font-semibold tracking-tight text-white">Athora</span>
+            <img src="/images/logo.png" alt="Nrop-on" width={28} height={28} className="h-7 w-7 rounded-lg" />
+            <span className="text-lg font-semibold tracking-tight text-white">Nrop-on</span>
           </div>
           <div className="hidden items-center gap-8 md:flex">
             <a href="#features" className="text-sm text-[#9a9a9a] hover:text-white transition-colors tracking-[0.021em]">Features</a>

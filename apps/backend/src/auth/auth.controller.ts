@@ -14,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -87,6 +88,22 @@ export class AuthController {
     res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
     res.clearCookie(REFRESH_COOKIE_NAME, COOKIE_OPTIONS);
     return this.authService.logout(token);
+  }
+
+  @Post('change-password')
+  @UseGuards(SupabaseAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  changePassword(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('email') email: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(
+      userId,
+      email,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 
   @Get('me')

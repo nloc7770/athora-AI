@@ -8,6 +8,9 @@ export interface User {
   email: string
   name?: string
   avatar_url?: string
+  daily_goal_minutes?: number
+  notifications_enabled?: boolean
+  reminder_enabled?: boolean
 }
 
 export interface Session {

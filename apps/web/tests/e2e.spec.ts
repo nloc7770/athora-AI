@@ -37,7 +37,7 @@ test.describe('Landing Page', () => {
   });
 
   test('loads with correct title', async ({ page }) => {
-    await expect(page).toHaveTitle(/Athora/);
+    await expect(page).toHaveTitle(/Nrop-on/);
   });
 
   test('nav contains login and register links', async ({ page }) => {

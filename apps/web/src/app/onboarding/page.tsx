@@ -325,7 +325,7 @@ export default function OnboardingPage() {
                   </ul>
                   <div className="mt-6 rounded-xl bg-white/80 p-4 border border-purple-100">
                     <p className="text-sm font-medium text-purple-800">
-                      Athora will create flashcards, quizzes, and summaries from your materials — automatically.
+                      Nrop-on will create flashcards, quizzes, and summaries from your materials — automatically.
                     </p>
                   </div>
                 </div>
@@ -345,12 +345,12 @@ export default function OnboardingPage() {
                     ))}
                   </div>
                   <h1 className="text-2xl font-bold text-stone-900">Join 10,000+ students</h1>
-                  <p className="mt-2 text-stone-500">who are already studying smarter with Athora.</p>
+                  <p className="mt-2 text-stone-500">who are already studying smarter with Nrop-on.</p>
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { text: '"I passed my finals with 2 weeks of Athora after struggling for months."', name: 'Sarah K.', school: 'UCLA Biology' },
+                    { text: '"I passed my finals with 2 weeks of Nrop-on after struggling for months."', name: 'Sarah K.', school: 'UCLA Biology' },
                     { text: '"The AI flashcards are insanely good. Saved me hours of manual work."', name: 'Marcus L.', school: 'MIT CS' },
                     { text: '"Went from C to A- in Organic Chemistry. The exam prep is 🔥"', name: 'Jenny T.', school: 'Stanford Pre-Med' },
                   ].map((review) => (
@@ -377,7 +377,7 @@ export default function OnboardingPage() {
               <div className="space-y-8 text-center">
                 <div>
                   <Sparkles className="mx-auto h-8 w-8 text-purple-500 mb-3" />
-                  <h1 className="text-2xl font-bold text-stone-900">Here is what Athora generates</h1>
+                  <h1 className="text-2xl font-bold text-stone-900">Here is what Nrop-on generates</h1>
                   <p className="mt-2 text-stone-500">From a single document upload — in seconds.</p>
                 </div>
 

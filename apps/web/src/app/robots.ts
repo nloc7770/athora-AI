@@ -17,6 +17,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://athora.app/sitemap.xml',
+    sitemap: 'https://nrop-on.com/sitemap.xml',
   }
 }

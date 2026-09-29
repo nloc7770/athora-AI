@@ -4,7 +4,7 @@ const BASE_URL = 'http://localhost:3000';
 const SCREENSHOT_DIR = 'test-results/audit';
 
 // Test credentials from environment or defaults for local dev
-const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'loc@athora.app';
+const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'loc@nrop-on.com';
 const TEST_PASS = process.env.TEST_USER_PASS || 'Test123456!';
 
 test.describe.configure({ mode: 'serial' });

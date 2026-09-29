@@ -12,12 +12,17 @@ interface AuthState {
   logout: () => Promise<void>
   initialize: () => Promise<void>
   refreshToken: () => Promise<boolean>
+  setUser: (patch: Partial<User>) => void
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+
+  setUser: (patch) => {
+    set((state) => (state.user ? { user: { ...state.user, ...patch } } : state))
+  },
 
   login: async (email, password) => {
     const response = await apiClient.post<AuthResponse>('/auth/login', {

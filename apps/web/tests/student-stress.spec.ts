@@ -7,10 +7,10 @@ const SCREENSHOT_DIR = 'test-results/student-test';
 const PDF_FILE = '/Users/locnguyen/Downloads/Telegram Desktop/11b082f3_1d1f_4a2b_b7d3_2608a8bca8cd_9_r_studio_manual_basic_en.pdf';
 
 const STUDENTS = [
-  { email: 'mit.student@athora.app', name: 'MIT Student' },
-  { email: 'harvard.student@athora.app', name: 'Harvard Student' },
-  { email: 'oxford.student@athora.app', name: 'Oxford Student' },
-  { email: 'rmit.student@athora.app', name: 'RMIT Student' },
+  { email: 'mit.student@nrop-on.com', name: 'MIT Student' },
+  { email: 'harvard.student@nrop-on.com', name: 'Harvard Student' },
+  { email: 'oxford.student@nrop-on.com', name: 'Oxford Student' },
+  { email: 'rmit.student@nrop-on.com', name: 'RMIT Student' },
 ];
 
 // Passwords read from env or use convention: {School}Test2024!

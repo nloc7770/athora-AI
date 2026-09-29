@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Athora Admin',
-  description: 'Athora administration dashboard',
+  title: 'Nrop-on Admin',
+  description: 'Nrop-on administration dashboard',
 }
 
 export default function RootLayout({

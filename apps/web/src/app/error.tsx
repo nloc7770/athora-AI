@@ -11,7 +11,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[Athora] Unhandled error:', error)
+    console.error('[Nrop-on] Unhandled error:', error)
   }, [error])
 
   return (
